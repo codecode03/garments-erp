@@ -475,26 +475,6 @@ modules.forEach(mod => {
   });
 });
 
-// ---------- Recently visited ----------
-let recent = [];
-try { recent = JSON.parse(localStorage.getItem('erp-recent') || '[]'); } catch (e) { recent = []; }
-
-function pushRecent(moduleKey, subIndex) {
-  if (moduleKey === 'dashboard') return;   // already pinned at the top of the nav
-  recent = recent.filter(r => !(r.m === moduleKey && r.s === subIndex));
-  recent.unshift({ m: moduleKey, s: subIndex });
-  recent = recent.slice(0, 3);
-  try { localStorage.setItem('erp-recent', JSON.stringify(recent)); } catch (e) { /* ignore */ }
-}
-
-function lookup(moduleKey, subIndex) {
-  const mod = modules.find(m => m.key === moduleKey);
-  if (!mod) return null;
-  const sm = mod.submodules[subIndex];
-  if (!sm) return null;
-  return { mod, sm, single: mod.submodules.length === 1 };
-}
-
 // ---------- Single navigation entry point ----------
 function goTo(moduleKey, subIndex) {
   state.moduleKey = moduleKey;
@@ -502,7 +482,6 @@ function goTo(moduleKey, subIndex) {
   state.tabIndex = 0;
   state.editingId = null;
   state.editingBomId = null;
-  pushRecent(moduleKey, subIndex);
   renderNav();
   renderContent();
 }
@@ -513,28 +492,6 @@ const NAV_IDLE_CLASS = 'font-medium text-side-navText hover:bg-side-navHoverBg h
 
 function renderNav() {
   nav.innerHTML = '';
-
-  // --- Recent section ---
-  const validRecent = recent.map(r => ({ r, hit: lookup(r.m, r.s) })).filter(x => x.hit);
-  if (validRecent.length) {
-    const head = document.createElement('p');
-    head.className = 'text-micro text-disabled px-3 pt-1 pb-1.5';
-    head.textContent = 'Recent';
-    nav.appendChild(head);
-
-    validRecent.forEach(({ r, hit }) => {
-      const isHere = state.moduleKey === r.m && state.subIndex === r.s;
-      const b = document.createElement('button');
-      b.className = `w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-label text-left ${isHere ? 'text-side-accent font-semibold' : 'text-side-navSubText hover:bg-side-navHoverBg hover:text-side-navHoverText'}`;
-      b.innerHTML = `${iconSvg(hit.mod.icon, 'w-3.5 h-3.5 shrink-0 opacity-70')}<span class="truncate">${escapeHtml(hit.sm.name)}</span>`;
-      b.addEventListener('click', () => goTo(r.m, r.s));
-      nav.appendChild(b);
-    });
-
-    const rule = document.createElement('div');
-    rule.className = 'h-px bg-side-line mx-3 my-2.5';
-    nav.appendChild(rule);
-  }
 
   // --- Modules ---
   modules.forEach(mod => {
