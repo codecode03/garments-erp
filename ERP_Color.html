@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GarmentsERP — Color System</title>
+<style>
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+    background:#EAEFEE;color:#0F172A;padding:36px 40px 60px;
+  }
+  h1{font-size:24px;margin:0 0 4px;letter-spacing:-0.01em;}
+  .sub{color:#64748B;font-size:14px;margin:0 0 8px;}
+  .callout{background:#EFF6FF;border:1px solid #93C5FD;color:#1E3A5F;font-size:13px;padding:10px 16px;border-radius:8px;margin-bottom:28px;line-height:1.6;}
+  .callout b{color:#1E3A5F;}
+
+  .theme-block{margin-bottom:36px;border-radius:14px;overflow:hidden;border:1px solid #DCE3EC;background:#fff;}
+  .theme-header{padding:13px 22px;font-size:14.5px;font-weight:600;display:flex;align-items:center;gap:9px;}
+  .theme-header .dot{width:9px;height:9px;border-radius:50%;}
+  .theme-header.light{background:#BFC4C9;color:#10151B;}
+  .theme-header.dark{background:#0F172A;color:#F1F5F9;}
+  .sub-header{font-size:12.5px;padding:9px 22px;border-top:1px solid #EEF1F3;}
+  .sub-header.light{color:#64748B;}
+  .sub-header.dark{color:#94A3B8;}
+
+  .swatch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));}
+  .swatch{padding:14px 12px 11px;border-right:1px solid #EEF1F6;border-bottom:1px solid #EEF1F6;}
+  .swatch .chip{height:46px;border-radius:8px;margin-bottom:8px;border:1px solid rgba(0,0,0,0.1);}
+  .swatch .name{font-size:12px;font-weight:600;margin-bottom:2px;}
+  .swatch .hex{font-size:11px;color:#64748B;font-family:'Consolas',monospace;}
+  .swatch .use{font-size:10.5px;color:#94A3B8;margin-top:2px;line-height:1.4;}
+
+  .nav-state-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;padding:16px 22px;}
+  .nav-state-card{border-radius:10px;padding:12px 14px;font-size:12.5px;border:1px solid;}
+  .nav-state-card .tag{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px;opacity:.65;}
+  .nav-row{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:7px;}
+  .nav-row .ic{width:7px;height:7px;border-radius:50%;flex:none;}
+
+  .legend{padding:14px 22px 20px;font-size:11.5px;color:#64748B;line-height:1.6;}
+  .legend b{color:#0F172A;}
+
+  /* ---- Applied mockup ---- */
+  .demo-wrap{display:flex;flex-wrap:wrap;}
+  .demo{flex:1 1 460px;padding:24px;}
+
+  /* light demo = floating panels on gray canvas */
+  .demo.light{background:#EAEFEE;}
+  .shell{display:flex;gap:14px;}
+  .l-sidebar{width:170px;background:#F1F3F4;border-radius:12px;padding:11px;box-shadow:0 1px 3px rgba(0,0,0,0.12);flex:none;}
+  .l-brand{font-weight:700;font-size:12.5px;padding:5px 7px 12px;color:#10151B;}
+  .l-item{display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:7px;font-size:12px;font-weight:500;color:#3B4450;margin-bottom:2px;}
+  .l-item.hover{background:#E1E5E8;color:#1F2937;}
+  .l-item.active{background:#0D9488;color:#FFFFFF;font-weight:600;}
+  .l-sub{display:flex;align-items:center;gap:7px;padding:6px 9px 6px 22px;border-radius:6px;font-size:11.5px;color:#4B5563;margin-bottom:1px;}
+  .l-sub.active{background:#5EEAD4;color:#0F172A;font-weight:700;}
+  .l-content{flex:1;min-width:0;}
+  .l-card{background:#F7F9F8;border-radius:11px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.12);margin-bottom:12px;}
+  .l-cardgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+  .l-big{font-size:18px;font-weight:700;}
+  .l-lbl{font-size:11px;color:#64748B;margin-top:2px;}
+  .l-topbar{display:flex;justify-content:space-between;align-items:center;background:#F1F3F4;border-radius:9px;padding:9px 13px;margin-bottom:12px;font-size:11.5px;box-shadow:0 1px 3px rgba(0,0,0,0.10);}
+  .dotb{width:6px;height:6px;border-radius:50%;background:#9CA3AF;flex:none;}
+
+  /* dark demo */
+  .demo.dark{background:#0F172A;}
+  .d-mock{border-radius:10px;overflow:hidden;font-size:12.5px;background:#141B2E;border:1px solid #334155;}
+  .d-topbar{display:flex;justify-content:space-between;align-items:center;padding:11px 15px;font-size:11.5px;border-bottom:1px solid #334155;color:#F1F5F9;}
+  .d-body{padding:9px;}
+  .d-item{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;font-size:12px;font-weight:500;color:#CBD5E1;margin-bottom:2px;}
+  .d-item.hover{background:#273449;color:#F8FAFC;}
+  .d-item.active{background:rgba(20,184,166,.15);color:#5EEAD4;font-weight:600;}
+  .d-sub{display:flex;align-items:center;gap:7px;padding:7px 11px 7px 26px;border-radius:6px;font-size:11.5px;color:#94A3B8;margin-bottom:1px;}
+  .d-sub.active{background:rgba(45,212,191,.22);color:#99F6E4;font-weight:700;}
+  .d-dot{width:6px;height:6px;border-radius:50%;background:#475569;flex:none;}
+</style>
+</head>
+<body>
+
+<h1>GarmentsERP — Color System</h1>
+
+<!-- ================= LIGHT ================= -->
+<div class="theme-block">
+  <div class="theme-header light"><span class="dot" style="background:#0D9488"></span>Light Mode — Gray Canvas</div>
+
+  <div class="sub-header light">Backgrounds &amp; Surfaces</div>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="chip" style="background:#EAEFEE"></div><div class="name">Page Background</div><div class="hex">#EAEFEE</div><div class="use">Main application canvas</div></div>
+    <div class="swatch"><div class="chip" style="background:#F1F3F4"></div><div class="name">Surface / Sidebar</div><div class="hex">#F1F3F4</div></div>
+    <div class="swatch"><div class="chip" style="background:#F7F9F8"></div><div class="name">Card Background</div><div class="hex">#F7F9F8</div><div class="use">Main cards, forms & panels</div></div>
+    <div class="swatch"><div class="chip" style="background:#E1E5E8"></div><div class="name">Hover Background</div><div class="hex">#E1E5E8</div></div>
+    <div class="swatch"><div class="chip" style="background:#AEB5BB"></div><div class="name">Border (on canvas)</div><div class="hex">#AEB5BB</div></div>
+    <div class="swatch"><div class="chip" style="background:#E2E8F0"></div><div class="name">Border (inside cards)</div><div class="hex">#E2E8F0</div></div>
+  </div>
+
+  <div class="sub-header light">Text Colors</div>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="chip" style="background:#10151B"></div><div class="name">Primary Text</div><div class="hex">#10151B</div><div class="use">Safe anywhere</div></div>
+    <div class="swatch"><div class="chip" style="background:#3B4450"></div><div class="name">Secondary Text</div><div class="hex">#3B4450</div><div class="use">Safe anywhere</div></div>
+    <div class="swatch"><div class="chip" style="background:#5B6572"></div><div class="name">Muted Text</div><div class="hex">#5B6572</div><div class="use">White cards only</div></div>
+    <div class="swatch"><div class="chip" style="background:#94A3B8"></div><div class="name">Disabled Text</div><div class="hex">#94A3B8</div><div class="use">White cards only</div></div>
+    <div class="swatch"><div class="chip" style="background:#FFFFFF;border:1px solid #E2E8F0"></div><div class="name">Inverse Text (on dark)</div><div class="hex">#FFFFFF</div></div>
+  </div>
+
+  <div class="sub-header light">Brand / Accent</div>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="chip" style="background:#0D9488"></div><div class="name">Primary / Accent</div><div class="hex">#0D9488</div></div>
+    <div class="swatch"><div class="chip" style="background:#0F766E"></div><div class="name">Accent Hover</div><div class="hex">#0F766E</div></div>
+    <div class="swatch"><div class="chip" style="background:#D7F5F0"></div><div class="name">Accent Light</div><div class="hex">#D7F5F0</div></div>
+    <div class="swatch"><div class="chip" style="background:#E6FFFB"></div><div class="name">Accent Soft</div><div class="hex">#E6FFFB</div></div>
+    <div class="swatch"><div class="chip" style="background:#16A34A"></div><div class="name">Success</div><div class="hex">#16A34A</div></div>
+    <div class="swatch"><div class="chip" style="background:#F59E0B"></div><div class="name">Warning</div><div class="hex">#F59E0B</div></div>
+    <div class="swatch"><div class="chip" style="background:#EF4444"></div><div class="name">Error</div><div class="hex">#EF4444</div></div>
+    <div class="swatch"><div class="chip" style="background:#3B82F6"></div><div class="name">Info</div><div class="hex">#3B82F6</div></div>
+  </div>
+
+  <div class="sub-header light">Sidebar Navigation States — solid active fill</div>
+  <div class="nav-state-grid">
+    <div class="nav-state-card" style="border-color:#E2E8F0;background:#F1F3F4;">
+      <div class="tag">Top · Inactive</div>
+      <div class="nav-row" style="color:#3B4450;"><span class="ic" style="background:#6B7480"></span>text #3B4450 · icon #6B7480</div>
+    </div>
+    <div class="nav-state-card" style="border-color:#E2E8F0;background:#F1F3F4;">
+      <div class="tag">Top · Hover</div>
+      <div class="nav-row" style="background:#E1E5E8;color:#1F2937;"><span class="ic" style="background:#6B7480"></span>bg #E1E5E8 · text #1F2937</div>
+    </div>
+    <div class="nav-state-card" style="border-color:#0D9488;background:#F0FDFA;">
+      <div class="tag" style="color:#0F766E;opacity:1;">Top · Active — solid</div>
+      <div class="nav-row" style="background:#0D9488;color:#FFFFFF;font-weight:600;"><span class="ic" style="background:#FFFFFF"></span>bg #0D9488 · text #FFFFFF</div>
+    </div>
+    <div class="nav-state-card" style="border-color:#E2E8F0;background:#F1F3F4;">
+      <div class="tag">Sub · Inactive</div>
+      <div class="nav-row" style="color:#4B5563;"><span class="ic" style="background:#9CA3AF"></span>text #4B5563 · dot #9CA3AF</div>
+    </div>
+    <div class="nav-state-card" style="border-color:#E2E8F0;background:#F1F3F4;">
+      <div class="tag">Sub · Hover</div>
+      <div class="nav-row" style="background:#E1E5E8;color:#1F2937;"><span class="ic" style="background:#6B7480"></span>bg #E1E5E8 · text #1F2937</div>
+    </div>
+    <div class="nav-state-card" style="border-color:#0D9488;background:#D7F5F0;">
+      <div class="tag" style="color:#115E59;opacity:1;">Sub · Active — solid</div>
+      <div class="nav-row" style="background:#5EEAD4;color:#0F172A;font-weight:700;"><span class="ic" style="background:#0F766E"></span>bg #5EEAD4 · text #0F172A</div>
+    </div>
+  </div>
+
+  <div class="sub-header light">Status Badges</div>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="chip" style="background:#16A34A"></div><div class="name">Success</div><div class="hex">#16A34A</div></div>
+    <div class="swatch"><div class="chip" style="background:#F59E0B"></div><div class="name">Warning</div><div class="hex">#F59E0B</div></div>
+    <div class="swatch"><div class="chip" style="background:#EF4444"></div><div class="name">Error</div><div class="hex">#EF4444</div></div>
+    <div class="swatch"><div class="chip" style="background:#3B82F6"></div><div class="name">Info</div><div class="hex">#3B82F6</div></div>
+    <div class="swatch"><div class="chip" style="background:#64748B"></div><div class="name">Neutral</div><div class="hex">#64748B</div></div>
+  </div>
+
+  <div class="sub-header light">Charts</div>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="chip" style="background:#0D9488"></div><div class="hex">#0D9488</div></div>
+    <div class="swatch"><div class="chip" style="background:#3B82F6"></div><div class="hex">#3B82F6</div></div>
+    <div class="swatch"><div class="chip" style="background:#F59E0B"></div><div class="hex">#F59E0B</div></div>
+    <div class="swatch"><div class="chip" style="background:#EF4444"></div><div class="hex">#EF4444</div></div>
+    <div class="swatch"><div class="chip" style="background:#8B5CF6"></div><div class="hex">#8B5CF6</div></div>
+    <div class="swatch"><div class="chip" style="background:#06B6D4"></div><div class="hex">#06B6D4</div></div>
+    <div class="swatch"><div class="chip" style="background:#84CC16"></div><div class="hex">#84CC16</div></div>
+    <div class="swatch"><div class="chip" style="background:#F97316"></div><div class="hex">#F97316</div></div>
+    <div class="swatch"><div class="chip" style="background:#EC4899"></div><div class="hex">#EC4899</div></div>
+    <div class="swatch"><div class="chip" style="background:#64748B"></div><div class="hex">#64748B</div></div>
+  </div>
+
+  <div class="sub-header light">Scrollbar &amp; Overlay</div>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="chip" style="background:#E7E9EB"></div><div class="name">Scrollbar Track</div><div class="hex">#E7E9EB</div></div>
+    <div class="swatch"><div class="chip" style="background:#AEB5BB"></div><div class="name">Scrollbar Thumb</div><div class="hex">#A8AEB5</div></div>
+    <div class="swatch"><div class="chip" style="background:rgba(16,21,27,0.45)"></div><div class="name">Overlay / Backdrop</div><div class="hex">rgba(16,21,27,.45)</div></div>
+  </div>
+</div>
+
+<!-- ================= DARK ================= -->
+<div class="theme-block">
+  <div class="theme-header dark"><span class="dot" style="background:#2DD4BF"></span>Dark Mode</div>
+
+  <div class="sub-header dark">Backgrounds &amp; Surfaces</div>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="chip" style="background:#0F172A"></div><div class="name">Page Background</div><div class="hex">#0F172A</div></div>
+    <div class="swatch"><div class="chip" style="background:#141B2E"></div><div class="name">Surface / Panel</div><div class="hex">#141B2E</div></div>
+    <div class="swatch"><div class="chip" style="background:#1E293B"></div><div class="name">Card Background</div><div class="hex">#1E293B</div></div>
+    <div class="swatch"><div class="chip" style="background:#273449"></div><div class="name">Hover Background</div><div class="hex">#273449</div></div>
+    <div class="swatch"><div class="chip" style="background:#0D2D28"></div><div class="name">Active Tint</div><div class="hex">#0D2D28</div></div>
+    <div class="swatch"><div class="chip" style="background:#334155"></div><div class="name">Border / Divider</div><div class="hex">#334155</div></div>
+  </div>
+
+  <div class="sub-header dark">Text Colors</div>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="chip" style="background:#F8FAFC"></div><div class="name">Primary Text</div><div class="hex">#F8FAFC</div></div>
+    <div class="swatch"><div class="chip" style="background:#CBD5E1"></div><div class="name">Secondary Text</div><div class="hex">#CBD5E1</div></div>
+    <div class="swatch"><div class="chip" style="background:#94A3B8"></div><div class="name">Muted Text</div><div class="hex">#94A3B8</div></div>
+    <div class="swatch"><div class="chip" style="background:#64748B"></div><div class="name">Disabled Text</div><div class="hex">#64748B</div></div>
+    <div class="swatch"><div class="chip" style="background:#0F172A"></div><div class="name">Inverse Text (on light)</div><div class="hex">#0F172A</div></div>
+  </div>
+
+  <div class="sub-header dark">Brand / Accent</div>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="chip" style="background:#2DD4BF"></div><div class="name">Primary / Accent</div><div class="hex">#2DD4BF</div></div>
+    <div class="swatch"><div class="chip" style="background:#5EEAD4"></div><div class="name">Accent Hover</div><div class="hex">#5EEAD4</div></div>
+    <div class="swatch"><div class="chip" style="background:#134E4A"></div><div class="name">Accent Light</div><div class="hex">#134E4A</div></div>
+    <div class="swatch"><div class="chip" style="background:#0F766E"></div><div class="name">Accent Soft</div><div class="hex">#0F766E</div></div>
+    <div class="swatch"><div class="chip" style="background:#22C55E"></div><div class="name">Success</div><div class="hex">#22C55E</div></div>
+    <div class="swatch"><div class="chip" style="background:#FBBF24"></div><div class="name">Warning</div><div class="hex">#FBBF24</div></div>
+    <div class="swatch"><div class="chip" style="background:#F87171"></div><div class="name">Error</div><div class="hex">#F87171</div></div>
+    <div class="swatch"><div class="chip" style="background:#60A5FA"></div><div class="name">Info</div><div class="hex">#60A5FA</div></div>
+  </div>
+
+  <div class="sub-header dark">Sidebar Navigation States</div>
+  <div class="nav-state-grid">
+    <div class="nav-state-card" style="border-color:#334155;background:#141B2E;">
+      <div class="tag" style="color:#94A3B8">Top · Inactive</div>
+      <div class="nav-row" style="color:#CBD5E1;"><span class="ic" style="background:#64748B"></span>text #CBD5E1 · icon #64748B</div>
+    </div>
+    <div class="nav-state-card" style="border-color:#334155;background:#141B2E;">
+      <div class="tag" style="color:#94A3B8">Top · Hover</div>
+      <div class="nav-row" style="background:#273449;color:#F8FAFC;"><span class="ic" style="background:#94A3B8"></span>bg #273449 · text #F8FAFC</div>
+    </div>
+    <div class="nav-state-card" style="border-color:#2DD4BF;background:#0D2D28;">
+      <div class="tag" style="color:#5EEAD4;opacity:1;">Top · Active</div>
+      <div class="nav-row" style="background:rgba(20,184,166,.15);color:#5EEAD4;font-weight:600;"><span class="ic" style="background:#5EEAD4"></span>bg teal 15% · text #5EEAD4</div>
+    </div>
+    <div class="nav-state-card" style="border-color:#334155;background:#141B2E;">
+      <div class="tag" style="color:#94A3B8">Sub · Inactive</div>
+      <div class="nav-row" style="color:#94A3B8;"><span class="ic" style="background:#475569"></span>text #94A3B8 · dot #475569</div>
+    </div>
+    <div class="nav-state-card" style="border-color:#334155;background:#141B2E;">
+      <div class="tag" style="color:#94A3B8">Sub · Hover</div>
+      <div class="nav-row" style="background:#273449;color:#CBD5E1;"><span class="ic" style="background:#94A3B8"></span>bg #273449 · text #CBD5E1</div>
+    </div>
+    <div class="nav-state-card" style="border-color:#2DD4BF;background:#0D2D28;">
+      <div class="tag" style="color:#99F6E4;opacity:1;">Sub · Active</div>
+      <div class="nav-row" style="background:rgba(45,212,191,.22);color:#99F6E4;font-weight:700;"><span class="ic" style="background:#5EEAD4"></span>bg teal 22% · text #99F6E4</div>
+    </div>
+  </div>
+
+  <div class="sub-header dark">Status Badges</div>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="chip" style="background:#22C55E"></div><div class="name">Success</div><div class="hex">#22C55E</div></div>
+    <div class="swatch"><div class="chip" style="background:#FBBF24"></div><div class="name">Warning</div><div class="hex">#FBBF24</div></div>
+    <div class="swatch"><div class="chip" style="background:#F87171"></div><div class="name">Error</div><div class="hex">#F87171</div></div>
+    <div class="swatch"><div class="chip" style="background:#60A5FA"></div><div class="name">Info</div><div class="hex">#60A5FA</div></div>
+    <div class="swatch"><div class="chip" style="background:#94A3B8"></div><div class="name">Neutral</div><div class="hex">#94A3B8</div></div>
+  </div>
+
+  <div class="sub-header dark">Charts</div>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="chip" style="background:#2DD4BF"></div><div class="hex">#2DD4BF</div></div>
+    <div class="swatch"><div class="chip" style="background:#60A5FA"></div><div class="hex">#60A5FA</div></div>
+    <div class="swatch"><div class="chip" style="background:#FBBF24"></div><div class="hex">#FBBF24</div></div>
+    <div class="swatch"><div class="chip" style="background:#F87171"></div><div class="hex">#F87171</div></div>
+    <div class="swatch"><div class="chip" style="background:#A78BFA"></div><div class="hex">#A78BFA</div></div>
+    <div class="swatch"><div class="chip" style="background:#22D3EE"></div><div class="hex">#22D3EE</div></div>
+    <div class="swatch"><div class="chip" style="background:#A3E635"></div><div class="hex">#A3E635</div></div>
+    <div class="swatch"><div class="chip" style="background:#FB923C"></div><div class="hex">#FB923C</div></div>
+    <div class="swatch"><div class="chip" style="background:#F472B6"></div><div class="hex">#F472B6</div></div>
+    <div class="swatch"><div class="chip" style="background:#94A3B8"></div><div class="hex">#94A3B8</div></div>
+  </div>
+
+  <div class="sub-header dark">Scrollbar &amp; Overlay</div>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="chip" style="background:#1E293B"></div><div class="name">Scrollbar Track</div><div class="hex">#1E293B</div></div>
+    <div class="swatch"><div class="chip" style="background:#475569"></div><div class="name">Scrollbar Thumb</div><div class="hex">#475569</div></div>
+    <div class="swatch"><div class="chip" style="background:rgba(0,0,0,0.6)"></div><div class="name">Overlay / Backdrop</div><div class="hex">rgba(0,0,0,.6)</div></div>
+  </div>
+</div>
+
+<!-- ================= APPLIED ================= -->
+<div class="theme-block">
+  <div class="theme-header light" style="background:#EEF1F6;color:#0F172A;">Applied — Purchase Order screen, light vs dark</div>
+  <div class="demo-wrap">
+    <div class="demo light">
+      <div class="shell">
+        <div class="l-sidebar">
+          <div class="l-brand">GarmentsERP</div>
+          <div class="l-item">Dashboard</div>
+          <div class="l-item active">Merchandising</div>
+          <div class="l-sub">Buyer &amp; Inquiry</div>
+          <div class="l-sub">Style Management</div>
+          <div class="l-sub active">Purchase Order (PO)</div>
+          <div class="l-sub">Proforma Invoice (PI)</div>
+          <div class="l-item hover">Finance</div>
+          <div class="l-item">Procurement</div>
+        </div>
+        <div class="l-content">
+          <div class="l-topbar"><span><b>Merchandising</b> / Purchase Order (PO)</span><span style="color:#64748B">Alex Johnson</span></div>
+          <div class="l-cardgrid">
+            <div class="l-card"><div class="l-big">24</div><div class="l-lbl">Active Styles</div></div>
+            <div class="l-card"><div class="l-big">$128,400</div><div class="l-lbl">Pending Receivables</div></div>
+          </div>
+          <div class="l-card">
+            <div style="font-weight:600;font-size:12.5px;margin-bottom:4px;">Company Information</div>
+            <div style="font-size:11px;color:#5B6572;">Company/Concern Name, Buyer Name, Agency Name…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="demo dark">
+      <div class="d-mock">
+        <div class="d-topbar"><span>Merchandising / <b>Purchase Order (PO)</b></span><span style="color:#94A3B8">Alex Johnson</span></div>
+        <div class="d-body">
+          <div class="d-item">Dashboard</div>
+          <div class="d-item active">Merchandising</div>
+          <div class="d-sub"><span class="d-dot"></span>Buyer &amp; Inquiry</div>
+          <div class="d-sub"><span class="d-dot"></span>Style Management</div>
+          <div class="d-sub active"><span class="d-dot" style="background:#5EEAD4"></span>Purchase Order (PO)</div>
+          <div class="d-sub"><span class="d-dot"></span>Proforma Invoice (PI)</div>
+          <div class="d-item hover">Finance</div>
+          <div class="d-item">Procurement</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="legend">SHARIF_JAMI</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,1793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GarmentsERP · Merchandising</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+/* ============================= TOKENS ============================= */
+:root{
+  --bg:#F1F4F9;
+  --sidebar-bg:#0B1324;
+  --sidebar-bg-active:#15213A;
+  --sidebar-text:#9CA9C2;
+  --sidebar-text-active:#FFFFFF;
+  --card-bg:#FFFFFF;
+  --text:#1E2530;
+  --text-muted:#6B7686;
+  --border:#E4E8F0;
+  --primary:#0E9A6C;
+  --primary-dark:#0A7D57;
+  --primary-tint:#E4F7EF;
+  --blue:#2F6FED;
+  --blue-tint:#E7EEFE;
+  --green-tint:#E4F8EA;
+  --green-text:#1B8A3B;
+  --orange-tint:#FEEEDD;
+  --orange-text:#C2610C;
+  --yellow-tint:#FDF3D6;
+  --yellow-text:#9A7B08;
+  --red-tint:#FCE6E6;
+  --red-text:#C41F1F;
+  --radius-sm:6px;
+  --radius:10px;
+  --radius-lg:14px;
+  --shadow:0 1px 2px rgba(20,25,40,.04), 0 4px 14px rgba(20,25,40,.06);
+  --shadow-pop:0 12px 32px rgba(20,25,40,.16);
+  font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+body.dark{
+  --bg:#0D1421;
+  --card-bg:#17202F;
+  --text:#E7ECF5;
+  --text-muted:#8C97AC;
+  --border:#26324A;
+  --primary-tint:#0F3327;
+  --blue-tint:#152643;
+  --green-tint:#0F2C1B;
+  --orange-tint:#31220F;
+  --yellow-tint:#332B0C;
+  --red-tint:#331414;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-size:14px;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit;}
+a{color:inherit;text-decoration:none;}
+::selection{background:var(--primary);color:#fff;}
+
+/* ============================= LAYOUT ============================= */
+.app{display:flex;min-height:100vh;}
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  width:258px;flex-shrink:0;background:var(--sidebar-bg);
+  color:var(--sidebar-text);display:flex;flex-direction:column;
+  position:sticky;top:0;height:100vh;transition:width .18s ease;
+  z-index:40;
+}
+.sidebar.collapsed{width:76px;}
+.sidebar.collapsed .brand-text,
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .nav-caret,
+.sidebar.collapsed .user-card .user-meta{display:none;}
+.sidebar.collapsed .nav-item{justify-content:center;}
+.sidebar.collapsed .submenu{display:none !important;}
+
+.brand{display:flex;align-items:center;gap:10px;padding:20px 18px;border-bottom:1px solid rgba(255,255,255,.06);}
+.brand-icon{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#17C591,#0E9A6C);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.brand-icon svg{width:19px;height:19px;stroke:#fff;}
+.brand-text .name{font-weight:800;color:#fff;font-size:16.5px;line-height:1;}
+.brand-text .tag{font-size:11px;color:#7C8AA6;margin-top:3px;}
+
+.nav{flex:1;overflow-y:auto;padding:14px 10px;}
+.nav::-webkit-scrollbar{width:5px;}
+.nav::-webkit-scrollbar-thumb{background:#26324A;border-radius:6px;}
+.nav-group{margin-bottom:2px;}
+.nav-item{
+  display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;
+  cursor:pointer;font-weight:500;font-size:13.5px;color:var(--sidebar-text);
+  white-space:nowrap;overflow:hidden;
+}
+.nav-item svg{width:17px;height:17px;flex-shrink:0;stroke:currentColor;}
+.nav-item:hover{background:rgba(255,255,255,.05);color:#fff;}
+.nav-item.open,.nav-item.active-parent{color:#fff;background:rgba(255,255,255,.04);}
+.nav-label{flex:1;}
+.nav-caret{width:13px;height:13px;transition:transform .15s;flex-shrink:0;}
+.nav-item.open .nav-caret{transform:rotate(90deg);}
+
+.submenu{list-style:none;margin:2px 0 6px 0;padding:0 0 0 20px;position:relative;display:none;}
+.submenu.show{display:block;}
+.submenu::before{content:"";position:absolute;left:29px;top:0;bottom:10px;width:1px;background:rgba(255,255,255,.08);}
+.sub-item{
+  display:flex;align-items:center;gap:9px;padding:8px 10px 8px 14px;margin:1px 0;border-radius:7px;
+  cursor:pointer;font-size:13px;color:var(--sidebar-text);position:relative;
+}
+.sub-item::before{content:"";width:5px;height:5px;border-radius:50%;background:#48557A;flex-shrink:0;}
+.sub-item:hover{color:#fff;background:rgba(255,255,255,.05);}
+.sub-item.active{color:#fff;background:rgba(14,154,108,.18);}
+.sub-item.active::before{background:var(--primary);box-shadow:0 0 0 3px rgba(14,154,108,.25);}
+
+.user-card{margin:12px;padding:10px;border-radius:10px;background:rgba(255,255,255,.04);display:flex;align-items:center;gap:10px;cursor:pointer;}
+.user-avatar{width:34px;height:34px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;}
+.user-meta .u-name{font-size:13px;font-weight:600;color:#fff;}
+.user-meta .u-role{font-size:11px;color:#7C8AA6;}
+.user-card svg{margin-left:auto;width:15px;height:15px;stroke:#7C8AA6;flex-shrink:0;}
+
+/* ---------- Main ---------- */
+.main{flex:1;min-width:0;display:flex;flex-direction:column;}
+
+.topbar{
+  height:64px;flex-shrink:0;background:var(--card-bg);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:16px;padding:0 22px;position:sticky;top:0;z-index:30;
+}
+.icon-btn{width:36px;height:36px;border-radius:8px;border:1px solid transparent;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-muted);flex-shrink:0;}
+.icon-btn:hover{background:var(--bg);color:var(--text);}
+.icon-btn svg{width:18px;height:18px;stroke:currentColor;}
+
+.search-box{
+  flex:1;max-width:420px;display:flex;align-items:center;gap:9px;
+  background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:8px 12px;color:var(--text-muted);
+}
+.search-box svg{width:16px;height:16px;stroke:currentColor;flex-shrink:0;}
+.search-box input{border:none;background:transparent;outline:none;flex:1;color:var(--text);font-size:13.5px;}
+.kbd{font-size:11px;border:1px solid var(--border);border-radius:5px;padding:1px 6px;color:var(--text-muted);}
+
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;position:relative;}
+.bell-wrap{position:relative;}
+.badge-dot{position:absolute;top:5px;right:5px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:#E0413F;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--card-bg);}
+.user-chip{display:flex;align-items:center;gap:9px;padding:6px 10px 6px 6px;border-radius:30px;cursor:pointer;border:1px solid var(--border);}
+.user-chip:hover{background:var(--bg);}
+.chip-avatar{width:30px;height:30px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;}
+.chip-name{font-weight:600;font-size:13px;line-height:1.1;}
+.chip-role{font-size:11px;color:var(--text-muted);}
+.user-chip svg{width:14px;height:14px;stroke:var(--text-muted);}
+
+.dropdown-panel{
+  position:absolute;top:calc(100% + 8px);right:0;background:var(--card-bg);border:1px solid var(--border);
+  border-radius:10px;box-shadow:var(--shadow-pop);min-width:230px;padding:8px;display:none;z-index:60;
+}
+.dropdown-panel.show{display:block;}
+.dropdown-panel .dp-title{font-size:12px;font-weight:700;color:var(--text-muted);padding:6px 8px;}
+.dp-item{display:flex;flex-direction:column;gap:1px;padding:8px;border-radius:7px;cursor:pointer;}
+.dp-item:hover{background:var(--bg);}
+.dp-item .t{font-size:13px;font-weight:600;}
+.dp-item .s{font-size:11.5px;color:var(--text-muted);}
+.dp-menu-item{display:flex;align-items:center;gap:9px;padding:9px 8px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:500;}
+.dp-menu-item:hover{background:var(--bg);}
+.dp-menu-item svg{width:15px;height:15px;stroke:var(--text-muted);}
+.dp-divider{height:1px;background:var(--border);margin:6px 2px;}
+
+/* ---------- Page header / breadcrumb ---------- */
+.content{padding:22px 26px 60px;max-width:1720px;width:100%;margin:0 auto;}
+.breadcrumb{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-muted);margin-bottom:14px;}
+.breadcrumb svg{width:13px;height:13px;stroke:currentColor;}
+.breadcrumb .current{color:var(--text);font-weight:600;}
+.page-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap;}
+.page-head-left{display:flex;align-items:center;gap:14px;}
+.page-icon{width:46px;height:46px;border-radius:12px;background:var(--primary-tint);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.page-icon svg{width:22px;height:22px;stroke:var(--primary);}
+.page-title{font-size:21px;font-weight:800;margin:0;}
+.page-sub{font-size:12.5px;color:var(--text-muted);margin-top:2px;}
+
+.btn{
+  display:inline-flex;align-items:center;gap:7px;border-radius:8px;border:1px solid var(--border);
+  padding:10px 16px;font-weight:600;font-size:13px;cursor:pointer;background:var(--card-bg);color:var(--text);
+  white-space:nowrap;
+}
+.btn svg{width:15px;height:15px;stroke:currentColor;}
+.btn:hover{background:var(--bg);}
+.btn-primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary-dark);}
+.btn-ghost{border-color:transparent;}
+.btn-danger-text{color:var(--red-text);}
+.btn-sm{padding:7px 11px;font-size:12.5px;}
+
+/* ---------- Pages ---------- */
+.page{display:none;}
+.page.active{display:block;animation:fade .18s ease;}
+@keyframes fade{from{opacity:0;transform:translateY(3px);}to{opacity:1;transform:none;}}
+
+.grid{display:grid;gap:18px;}
+.grid-3{grid-template-columns:repeat(3,1fr);}
+.grid-2{grid-template-columns:1.4fr 1fr;}
+@media(max-width:1180px){.grid-3{grid-template-columns:1fr;}.grid-2{grid-template-columns:1fr;}}
+
+.card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:18px;}
+.card-head{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.card-head .ic{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.card-head .ic svg{width:16px;height:16px;}
+.card-head h3{font-size:14.5px;font-weight:700;margin:0;}
+.card-head .badge{margin-left:auto;}
+.ic-blue{background:var(--blue-tint);}.ic-blue svg{stroke:var(--blue);}
+.ic-green{background:var(--primary-tint);}.ic-green svg{stroke:var(--primary);}
+.ic-purple{background:#F1E8FE;}.ic-purple svg{stroke:#8A3FE0;}
+body.dark .ic-purple{background:#241539;}
+
+.field{margin-bottom:13px;}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px;}
+.field label .req{color:#E0413F;}
+.field .hint{font-size:11px;color:var(--text-muted);margin-top:5px;}
+.input,.select,.dateinput,textarea.input{
+  width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);
+  outline:none;font-size:13.3px;color:var(--text);appearance:none;
+}
+textarea.input{resize:vertical;min-height:70px;font-family:inherit;}
+.input:focus,.select:focus,.dateinput:focus,textarea.input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-tint);background:var(--card-bg);}
+.select-wrap{position:relative;}
+.select-wrap svg{position:absolute;right:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--text-muted);pointer-events:none;}
+select.select{padding-right:32px;cursor:pointer;}
+.date-wrap{position:relative;}
+.date-wrap svg{position:absolute;right:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;stroke:var(--text-muted);pointer-events:none;}
+.field-row{display:flex;gap:0;}
+.field-row .input{border-radius:8px 0 0 8px;}
+.unit-suffix{display:flex;align-items:center;padding:0 12px;background:var(--border);border:1px solid var(--border);border-left:none;border-radius:0 8px 8px 0;font-size:12px;font-weight:700;color:var(--text-muted);white-space:nowrap;}
+.field-with-icon{display:flex;gap:8px;align-items:flex-end;}
+.field-with-icon .field{flex:1;margin-bottom:0;}
+.icon-affix-btn{width:40px;height:40px;border-radius:8px;border:1px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+.icon-affix-btn svg{width:15px;height:15px;stroke:var(--text-muted);}
+
+.dot-select{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;position:relative;}
+.dot-select .sw{width:15px;height:15px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--border);}
+.dot-select select{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;}
+.dot-select .lbl{flex:1;font-size:13.3px;}
+.dot-select svg{width:13px;height:13px;stroke:var(--text-muted);}
+
+.readonly-list{display:flex;flex-direction:column;gap:9px;}
+.readonly-list .r{display:flex;align-items:center;justify-content:space-between;font-size:13px;}
+.readonly-list .r .k{color:var(--text-muted);}
+.readonly-list .r .v{font-weight:600;}
+
+.divider{height:1px;background:var(--border);margin:14px 0;}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11.5px;font-weight:700;}
+.b-new{background:var(--blue-tint);color:var(--blue);}
+.b-reference{background:var(--blue-tint);color:var(--blue);}
+.b-good{background:var(--green-tint);color:var(--green-text);}
+.b-old{background:var(--orange-tint);color:var(--orange-text);}
+.b-moderate{background:var(--yellow-tint);color:var(--yellow-text);}
+.b-bad{background:var(--red-tint);color:var(--red-text);}
+.b-open{background:var(--green-tint);color:var(--green-text);}
+.b-confirmed{background:var(--green-tint);color:var(--green-text);}
+.status-dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+
+/* Table card */
+.table-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow);margin-top:20px;overflow:hidden;}
+.table-head-row{display:flex;align-items:center;gap:14px;padding:18px;flex-wrap:wrap;border-bottom:1px solid var(--border);}
+.table-search{flex:1;min-width:220px;display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;}
+.table-search svg{width:15px;height:15px;stroke:var(--text-muted);}
+.table-search input{border:none;background:transparent;outline:none;flex:1;font-size:13px;color:var(--text);}
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{text-align:left;padding:12px 16px;font-size:11.5px;text-transform:uppercase;letter-spacing:.02em;color:var(--text-muted);background:var(--bg);border-bottom:1px solid var(--border);white-space:nowrap;}
+tbody td{padding:13px 16px;border-bottom:1px solid var(--border);white-space:nowrap;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--bg);}
+tbody td[contenteditable="true"]{cursor:text;border-radius:5px;}
+tbody td[contenteditable="true"]:focus{outline:2px solid var(--primary);outline-offset:-2px;background:var(--primary-tint);}
+.row-actions{display:flex;gap:6px;}
+.row-actions button{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:var(--card-bg);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.row-actions button svg{width:14px;height:14px;stroke:var(--text-muted);}
+.row-actions .del:hover{background:var(--red-tint);border-color:var(--red-tint);}
+.row-actions .del:hover svg{stroke:var(--red-text);}
+.row-actions .edit:hover{background:var(--blue-tint);border-color:var(--blue-tint);}
+.row-actions .edit:hover svg{stroke:var(--blue);}
+.table-foot{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;font-size:12.5px;color:var(--text-muted);}
+.pager{display:flex;gap:6px;}
+.pager button{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:var(--card-bg);cursor:pointer;}
+.pager button.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+.pager button:disabled{opacity:.4;cursor:not-allowed;}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:20px;}
+.tab-btn{display:flex;align-items:center;gap:7px;padding:12px 16px;font-weight:600;font-size:13.3px;color:var(--text-muted);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-1px;}
+.tab-btn svg{width:15px;height:15px;stroke:currentColor;}
+.tab-btn.active{color:var(--primary);border-color:var(--primary);}
+.tabpanel{display:none;}
+.tabpanel.active{display:block;}
+
+.info-banner{display:flex;align-items:flex-start;gap:9px;background:var(--blue-tint);border:1px solid var(--blue-tint);color:var(--blue);padding:11px 14px;border-radius:9px;font-size:12.5px;margin-top:16px;}
+.info-banner svg{width:15px;height:15px;stroke:var(--blue);flex-shrink:0;margin-top:1px;}
+
+/* Style swatch preview */
+.swatch-card{width:100%;border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;background:var(--bg);}
+.swatch-box{width:100%;aspect-ratio:1/1;border-radius:10px;background:#151A21;display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
+.swatch-box svg{width:56%;stroke:#565f6b;fill:none;}
+.swatch-card .s-title{font-weight:700;font-size:13px;}
+.swatch-card .s-sub{font-size:12px;color:var(--text-muted);margin-top:2px;}
+
+/* Costing trims list */
+.trim-list{display:flex;flex-direction:column;gap:3px;}
+.trim-row{display:grid;grid-template-columns:1fr 90px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--border);}
+.trim-row:last-child{border-bottom:none;}
+.trim-row .t-name{font-size:12.8px;color:var(--text-muted);}
+.trim-row .t-val{display:flex;align-items:center;gap:2px;}
+.trim-row .t-val span{font-weight:700;font-size:12.5px;}
+.trim-row input{width:100%;border:1px solid var(--border);border-radius:6px;padding:5px 6px;font-size:12.5px;font-weight:700;text-align:right;background:var(--bg);}
+.trim-row input:focus{outline:none;border-color:var(--primary);}
+
+.summary-box{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:14px;}
+.summary-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:13px;}
+.summary-row.total{font-weight:800;font-size:15px;padding-top:12px;margin-top:6px;border-top:1px solid var(--border);}
+.summary-row .mini-input{width:64px;text-align:right;padding:5px 7px;border:1px solid var(--border);border-radius:6px;font-weight:700;background:var(--card-bg);}
+.total-value-banner{background:var(--primary-tint);color:var(--primary-dark);border:1px solid var(--primary-tint);border-radius:9px;padding:11px 15px;display:flex;justify-content:space-between;align-items:center;font-weight:700;margin-top:6px;}
+
+/* footer form actions */
+.form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;}
+
+/* toast */
+.toast-wrap{position:fixed;bottom:22px;right:22px;display:flex;flex-direction:column;gap:10px;z-index:200;}
+.toast{background:var(--card-bg);border:1px solid var(--border);box-shadow:var(--shadow-pop);border-radius:10px;padding:13px 16px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;min-width:230px;animation:toastin .2s ease;}
+@keyframes toastin{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+.toast svg{width:17px;height:17px;stroke:var(--primary);flex-shrink:0;}
+
+.header-strip{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:16px 20px;margin-bottom:18px;display:flex;flex-wrap:wrap;gap:24px;align-items:center;}
+.header-strip .hs{display:flex;flex-direction:column;gap:3px;}
+.header-strip .hs .k{font-size:11px;color:var(--text-muted);font-weight:600;}
+.header-strip .hs .v{font-size:13.3px;font-weight:700;}
+.header-strip .hs .v.link{color:var(--blue);}
+
+@media(max-width:820px){
+  .sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);transition:transform .2s ease;}
+  .sidebar.mobile-open{transform:none;}
+  .content{padding:16px;}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============================= SIDEBAR ============================= -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23Z"/></svg>
+      </div>
+      <div class="brand-text">
+        <div class="name">GarmentsERP</div>
+        <div class="tag">Simplify · Manage · Grow</div>
+      </div>
+    </div>
+
+    <nav class="nav" id="nav">
+      <div class="nav-group">
+        <div class="nav-item" data-goto="dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/></svg>
+          <span class="nav-label">Dashboard</span>
+        </div>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-item" id="merchToggle">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M8 4v16"/></svg>
+          <span class="nav-label">Merchandising</span>
+          <svg class="nav-caret" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </div>
+        <ul class="submenu show" id="merchSub">
+          <li class="sub-item active" data-page="buyer">Buyer &amp; Inquiry</li>
+          <li class="sub-item" data-page="style">Style Management</li>
+          <li class="sub-item" data-page="bom">BOM &amp; Costing</li>
+          <li class="sub-item" data-page="po">Purchase Order (PO)</li>
+          <li class="sub-item" data-page="pi">Proforma Invoice (PI)</li>
+          <li class="sub-item" data-page="reports">Reports</li>
+        </ul>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-item" data-goto="development">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M9 8h6M9 12h6M9 16h4"/></svg>
+          <span class="nav-label">Development</span>
+        </div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-item" data-goto="finance">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 6v0M18 18v0"/></svg>
+          <span class="nav-label">Finance</span>
+        </div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-item" data-goto="procurement">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h2l2.6 13.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6L21 6H6"/><circle cx="9" cy="21" r="1"/><circle cx="18" cy="21" r="1"/></svg>
+          <span class="nav-label">Procurement</span>
+        </div>
+      </div>
+    </nav>
+
+    <div class="user-card">
+      <div class="user-avatar">AJ</div>
+      <div class="user-meta">
+        <div class="u-name">Alex Johnson</div>
+        <div class="u-role">Merchandiser</div>
+      </div>
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </div>
+  </aside>
+
+  <!-- ============================= MAIN ============================= -->
+  <div class="main">
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <button class="icon-btn" id="sidebarToggle" title="Toggle sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="globalSearch" placeholder="Search anything...">
+        <span class="kbd">Ctrl+K</span>
+      </div>
+
+      <div class="topbar-right">
+        <div class="bell-wrap">
+          <button class="icon-btn" id="bellBtn" title="Notifications">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span class="badge-dot" id="bellCount">4</span>
+          </button>
+          <div class="dropdown-panel" id="bellPanel">
+            <div class="dp-title">Notifications</div>
+            <div class="dp-item"><span class="t">New inquiry received</span><span class="s">ABC Fashion Ltd. · INQ-2026-00235</span></div>
+            <div class="dp-item"><span class="t">PO approved</span><span class="s">PO-2026-00852 confirmed by finance</span></div>
+            <div class="dp-item"><span class="t">Sample due tomorrow</span><span class="s">SMP-2026-00125 · AB-4587</span></div>
+            <div class="dp-item"><span class="t">BOM updated</span><span class="s">BOM-AB-4587 costing revised</span></div>
+          </div>
+        </div>
+
+        <button class="icon-btn" id="themeBtn" title="Toggle dark mode">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+        </button>
+
+        <div class="user-chip" id="userChip">
+          <div class="chip-avatar">AJ</div>
+          <div>
+            <div class="chip-name">Alex Johnson</div>
+            <div class="chip-role">Admin</div>
+          </div>
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          <div class="dropdown-panel" id="userPanel" style="right:0;top:46px;">
+            <div class="dp-menu-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>My Profile</div>
+            <div class="dp-menu-item"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.36.14.63.44.76.8.1.27.16.55.16.85"/></svg>Settings</div>
+            <div class="dp-divider"></div>
+            <div class="dp-menu-item" id="logoutBtn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Log out</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- breadcrumb + title (shared, updated by JS) -->
+      <div class="breadcrumb" id="breadcrumb"></div>
+      <div class="page-head">
+        <div class="page-head-left">
+          <div class="page-icon" id="pageIcon"></div>
+          <div>
+            <h1 class="page-title" id="pageTitle"></h1>
+            <div class="page-sub" id="pageSub"></div>
+          </div>
+        </div>
+        <div class="page-head-right" id="pageHeadRight"></div>
+      </div>
+
+      <!-- ======================= PAGE 1 · BUYER & INQUIRY ======================= -->
+      <section class="page active" id="page-buyer">
+        <div class="grid grid-3">
+
+          <!-- Buyer -->
+          <div class="card">
+            <div class="card-head">
+              <div class="ic ic-blue"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M17 11a4 4 0 0 0 0-8"/></svg></div>
+              <h3>BUYER</h3>
+              <span class="badge b-reference">Reference</span>
+            </div>
+            <p class="page-sub" style="margin:-10px 0 14px;">: Referred by known source</p>
+
+            <div class="field">
+              <label>First Beneficiary <span class="req">*</span></label>
+              <input class="input" id="b_first" value="ABC Fashion Ltd.">
+            </div>
+            <div class="field">
+              <label>Name</label>
+              <input class="input" id="b_name" value="John Smith">
+            </div>
+            <div class="field">
+              <label>Address</label>
+              <input class="input" id="b_address" value="Spring/Summer 2027">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label>Bank Details</label>
+              <input class="input" id="b_bank" value="UK - Barclays Bank Ltd.">
+            </div>
+          </div>
+
+          <!-- Buyer Inquiry -->
+          <div class="card">
+            <div class="card-head">
+              <div class="ic ic-purple"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg></div>
+              <h3>BUYER INQUIRY</h3>
+            </div>
+
+            <div class="grid" style="grid-template-columns:1fr 1fr;gap:0 14px;">
+              <div class="field">
+                <label>Inquiry No.</label>
+                <div class="field-with-icon">
+                  <div class="field"><input class="input" id="i_no" value="INQ-2026-00235"></div>
+                  <div class="icon-affix-btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+                </div>
+              </div>
+              <div class="field">
+                <label>Inquiry Date</label>
+                <div class="date-wrap">
+                  <input type="date" class="dateinput" id="i_date" value="2026-09-03">
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Buyer</label>
+                <div class="select-wrap">
+                  <select class="select" id="i_buyer">
+                    <option>ABC Fashion Ltd.</option>
+                    <option>XYZ Garments Ltd.</option>
+                    <option>Global Apparel Inc.</option>
+                    <option>Fashion Hub Ltd.</option>
+                    <option>Trend Tex Ltd.</option>
+                    <option>Smart Wear Ltd.</option>
+                  </select>
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+              </div>
+              <div class="field">
+                <label>Contract Person</label>
+                <div class="select-wrap">
+                  <select class="select" id="i_contract">
+                    <option>Spring/Summer 2027</option>
+                    <option>Autumn/Winter 2026</option>
+                  </select>
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Contact Person</label>
+                <input class="input" id="i_person" value="John Smith">
+              </div>
+              <div class="field">
+                <label>Country</label>
+                <div class="select-wrap">
+                  <select class="select" id="i_country">
+                    <option>UK</option><option>USA</option><option>Canada</option><option>Germany</option>
+                  </select>
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Entry Field</label>
+                <input class="input" id="i_entry" placeholder="Enter field">
+              </div>
+              <div class="field">
+                <label>Style Quantity</label>
+                <div class="field-row">
+                  <input class="input" id="i_qty" value="50,000" style="border-radius:8px;">
+                </div>
+              </div>
+            </div>
+
+            <div class="form-actions" style="margin-top:6px;">
+              <button class="btn btn-primary" id="saveInquiryBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Save Inquiry
+              </button>
+            </div>
+          </div>
+
+          <!-- Previous order -->
+          <div class="card">
+            <div class="card-head">
+              <div class="ic ic-green"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg></div>
+              <h3>PREVIOUS ORDER</h3>
+            </div>
+            <div class="readonly-list">
+              <div class="r"><span class="k">Style</span><span class="v">—</span></div>
+              <div class="r"><span class="k">Quantity</span><span class="v">—</span></div>
+              <div class="r"><span class="k">Price</span><span class="v">—</span></div>
+              <div class="r"><span class="k">Bank Details</span><span class="v">—</span></div>
+              <div class="r"><span class="k">LC Date</span><span class="v">—</span></div>
+              <div class="r"><span class="k">Port Of Loading</span><span class="v">—</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Current inquiries table -->
+        <div class="table-card">
+          <div class="table-head-row">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="ic ic-green" style="width:34px;height:34px;"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg></div>
+              <div>
+                <h3 style="margin:0;font-size:14.5px;">CURRENT INQUIRIES</h3>
+                <div class="page-sub" style="margin-top:1px;">List of all current inquiries and orders</div>
+              </div>
+            </div>
+            <div class="table-search" style="margin-left:12px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="inqSearch" placeholder="Search by Inquiry No, Buyer, Style...">
+            </div>
+            <button class="btn btn-sm" id="filterBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              Filter
+            </button>
+            <button class="btn btn-sm" id="exportBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+          </div>
+          <div class="filter-row" id="filterRow" style="display:none;padding:0 18px 16px;">
+            <div class="select-wrap" style="max-width:220px;">
+              <select class="select" id="statusFilter">
+                <option value="">All statuses</option>
+                <option value="New">New</option>
+                <option value="Reference">Reference</option>
+                <option value="Good">Good</option>
+                <option value="Old">Old</option>
+                <option value="Moderate">Moderate</option>
+                <option value="Bad">Bad</option>
+              </select>
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th><th>Inquiry No.</th><th>Inquiry Date</th><th>Buyer</th><th>Style</th>
+                  <th>Quantity</th><th>Season</th><th>Country</th><th>Status</th><th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="inqTableBody">
+                <!-- rows injected by JS -->
+              </tbody>
+            </table>
+          </div>
+          <div class="table-foot">
+            <span id="inqCount">Showing 1 to 6 of 6 entries</span>
+            <div class="pager">
+              <button disabled>&lsaquo;</button>
+              <button class="active">1</button>
+              <button disabled>&rsaquo;</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================= PAGE 2 · STYLE MANAGEMENT ======================= -->
+      <section class="page" id="page-style">
+        <div class="tabs">
+          <div class="tab-btn active" data-tab="styleInfo" data-tabgroup="style">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23Z"/></svg>
+            Style Information
+          </div>
+          <div class="tab-btn" data-tab="styleExtra" data-tabgroup="style">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg>
+            Additional Details
+          </div>
+        </div>
+
+        <div class="tabpanel active" id="tab-styleInfo">
+          <div class="grid grid-2">
+            <div class="card">
+              <div class="card-head">
+                <div class="ic ic-blue"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M17 11a4 4 0 0 0 0-8"/></svg></div>
+                <h3>Buyer &amp; Inquiry</h3>
+              </div>
+              <div class="grid" style="grid-template-columns:1fr 1fr;gap:0 14px;">
+                <div class="field" style="grid-column:1/-1;">
+                  <label>Select Buyer <span class="req">*</span></label>
+                  <div class="field-with-icon">
+                    <div class="field">
+                      <div class="select-wrap">
+                        <select class="select" id="s_inq">
+                          <option>INQ-2026-00235</option><option>INQ-2026-00234</option><option>INQ-2026-00233</option>
+                        </select>
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                      </div>
+                    </div>
+                    <div class="icon-affix-btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Inquiry Date <span class="req">*</span></label>
+                  <div class="date-wrap">
+                    <input type="date" class="dateinput" id="s_date" value="2026-09-03">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Buyer <span class="req">*</span></label>
+                  <div class="select-wrap">
+                    <select class="select" id="s_buyer"><option>ABC Fashion Ltd.</option><option>XYZ Garments Ltd.</option></select>
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                </div>
+                <div class="field" style="grid-column:1/-1;">
+                  <label>Contact Person</label>
+                  <input class="input" id="s_contact" value="John Smith">
+                </div>
+                <div class="field">
+                  <label>Season <span class="req">*</span></label>
+                  <div class="select-wrap">
+                    <select class="select" id="s_season"><option>Spring/Summer 2027</option><option>Autumn/Winter 2026</option></select>
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Country <span class="req">*</span></label>
+                  <div class="select-wrap">
+                    <select class="select" id="s_country"><option>UK</option><option>USA</option><option>Canada</option></select>
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <div class="ic ic-green"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23Z"/></svg></div>
+                <h3>Style Details</h3>
+              </div>
+              <div class="grid" style="grid-template-columns:1fr 1fr;gap:0 14px;">
+                <div class="field">
+                  <label>Style No. <span class="req">*</span></label>
+                  <input class="input" id="s_styleno" value="AB-4587">
+                </div>
+                <div class="field">
+                  <label>Target Price</label>
+                  <div class="field-row">
+                    <input class="input" id="s_price" value="4.50" style="border-radius:8px 0 0 8px;">
+                    <span class="unit-suffix">USD</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Product</label>
+                  <div class="select-wrap">
+                    <select class="select" id="s_product"><option>Men's Polo Shirt</option><option>Men's Basic T-Shirt</option><option>Women's Blouse</option></select>
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Currency</label>
+                  <div class="select-wrap">
+                    <select class="select" id="s_currency"><option>USD - US Dollar</option><option>GBP - British Pound</option><option>EUR - Euro</option></select>
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Product Category <span class="req">*</span></label>
+                  <div class="select-wrap">
+                    <select class="select" id="s_cat"><option>Knit</option><option>Woven</option></select>
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Shipment Date</label>
+                  <div class="date-wrap">
+                    <input type="date" class="dateinput" id="s_ship" value="2027-02-15">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Fabric <span class="req">*</span></label>
+                  <div class="select-wrap">
+                    <select class="select" id="s_fabric"><option>95% Cotton 5% Elastane</option><option>100% Cotton Jersey</option></select>
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Shipment Term</label>
+                  <div class="select-wrap">
+                    <select class="select" id="s_term"><option>FOB</option><option>CIF</option><option>EXW</option></select>
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>GSM</label>
+                  <div class="field-row">
+                    <input class="input" id="s_gsm" value="220" style="border-radius:8px 0 0 8px;">
+                    <span class="unit-suffix">GSM</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Current Status</label>
+                  <div class="dot-select">
+                    <span class="sw" style="background:#1B8A3B;"></span>
+                    <span class="lbl">Open</span>
+                    <select id="s_status">
+                      <option>Open</option><option>Hold</option><option>Closed</option>
+                    </select>
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Color <span class="req">*</span></label>
+                  <div class="dot-select">
+                    <span class="sw" style="background:#0D1B36;" id="s_colorSwatch"></span>
+                    <span class="lbl" id="s_colorLbl">Navy / White / Black</span>
+                    <select id="s_color">
+                      <option value="#0D1B36">Navy / White / Black</option>
+                      <option value="#111111">Black</option>
+                      <option value="#B91C1C">Red</option>
+                      <option value="#1D4ED8">Royal Blue</option>
+                    </select>
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Type</label>
+                  <div class="select-wrap">
+                    <select class="select" id="s_type"><option>Regular</option><option>Sample</option><option>Reorder</option></select>
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Quantity <span class="req">*</span></label>
+                  <div class="field-row">
+                    <input class="input" id="s_qty" value="50000" style="border-radius:8px 0 0 8px;">
+                    <span class="unit-suffix">Pcs</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tabpanel" id="tab-styleExtra">
+          <div class="card">
+            <div class="card-head">
+              <div class="ic ic-purple"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg></div>
+              <h3>Additional Details</h3>
+            </div>
+            <div class="grid" style="grid-template-columns:1fr 1fr;gap:0 14px;">
+              <div class="field">
+                <label>Certification</label>
+                <div class="select-wrap">
+                  <select class="select"><option>GOTS</option><option>OEKO-TEX</option><option>BCI</option><option>None</option></select>
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+              </div>
+              <div class="field">
+                <label>Sample Approval Date</label>
+                <div class="date-wrap">
+                  <input type="date" class="dateinput">
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </div>
+              </div>
+              <div class="field" style="grid-column:1/-1;">
+                <label>Special Instructions</label>
+                <textarea class="input" placeholder="Any special packing, labelling or compliance notes...">As per buyer packing requirement.</textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Style list -->
+        <div class="table-card">
+          <div class="table-head-row">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="ic ic-green" style="width:34px;height:34px;"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></div>
+              <div>
+                <h3 style="margin:0;font-size:14.5px;">Style List</h3>
+                <div class="page-sub" style="margin-top:1px;">Style information is automatically linked with the selected inquiry.</div>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm" id="addStyleBtn" style="margin-left:auto;">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add Style
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Style No.</th><th>Product</th><th>Category</th><th>Fabric</th><th>Color</th><th>Quantity</th><th>Target Price</th><th>Shipment Date</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody id="styleTableBody"></tbody>
+            </table>
+          </div>
+          <div class="info-banner">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            Style information is automatically linked with the selected inquiry. You can proceed to Costing, BOM, and PQ.
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn" id="styleCancelBtn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Cancel</button>
+          <button class="btn" id="styleResetBtn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>Reset</button>
+          <button class="btn btn-primary" id="styleSaveBtn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>Save Style</button>
+        </div>
+      </section>
+
+      <!-- ======================= PAGE 3 · BOM & COSTING ======================= -->
+      <section class="page" id="page-bom">
+        <div class="tabs">
+          <div class="tab-btn active" data-tab="bomMain" data-tabgroup="bom">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M8 4v16"/></svg>
+            BOM &amp; Costing
+          </div>
+          <div class="tab-btn" data-tab="bomData" data-tabgroup="bom">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg>
+            Data List
+          </div>
+        </div>
+
+        <div class="tabpanel active" id="tab-bomMain">
+          <div class="grid" style="grid-template-columns:1fr 1fr 1fr;">
+            <div class="card">
+              <div class="card-head">
+                <div class="ic ic-blue"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M17 11a4 4 0 0 0 0-8"/></svg></div>
+                <h3>Select Buyer &amp; Style Info</h3>
+              </div>
+              <div class="field">
+                <label>Select Buyer <span class="req">*</span></label>
+                <div class="field-with-icon">
+                  <div class="field">
+                    <div class="select-wrap">
+                      <select class="select" id="c_inq"><option>INQ-2026-00235</option><option>INQ-2026-00234</option></select>
+                      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                  </div>
+                  <div class="icon-affix-btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+                </div>
+              </div>
+              <div class="field">
+                <label>Inquiry No. <span class="req">*</span></label>
+                <div class="date-wrap">
+                  <input type="date" class="dateinput" id="c_date" value="2026-09-03">
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </div>
+              </div>
+              <div class="field">
+                <label>Buyer <span class="req">*</span></label>
+                <div class="select-wrap">
+                  <select class="select" id="c_buyer"><option>ABC Fashion Ltd.</option><option>XYZ Garments Ltd.</option></select>
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+              </div>
+              <div class="field">
+                <label>Contact Person</label>
+                <input class="input" id="c_person" value="John Smith">
+              </div>
+              <div class="field">
+                <label>Season <span class="req">*</span></label>
+                <div class="select-wrap">
+                  <select class="select" id="c_season"><option>Spring/Summer 2027</option><option>Autumn/Winter 2026</option></select>
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label>Country <span class="req">*</span></label>
+                <div class="select-wrap">
+                  <select class="select" id="c_country"><option>UK</option><option>USA</option><option>Canada</option></select>
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <div class="ic ic-green"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M8 4v16"/></svg></div>
+                <h3>Bill Of Material</h3>
+              </div>
+              <div class="field">
+                <label>Style No. <span class="req">*</span></label>
+                <div class="field-with-icon">
+                  <div class="field"><input class="input" id="c_styleno" value="AB-4587"></div>
+                  <div class="icon-affix-btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+                </div>
+              </div>
+              <div class="field">
+                <label>Fabric <span class="req">*</span></label>
+                <div class="field-row">
+                  <input class="input" id="c_fabricqty" value="1.80" style="border-radius:8px 0 0 8px;">
+                  <span class="unit-suffix">kg/pc</span>
+                </div>
+              </div>
+              <div class="field">
+                <label>Sewing thread</label>
+                <div class="select-wrap">
+                  <select class="select"><option>Main label</option><option>Poly-cotton</option></select>
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+              </div>
+              <div class="field">
+                <label>Care label</label>
+                <div class="select-wrap">
+                  <select class="select"><option>Care label</option><option>Woven label</option></select>
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+              </div>
+              <div class="field">
+                <label>Hangtag</label>
+                <div class="select-wrap">
+                  <select class="select"><option>Hangtag</option><option>Paper Hangtag</option></select>
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+              </div>
+              <div class="field">
+                <label>Polybag</label>
+                <div class="select-wrap">
+                  <select class="select"><option>Polybag</option><option>OPP Polybag</option></select>
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label>Carton</label>
+                <div class="select-wrap">
+                  <select class="select"><option>Carton</option><option>5 Ply Export Carton</option></select>
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+              </div>
+              <div class="form-actions" style="justify-content:flex-start;margin-top:16px;">
+                <button class="btn btn-primary btn-sm" id="bomAddNewBtn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Add New
+                </button>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <div class="ic ic-purple"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+                <h3>Costing</h3>
+              </div>
+              <span class="badge b-open" style="margin-bottom:12px;display:inline-flex;">STYLE: AB-4587</span>
+              <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:4px;">
+                <span>Fabric</span><span>Price / pcs</span>
+              </div>
+              <div class="trim-list" id="trimList">
+                <div class="trim-row"><span class="t-name">Trims</span><div class="t-val"><span>$</span><input type="text" class="trimInput" data-key="trims" value="1.85"></div></div>
+                <div class="trim-row"><span class="t-name">Accessories</span><div class="t-val"><span>$</span><input type="text" class="trimInput" data-key="acc" value="0.25"></div></div>
+                <div class="trim-row"><span class="t-name">CM</span><div class="t-val"><span>$</span><input type="text" class="trimInput" data-key="cm" value="0.18"></div></div>
+                <div class="trim-row"><span class="t-name">Wash</span><div class="t-val"><span>$</span><input type="text" class="trimInput" data-key="wash" value="0.65"></div></div>
+                <div class="trim-row"><span class="t-name">Printing</span><div class="t-val"><span>$</span><input type="text" class="trimInput" data-key="print" value="0.20"></div></div>
+                <div class="trim-row"><span class="t-name">Embroidery</span><div class="t-val"><span>$</span><input type="text" class="trimInput" data-key="emb" value="0.15"></div></div>
+                <div class="trim-row"><span class="t-name">Packing</span><div class="t-val"><span>$</span><input type="text" class="trimInput" data-key="pack" value="0.10"></div></div>
+                <div class="trim-row"><span class="t-name">Commercial/Overhead</span><div class="t-val"><span>$</span><input type="text" class="trimInput" data-key="comm" value="0.12"></div></div>
+              </div>
+
+              <div class="summary-box">
+                <div class="summary-row"><span>Total Cost</span><strong id="totalCost">$3.50</strong></div>
+                <div class="summary-row">
+                  <span>Profit</span>
+                  <span style="display:flex;align-items:center;gap:6px;">
+                    $<input type="text" class="mini-input" id="profitDollar" value="0.30">
+                    <input type="text" class="mini-input" id="profitPct" value="8" style="width:46px;">%
+                  </span>
+                </div>
+                <div class="summary-row"><span>FOB Price</span><strong id="fobPrice">$3.80</strong></div>
+                <div class="summary-row"><span>Quantity</span><input type="text" class="mini-input" id="bomQty" value="1000" style="width:76px;"> <span style="margin-left:-64px;color:var(--text-muted);font-size:11.5px;">PCS</span></div>
+              </div>
+              <div class="total-value-banner">
+                <span>Total</span><span id="bomTotal">$3,800.00</span>
+              </div>
+              <button class="btn btn-primary" id="saveBomBtn" style="width:100%;justify-content:center;margin-top:14px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+                Save BoM &amp; Cost
+              </button>
+            </div>
+          </div>
+
+          <!-- Save BoM & Costing DATA LIST -->
+          <div class="table-card">
+            <div class="table-head-row">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div class="ic ic-green" style="width:34px;height:34px;"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></div>
+                <h3 style="margin:0;font-size:14.5px;">Save BoM &amp; Costing DATA LIST</h3>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>#</th><th>Style No.</th><th>Product</th><th>Category</th><th>Fabric</th><th>Color</th><th>Quantity</th><th>Target Price</th><th>Shipment Date</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody id="bomTableBody"></tbody>
+              </table>
+            </div>
+            <div class="info-banner">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              BOM &amp; costing information is automatically linked with the selected inquiry. You can proceed to Costing, PQ, and other related modules.
+              <span style="margin-left:auto;text-align:right;white-space:nowrap;">Created By: <strong>Alex Johnson</strong><br>Created Date: <span id="bomCreatedDate"></span></span>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Cancel</button>
+            <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>Reset</button>
+          </div>
+        </div>
+
+        <div class="tabpanel" id="tab-bomData">
+          <div class="table-card" style="margin-top:0;">
+            <div class="table-head-row"><h3 style="margin:0;font-size:14.5px;">All Saved BOM &amp; Costing Records</h3></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>#</th><th>Style No.</th><th>Total Cost</th><th>FOB Price</th><th>Quantity</th><th>Total</th></tr></thead>
+                <tbody>
+                  <tr><td>1</td><td>AB-4587</td><td>$3.80</td><td>$4.50</td><td>50,000</td><td>$225,000.00</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================= PAGE 4 · PURCHASE ORDER ======================= -->
+      <section class="page" id="page-po">
+        <div class="header-strip">
+          <div class="hs"><span class="k">PO / Order No.</span><span class="v">PO-2026-00852</span></div>
+          <div class="hs"><span class="k">Buyer PO No.</span><span class="v link">ABC-PO-4587</span></div>
+          <div class="hs"><span class="k">Inquiry No.</span><span class="v link">INQ-2026-00235</span></div>
+          <div class="hs"><span class="k">PO Date</span><span class="v"><input type="date" class="dateinput" value="2026-09-10" style="border:none;background:transparent;padding:0;font-weight:700;"></span></div>
+          <div class="hs"><span class="k">Sample No.</span><span class="v link">SMP-2026-00125</span></div>
+          <div class="hs"><span class="k">BOM No.</span><span class="v"><span class="badge b-confirmed">Confirmed</span></span></div>
+        </div>
+
+        <div class="grid grid-3">
+          <div class="card">
+            <div class="card-head"><div class="ic ic-blue"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M17 11a4 4 0 0 0 0-8"/></svg></div><h3>1. Buyer &amp; Inquiry</h3></div>
+            <div class="field"><label>Select Buyer <span class="req">*</span></label>
+              <div class="field-with-icon"><div class="field"><div class="select-wrap"><select class="select"><option>ABC Fashion Ltd.</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div><div class="icon-affix-btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div></div>
+            </div>
+            <div class="field"><label>Inquiry Date <span class="req">*</span></label><div class="date-wrap"><input type="date" class="dateinput" value="2026-09-03"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div>
+            <div class="field"><label>Buyer <span class="req">*</span></label><input class="input" value="John Smith"></div>
+            <div class="field"><label>Contact Person</label><input class="input" value="John Smith"></div>
+            <div class="field"><label>Season <span class="req">*</span></label><div class="select-wrap"><select class="select"><option>Spring/Summer 2027</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+            <div class="field" style="margin-bottom:0;"><label>Country <span class="req">*</span></label><div class="select-wrap"><select class="select"><option>UK</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><div class="ic ic-green"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg></div><h3>2. Bank Details</h3></div>
+            <div class="field"><label>Bank Name</label><input class="input" value="Standard Chartered Bank"></div>
+            <div class="field"><label>Bank Address</label><input class="input" value="London, United Kingdom"></div>
+            <div class="field"><label>Account Name</label><input class="input" value="ABC Fashion Ltd."></div>
+            <div class="field"><label>Account No</label><input class="input" value="1234567890"></div>
+            <div class="field" style="margin-bottom:0;"><label>SWIFT Code</label><input class="input" value="SCBLGB2L"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><div class="ic ic-purple"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23Z"/></svg></div><h3>3. Style Details</h3></div>
+            <div style="display:flex;gap:14px;">
+              <div style="flex:1;">
+                <div class="field"><label>Style No.</label><div class="field-with-icon"><div class="field"><input class="input" value="AB-4587"></div><div class="icon-affix-btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div></div></div>
+                <div class="field"><label>Product</label><div class="select-wrap"><select class="select"><option>Men's Basic T-Shirt</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+                <div class="field"><label>Garment Type</label><div class="select-wrap"><select class="select"><option>T-Shirt</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+                <div class="field"><label>Fabric</label><div class="select-wrap"><select class="select"><option>100% Cotton Jersey</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+                <div class="field"><label>Fabric GSM</label><input class="input" value="180 GSM"></div>
+                <div class="field" style="margin-bottom:0;"><label>Color</label><div class="select-wrap"><select class="select"><option>Black</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+              </div>
+              <div style="width:120px;flex-shrink:0;">
+                <div class="swatch-card">
+                  <div class="swatch-box"><svg viewBox="0 0 24 24"><path d="M8 3h8l3 5-5 3v10H8V11L3 8Z" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+                  <div class="s-title">AB-4587</div>
+                  <div class="s-sub">Men's Basic T-Shirt</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-3" style="margin-top:18px;">
+          <div class="card">
+            <div class="card-head"><div class="ic ic-blue"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div><h3>4. Sewing / Construction Details</h3></div>
+            <div class="field"><label>Seam</label><input class="input" value="4 Thread Overlock"></div>
+            <div class="field"><label>Stitch Type</label><input class="input" value="301"></div>
+            <div class="field"><label>Needle</label><input class="input" value="11#"></div>
+            <div class="field"><label>Thread</label><input class="input" value="100% Polyester"></div>
+            <div class="field"><label>Main Label</label><input class="input" value="Woven Label"></div>
+            <div class="field"><label>Care Label</label><input class="input" value="Printed"></div>
+            <div class="field"><label>Hangtag</label><input class="input" value="Paper Hangtag"></div>
+            <div class="field"><label>Polybag</label><input class="input" value="OPP Polybag"></div>
+            <div class="field" style="margin-bottom:0;"><label>Carton</label><input class="input" value="5 Ply Export Carton"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><div class="ic ic-green"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg></div><h3>5. Commercial Terms</h3></div>
+            <div class="field"><label>Price Term</label><div class="select-wrap"><select class="select" id="po_priceterm"><option>FOB</option><option>CIF</option><option>EXW</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+            <div class="field"><label>Currency</label><div class="select-wrap"><select class="select"><option>USD</option><option>GBP</option><option>EUR</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+            <div class="field"><label>Unit Price</label><input class="input" value="$4.50 / PCS"></div>
+            <div class="field"><label>Payment Terms</label><input class="input" value="30% Advance / 70% Against BL"></div>
+            <div class="field"><label>Credit Terms</label><input class="input" value="LC 60 Days"></div>
+            <div class="field"><label>Incoterms</label><div class="select-wrap"><select class="select"><option>FOB</option><option>CIF</option><option>EXW</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+            <div class="field"><label>Discount</label><input class="input" id="po_discount" value="0.00"></div>
+            <div class="field"><label>Other Charges</label><input class="input" id="po_other" value="0.00"></div>
+            <div class="field"><label>VAT / Tax</label><input class="input" id="po_vat" value="0.00"></div>
+            <div class="total-value-banner"><span>Total Order Value</span><span id="poTotalValue">$45,000.00</span></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><div class="ic ic-purple"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15l3 5v10a1 1 0 0 1-1 1H1Z"/><circle cx="6" cy="19" r="2"/><circle cx="16" cy="19" r="2"/></svg></div><h3>6. Shipping Details</h3></div>
+            <div class="field"><label>Shipment Mode</label><div class="select-wrap"><select class="select"><option>Sea</option><option>Air</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+            <div class="field"><label>Port of Loading</label><input class="input" value="Chittagong, Bangladesh"></div>
+            <div class="field"><label>Port of Destination</label><input class="input" value="London, UK"></div>
+            <div class="field"><label>Final Destination</label><input class="input" value="London, UK"></div>
+            <div class="field"><label>Shipment Date</label><div class="date-wrap"><input type="date" class="dateinput" value="2027-02-10"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div>
+            <div class="field"><label>Delivery Date</label><div class="date-wrap"><input type="date" class="dateinput" value="2027-02-15"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div>
+            <div class="field"><label>Partial Shipment</label><div class="select-wrap"><select class="select"><option>Allowed</option><option>Not Allowed</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+            <div class="field"><label>Transshipment</label><div class="select-wrap"><select class="select"><option>Allowed</option><option>Not Allowed</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+            <div class="field"><label>Shipping Marks</label><input class="input" value="ABC-4587"></div>
+            <div class="field" style="margin-bottom:0;"><label>Special Instructions</label><input class="input" value="As per buyer packing requirement."></div>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-head-row">
+            <h3 style="margin:0;font-size:14.5px;">7. Order Details</h3>
+            <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="addOrderRow('poOrderBody')">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add Item
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Style No.</th><th>Product</th><th>Category</th><th>Fabric</th><th>Color</th><th>Size</th><th>Quantity</th><th>Unit Price</th><th>Amount</th><th>Action</th></tr></thead>
+              <tbody id="poOrderBody"></tbody>
+            </table>
+          </div>
+          <div class="info-banner">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            BOM &amp; costing information is automatically linked with the selected inquiry. You can proceed to PI, BOM, and other related modules.
+            <span style="margin-left:auto;text-align:right;white-space:nowrap;">Created By: <strong>Alex Johnson</strong><br>Created Date: <span id="poCreatedDate"></span></span>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Cancel</button>
+          <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>Reset</button>
+          <button class="btn btn-primary" id="savePoBtn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>Save PO</button>
+        </div>
+      </section>
+
+      <!-- ======================= PAGE 5 · PROFORMA INVOICE ======================= -->
+      <section class="page" id="page-pi">
+        <div class="header-strip">
+          <div class="hs"><span class="k">PI No.</span><span class="v">PI-2026-00318</span></div>
+          <div class="hs"><span class="k">Buyer PO No.</span><span class="v link">ABC-PO-4587</span></div>
+          <div class="hs"><span class="k">Inquiry No.</span><span class="v link">INQ-2026-00235</span></div>
+          <div class="hs"><span class="k">PI Date</span><span class="v"><input type="date" class="dateinput" value="2026-09-11" style="border:none;background:transparent;padding:0;font-weight:700;"></span></div>
+          <div class="hs"><span class="k">Costing No.</span><span class="v link">CST-2026-00125</span></div>
+          <div class="hs"><span class="k">Sample No.</span><span class="v link">SMP-2026-00125</span></div>
+          <div class="hs"><span class="k">BOM Status</span><span class="v"><span class="badge b-confirmed">Confirmed</span></span></div>
+        </div>
+
+        <div class="grid grid-3">
+          <div class="card">
+            <div class="card-head"><div class="ic ic-blue"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M17 11a4 4 0 0 0 0-8"/></svg></div><h3>1. Buyer &amp; Inquiry</h3></div>
+            <div class="field"><label>Select Buyer <span class="req">*</span></label>
+              <div class="field-with-icon"><div class="field"><div class="select-wrap"><select class="select"><option>ABC Fashion Ltd.</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div><div class="icon-affix-btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div></div>
+            </div>
+            <div class="field"><label>Inquiry Date <span class="req">*</span></label><div class="date-wrap"><input type="date" class="dateinput" value="2026-09-03"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div>
+            <div class="field"><label>Buyer <span class="req">*</span></label><input class="input" value="ABC Fashion Ltd."></div>
+            <div class="field"><label>Contact Person</label><input class="input" value="John Smith"></div>
+            <div class="field"><label>Season <span class="req">*</span></label><div class="select-wrap"><select class="select"><option>Spring/Summer 2027</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+            <div class="field" style="margin-bottom:0;"><label>Country <span class="req">*</span></label><div class="select-wrap"><select class="select"><option>UK</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><div class="ic ic-green"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg></div><h3>2. Bank Details</h3></div>
+            <div class="field"><label>Bank Name</label><input class="input" value="Standard Chartered Bank"></div>
+            <div class="field"><label>Bank Address</label><input class="input" value="London, United Kingdom"></div>
+            <div class="field"><label>Account Name</label><input class="input" value="ABC Fashion Ltd."></div>
+            <div class="field"><label>Account No</label><input class="input" value="1234567890"></div>
+            <div class="field" style="margin-bottom:0;"><label>SWIFT Code</label><input class="input" value="SCBLGB2L"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><div class="ic ic-purple"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23Z"/></svg></div><h3>3. Style Details</h3></div>
+            <div style="display:flex;gap:14px;">
+              <div style="flex:1;">
+                <div class="field"><label>Style No.</label><div class="field-with-icon"><div class="field"><input class="input" value="AB-4587"></div><div class="icon-affix-btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div></div></div>
+                <div class="field"><label>Product</label><div class="select-wrap"><select class="select"><option>Men's Basic T-Shirt</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+                <div class="field"><label>Garment Type</label><div class="select-wrap"><select class="select"><option>T-Shirt</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+                <div class="field"><label>Fabric</label><div class="select-wrap"><select class="select"><option>100% Cotton Jersey 180 GSM</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+                <div class="field" style="margin-bottom:0;"><label>Color</label><div class="select-wrap"><select class="select"><option>Black</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+              </div>
+              <div style="width:120px;flex-shrink:0;">
+                <div class="swatch-card">
+                  <div class="swatch-box"><svg viewBox="0 0 24 24"><path d="M8 3h8l3 5-5 3v10H8V11L3 8Z" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+                  <div class="s-title">AB-4587</div>
+                  <div class="s-sub">Men's Basic T-Shirt</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-3" style="margin-top:18px;">
+          <div class="card">
+            <div class="card-head"><div class="ic ic-blue"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div><h3>4. Sewing / Construction Details</h3></div>
+            <div class="field"><label>Seam</label><input class="input" value="4 Thread Overlock"></div>
+            <div class="field"><label>Stitch Type</label><input class="input" value="301"></div>
+            <div class="field"><label>Needle</label><input class="input" value="11#"></div>
+            <div class="field"><label>Thread</label><input class="input" value="100% Polyester"></div>
+            <div class="field"><label>Main Label</label><input class="input" value="Woven Label"></div>
+            <div class="field"><label>Care Label</label><input class="input" value="Printed"></div>
+            <div class="field"><label>Hangtag</label><input class="input" value="Paper Hangtag"></div>
+            <div class="field"><label>Polybag</label><input class="input" value="OPP Polybag"></div>
+            <div class="field" style="margin-bottom:0;"><label>Carton</label><input class="input" value="5 Ply Export Carton"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><div class="ic ic-green"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg></div><h3>5. Commercial Terms</h3></div>
+            <div class="field"><label>Price Term</label><div class="select-wrap"><select class="select"><option>FOB</option><option>CIF</option><option>EXW</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+            <div class="field"><label>Currency</label><div class="select-wrap"><select class="select"><option>USD</option><option>GBP</option><option>EUR</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+            <div class="field"><label>Unit Price</label><input class="input" value="$4.50 / PCS"></div>
+            <div class="field"><label>Payment Terms</label><input class="input" value="30% Advance / 70% Against BL"></div>
+            <div class="field"><label>Credit Terms</label><input class="input" value="LC 60 Days"></div>
+            <div class="field"><label>Incoterms</label><div class="select-wrap"><select class="select"><option>FOB</option><option>CIF</option><option>EXW</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+            <div class="field"><label>Discount</label><input class="input" id="pi_discount" value="0.00"></div>
+            <div class="field"><label>Other Charges</label><input class="input" id="pi_other" value="0.00"></div>
+            <div class="field"><label>VAT / Tax</label><input class="input" id="pi_vat" value="0.00"></div>
+            <div class="total-value-banner"><span>Total Order Value</span><span id="piTotalValue">$45,000.00</span></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><div class="ic ic-purple"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15l3 5v10a1 1 0 0 1-1 1H1Z"/><circle cx="6" cy="19" r="2"/><circle cx="16" cy="19" r="2"/></svg></div><h3>6. Shipping Details</h3></div>
+            <div class="field"><label>Shipment Mode</label><div class="select-wrap"><select class="select"><option>Sea</option><option>Air</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+            <div class="field"><label>Port of Loading</label><input class="input" value="Chittagong, Bangladesh"></div>
+            <div class="field"><label>Port of Destination</label><input class="input" value="London, UK"></div>
+            <div class="field"><label>Final Destination</label><input class="input" value="London, UK"></div>
+            <div class="field"><label>Shipment Date</label><div class="date-wrap"><input type="date" class="dateinput" value="2027-02-10"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div>
+            <div class="field"><label>Delivery Date</label><div class="date-wrap"><input type="date" class="dateinput" value="2027-02-15"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div>
+            <div class="field"><label>Partial Shipment</label><div class="select-wrap"><select class="select"><option>Allowed</option><option>Not Allowed</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+            <div class="field"><label>Transshipment</label><div class="select-wrap"><select class="select"><option>Allowed</option><option>Not Allowed</option></select><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+            <div class="field"><label>Shipping Marks</label><input class="input" value="ABC-4587"></div>
+            <div class="field" style="margin-bottom:0;"><label>Special Instructions</label><input class="input" value="As per buyer packing requirement."></div>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-head-row">
+            <h3 style="margin:0;font-size:14.5px;">7. Order Details</h3>
+            <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="addOrderRow('piOrderBody')">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add Item
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Style No.</th><th>Product</th><th>Category</th><th>Fabric</th><th>Color</th><th>Size</th><th>Quantity</th><th>Unit Price</th><th>Amount</th><th>Action</th></tr></thead>
+              <tbody id="piOrderBody"></tbody>
+            </table>
+          </div>
+          <div class="info-banner">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            BOM &amp; costing information is automatically linked with the selected inquiry. You can proceed to PI, BOM, and other related modules.
+            <span style="margin-left:auto;text-align:right;white-space:nowrap;">Created By: <strong>Alex Johnson</strong><br>Created Date: <span id="piCreatedDate"></span></span>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Cancel</button>
+          <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>Reset</button>
+          <button class="btn btn-primary" id="savePiBtn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>Save PI</button>
+        </div>
+      </section>
+
+      <!-- ======================= PLACEHOLDER PAGES ======================= -->
+      <section class="page" id="page-dashboard"><div class="card">Dashboard overview — connect your modules to populate KPIs here.</div></section>
+      <section class="page" id="page-reports"><div class="card">Reports module — select a report type to generate merchandising analytics.</div></section>
+      <section class="page" id="page-development"><div class="card">Development module — tech packs, sample tracking and approvals live here.</div></section>
+      <section class="page" id="page-finance"><div class="card">Finance module — invoices, LC tracking and payment schedules live here.</div></section>
+      <section class="page" id="page-procurement"><div class="card">Procurement module — raw material sourcing and supplier POs live here.</div></section>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* ===================================================================
+   GarmentsERP — single-file demo interactivity
+   =================================================================== */
+
+/* ---------- Page registry (breadcrumb / title / icon) ---------- */
+const PAGES = {
+  dashboard:   {crumb:['Home'], title:'Dashboard', sub:'Your operations overview', icon:'home'},
+  buyer:       {crumb:['Home','Merchandising','Buyer & Inquiry'], title:'Buyer & Inquiry', sub:'Manage buyer information and their inquiries', icon:'users'},
+  style:       {crumb:['Home','Merchandising','Style Management'], title:'Style Management', sub:'Manage styles, buyer details, product information and track all related data in one place.', icon:'shirt'},
+  bom:         {crumb:['Home','Merchandising','BOM & Costing'], title:'BOM & Costing', sub:'Manage Bill of Material, costing, and price calculation for all your styles in one place.', icon:'grid'},
+  po:          {crumb:['Home','Merchandising','Purchase Order (PO)'], title:'Purchase Order (PO)', sub:'Complete purchase order information and details', icon:'doc'},
+  pi:          {crumb:['Home','Merchandising','Proforma Invoice (PI)'], title:'Proforma Invoice (PI)', sub:'Complete proforma invoice information and details', icon:'doc'},
+  reports:     {crumb:['Home','Merchandising','Reports'], title:'Reports', sub:'Merchandising analytics & exports', icon:'grid'},
+  development: {crumb:['Home','Development'], title:'Development', sub:'Tech packs & sample tracking', icon:'shirt'},
+  finance:     {crumb:['Home','Finance'], title:'Finance', sub:'Invoices & payment schedules', icon:'grid'},
+  procurement: {crumb:['Home','Procurement'], title:'Procurement', sub:'Raw material sourcing', icon:'doc'},
+};
+const ICONS = {
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/></svg>',
+  users:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M17 11a4 4 0 0 0 0-8"/></svg>',
+  shirt:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23Z"/></svg>',
+  grid:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>',
+  doc:'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg>',
+};
+
+function goToPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const target = document.getElementById('page-'+id);
+  if(target) target.classList.add('active');
+
+  document.querySelectorAll('.sub-item').forEach(el=>el.classList.toggle('active', el.dataset.page===id));
+
+  const meta = PAGES[id] || PAGES.dashboard;
+  document.getElementById('pageTitle').textContent = meta.title;
+  document.getElementById('pageSub').textContent = meta.sub;
+  document.getElementById('pageIcon').innerHTML = ICONS[meta.icon] || ICONS.grid;
+  document.getElementById('breadcrumb').innerHTML = meta.crumb.map((c,i)=>{
+    const isLast = i===meta.crumb.length-1;
+    return (i>0?'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>':'') +
+           '<span class="'+(isLast?'current':'')+'">'+c+'</span>';
+  }).join('');
+
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ---------- Sidebar nav wiring ---------- */
+document.querySelectorAll('.sub-item').forEach(el=>{
+  el.addEventListener('click', ()=>goToPage(el.dataset.page));
+});
+document.querySelectorAll('.nav-item[data-goto]').forEach(el=>{
+  el.addEventListener('click', ()=>goToPage(el.dataset.goto));
+});
+document.getElementById('merchToggle').addEventListener('click', function(){
+  this.classList.toggle('open');
+  document.getElementById('merchSub').classList.toggle('show');
+});
+
+/* ---------- Sidebar collapse ---------- */
+document.getElementById('sidebarToggle').addEventListener('click', ()=>{
+  document.getElementById('sidebar').classList.toggle('collapsed');
+});
+
+/* ---------- Theme toggle ---------- */
+document.getElementById('themeBtn').addEventListener('click', ()=>{
+  document.body.classList.toggle('dark');
+});
+
+/* ---------- Dropdown panels (bell / user) ---------- */
+function wirePanel(btnId, panelId){
+  const btn = document.getElementById(btnId), panel = document.getElementById(panelId);
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const isOpen = panel.classList.contains('show');
+    document.querySelectorAll('.dropdown-panel').forEach(p=>p.classList.remove('show'));
+    if(!isOpen) panel.classList.add('show');
+  });
+}
+wirePanel('bellBtn','bellPanel');
+wirePanel('userChip','userPanel');
+document.addEventListener('click', ()=>document.querySelectorAll('.dropdown-panel').forEach(p=>p.classList.remove('show')));
+document.getElementById('logoutBtn').addEventListener('click', ()=>showToast('Logged out (demo only)'));
+
+/* ---------- Global search / Ctrl+K ---------- */
+const globalSearch = document.getElementById('globalSearch');
+document.addEventListener('keydown', (e)=>{
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); globalSearch.focus(); }
+});
+
+/* ---------- Toast helper ---------- */
+function showToast(msg){
+  const wrap = document.getElementById('toastWrap');
+  const t = document.createElement('div');
+  t.className='toast';
+  t.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>'+msg+'</span>';
+  wrap.appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .25s'; setTimeout(()=>t.remove(),250); }, 2600);
+}
+
+/* ===================================================================
+   PAGE 1 — Buyer & Inquiry
+   =================================================================== */
+const STATUS_CLASS = {New:'b-new',Reference:'b-reference',Good:'b-good',Old:'b-old',Moderate:'b-moderate',Bad:'b-bad'};
+let inquiries = [
+  {no:'INQ-2026-00235',date:'03-Sep-2026',buyer:'ABC Fashion Ltd.',style:'AB-4587',qty:'50,000 PCS',season:'Spring/Summer 2027',country:'UK',status:'New'},
+  {no:'INQ-2026-00234',date:'01-Sep-2026',buyer:'XYZ Garments Ltd.',style:'AB-4586',qty:'30,000 PCS',season:'Spring/Summer 2027',country:'USA',status:'Reference'},
+  {no:'INQ-2026-00233',date:'30-Aug-2026',buyer:'Global Apparel Inc.',style:'AB-4585',qty:'25,000 PCS',season:'Autumn/Winter 2026',country:'Canada',status:'Good'},
+  {no:'INQ-2026-00232',date:'28-Aug-2026',buyer:'Fashion Hub Ltd.',style:'AB-4584',qty:'20,000 PCS',season:'Spring/Summer 2027',country:'UK',status:'Old'},
+  {no:'INQ-2026-00231',date:'25-Aug-2026',buyer:'Trend Tex Ltd.',style:'AB-4583',qty:'15,000 PCS',season:'Autumn/Winter 2026',country:'Germany',status:'Moderate'},
+  {no:'INQ-2026-00230',date:'20-Aug-2026',buyer:'Smart Wear Ltd.',style:'AB-4582',qty:'10,000 PCS',season:'Spring/Summer 2027',country:'UK',status:'Bad'},
+];
+
+function renderInquiries(filterText='', filterStatus=''){
+  const body = document.getElementById('inqTableBody');
+  const ft = filterText.trim().toLowerCase();
+  const rows = inquiries.filter(r=>{
+    const matchesText = !ft || (r.no+r.buyer+r.style).toLowerCase().includes(ft);
+    const matchesStatus = !filterStatus || r.status===filterStatus;
+    return matchesText && matchesStatus;
+  });
+  body.innerHTML = rows.map((r,i)=>`
+    <tr>
+      <td>${i+1}</td><td><strong>${r.no}</strong></td><td>${r.date}</td><td>${r.buyer}</td><td>${r.style}</td>
+      <td>${r.qty}</td><td>${r.season}</td><td>${r.country}</td>
+      <td><span class="badge ${STATUS_CLASS[r.status]||'b-new'}">${r.status}</span></td>
+      <td>
+        <div class="row-actions">
+          <button class="view" title="View" onclick="showToast('Viewing ${r.no}')"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          <button class="del" title="Delete" onclick="deleteInquiry(${inquiries.indexOf(r)})"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></svg></button>
+        </div>
+      </td>
+    </tr>`).join('');
+  document.getElementById('inqCount').textContent = `Showing 1 to ${rows.length} of ${inquiries.length} entries`;
+}
+function deleteInquiry(idx){ inquiries.splice(idx,1); renderInquiries(document.getElementById('inqSearch').value, document.getElementById('statusFilter').value); showToast('Inquiry removed'); }
+renderInquiries();
+
+document.getElementById('inqSearch').addEventListener('input', e=>renderInquiries(e.target.value, document.getElementById('statusFilter').value));
+document.getElementById('statusFilter').addEventListener('change', e=>renderInquiries(document.getElementById('inqSearch').value, e.target.value));
+document.getElementById('filterBtn').addEventListener('click', ()=>{
+  const row = document.getElementById('filterRow');
+  row.style.display = row.style.display==='none' ? 'block' : 'none';
+});
+
+document.getElementById('saveInquiryBtn').addEventListener('click', ()=>{
+  const buyerSel = document.getElementById('i_buyer');
+  inquiries.unshift({
+    no: document.getElementById('i_no').value || 'INQ-NEW',
+    date: formatDate(document.getElementById('i_date').value),
+    buyer: buyerSel.value,
+    style: 'AB-NEW',
+    qty: (document.getElementById('i_qty').value||'0')+' PCS',
+    season: document.getElementById('i_contract').value,
+    country: document.getElementById('i_country').value,
+    status: 'New'
+  });
+  renderInquiries();
+  showToast('Inquiry saved successfully');
+});
+
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  const header = ['Inquiry No','Inquiry Date','Buyer','Style','Quantity','Season','Country','Status'];
+  const csvRows = [header.join(',')].concat(inquiries.map(r=>[r.no,r.date,r.buyer,r.style,r.qty,r.season,r.country,r.status].map(v=>`"${v}"`).join(',')));
+  const blob = new Blob([csvRows.join('\\n')], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'current-inquiries.csv';
+  a.click();
+  showToast('Exported CSV');
+});
+
+function formatDate(iso){
+  if(!iso) return '';
+  const d = new Date(iso+'T00:00:00');
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return String(d.getDate()).padStart(2,'0')+'-'+months[d.getMonth()]+'-'+d.getFullYear();
+}
+
+/* ===================================================================
+   PAGE 2 — Style Management
+   =================================================================== */
+document.querySelectorAll('.tab-btn[data-tabgroup="style"]').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn[data-tabgroup="style"]').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('#page-style .tabpanel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-'+tab.dataset.tab).classList.add('active');
+  });
+});
+
+document.getElementById('s_color').addEventListener('change', function(){
+  document.getElementById('s_colorSwatch').style.background = this.value;
+  document.getElementById('s_colorLbl').textContent = this.options[this.selectedIndex].text;
+});
+document.getElementById('s_status').addEventListener('change', function(){
+  const dot = this.closest('.dot-select').querySelector('.sw');
+  const lbl = this.closest('.dot-select').querySelector('.lbl');
+  const map = {Open:'#1B8A3B',Hold:'#9A7B08',Closed:'#C41F1F'};
+  dot.style.background = map[this.value];
+  lbl.textContent = this.value;
+});
+
+let styleRows = [{no:'AB-4587',product:"Men's Polo Shirt",cat:'Knit',fabric:'95% Cotton 5% Elastane',color:'#0D1B36',qty:'50,000',price:'$4.50',ship:'15-Feb-2027',status:'Open'}];
+function renderStyleTable(){
+  document.getElementById('styleTableBody').innerHTML = styleRows.map((r,i)=>`
+    <tr>
+      <td>${i+1}</td><td><strong>${r.no}</strong></td><td>${r.product}</td><td>${r.cat}</td><td>${r.fabric}</td>
+      <td><span class="sw" style="display:inline-block;width:15px;height:15px;border-radius:50%;background:${r.color};box-shadow:0 0 0 1px var(--border);"></span></td>
+      <td>${r.qty} <span style="color:var(--text-muted);font-size:11.5px;">Pcs</span></td><td>${r.price}</td><td>${r.ship}</td>
+      <td><span class="badge b-open">${r.status}</span></td>
+      <td><div class="row-actions">
+        <button class="edit" title="Edit" onclick="editStyleRow(${i})"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg></button>
+        <button class="del" title="Delete" onclick="deleteStyleRow(${i})"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></svg></button>
+      </div></td>
+    </tr>`).join('');
+}
+function deleteStyleRow(i){ styleRows.splice(i,1); renderStyleTable(); showToast('Style removed'); }
+function editStyleRow(i){
+  const r = styleRows[i];
+  document.getElementById('s_styleno').value = r.no;
+  document.getElementById('s_qty').value = r.qty.replace(/,/g,'');
+  document.getElementById('s_price').value = r.price.replace('$','');
+  showToast('Loaded '+r.no+' into the form for editing');
+}
+renderStyleTable();
+
+document.getElementById('addStyleBtn').addEventListener('click', ()=>{
+  const colorSel = document.getElementById('s_color');
+  styleRows.unshift({
+    no: document.getElementById('s_styleno').value || 'AB-NEW',
+    product: document.getElementById('s_product').value,
+    cat: document.getElementById('s_cat').value,
+    fabric: document.getElementById('s_fabric').value,
+    color: colorSel.value,
+    qty: Number(document.getElementById('s_qty').value||0).toLocaleString(),
+    price: '$'+(document.getElementById('s_price').value||'0.00'),
+    ship: formatDate(document.getElementById('s_ship').value),
+    status: document.getElementById('s_status').value
+  });
+  renderStyleTable();
+  showToast('Style added to list');
+});
+document.getElementById('styleSaveBtn').addEventListener('click', ()=>showToast('Style saved successfully'));
+document.getElementById('styleResetBtn').addEventListener('click', ()=>showToast('Form reset'));
+document.getElementById('styleCancelBtn').addEventListener('click', ()=>goToPage('buyer'));
+
+/* ===================================================================
+   PAGE 3 — BOM & Costing
+   =================================================================== */
+document.querySelectorAll('.tab-btn[data-tabgroup="bom"]').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn[data-tabgroup="bom"]').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('#page-bom .tabpanel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-'+tab.dataset.tab).classList.add('active');
+  });
+});
+
+function num(v){ const n = parseFloat(String(v).replace(/[^0-9.\\-]/g,'')); return isNaN(n)?0:n; }
+
+function recalcCosting(source){
+  const trimInputs = document.querySelectorAll('.trimInput');
+  let cost = 0;
+  trimInputs.forEach(inp=>cost += num(inp.value));
+  document.getElementById('totalCost').textContent = '$'+cost.toFixed(2);
+
+  const profitDollarEl = document.getElementById('profitDollar');
+  const profitPctEl = document.getElementById('profitPct');
+  let fob;
+
+  if(source==='pct'){
+    const pct = num(profitPctEl.value);
+    fob = cost/(1-(pct/100));
+    if(!isFinite(fob) || pct>=100) fob = cost;
+    profitDollarEl.value = (fob-cost).toFixed(2);
+  } else if(source==='dollar'){
+    const profit = num(profitDollarEl.value);
+    fob = cost+profit;
+    const pct = fob>0 ? (profit/fob*100) : 0;
+    profitPctEl.value = pct.toFixed(1);
+  } else {
+    const profit = num(profitDollarEl.value);
+    fob = cost+profit;
+    const pct = fob>0 ? (profit/fob*100) : 0;
+    profitPctEl.value = pct.toFixed(1);
+  }
+  document.getElementById('fobPrice').textContent = '$'+fob.toFixed(2);
+
+  const qty = num(document.getElementById('bomQty').value);
+  document.getElementById('bomTotal').textContent = '$'+(fob*qty).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+document.querySelectorAll('.trimInput').forEach(inp=>inp.addEventListener('input', ()=>recalcCosting('trim')));
+document.getElementById('profitPct').addEventListener('input', ()=>recalcCosting('pct'));
+document.getElementById('profitDollar').addEventListener('input', ()=>recalcCosting('dollar'));
+document.getElementById('bomQty').addEventListener('input', ()=>recalcCosting('qty'));
+recalcCosting('init');
+
+let bomRows = [{no:'AB-4587',product:"Men's Polo Shirt",cat:'Knit',fabric:'95% Cotton 5% Elastane',color:'#0D1B36',qty:'50,000',price:'$4.50',ship:'15-Feb-2027',status:'Open'}];
+function renderBomTable(){
+  document.getElementById('bomTableBody').innerHTML = bomRows.map((r,i)=>`
+    <tr>
+      <td>${i+1}</td><td><strong>${r.no}</strong></td><td>${r.product}</td><td>${r.cat}</td><td>${r.fabric}</td>
+      <td><span style="display:inline-block;width:15px;height:15px;border-radius:50%;background:${r.color};box-shadow:0 0 0 1px var(--border);"></span></td>
+      <td>${r.qty} <span style="color:var(--text-muted);font-size:11.5px;">Pcs</span></td><td>${r.price}</td><td>${r.ship}</td>
+      <td><span class="badge b-open">${r.status}</span></td>
+      <td><div class="row-actions">
+        <button class="edit" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg></button>
+        <button class="del" title="Delete" onclick="deleteBomRow(${i})"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></svg></button>
+      </div></td>
+    </tr>`).join('');
+}
+function deleteBomRow(i){ bomRows.splice(i,1); renderBomTable(); showToast('Record removed'); }
+renderBomTable();
+
+document.getElementById('bomAddNewBtn').addEventListener('click', ()=>showToast('New BOM line item added'));
+document.getElementById('saveBomBtn').addEventListener('click', ()=>{
+  bomRows.unshift({
+    no: document.getElementById('c_styleno').value || 'AB-NEW',
+    product: "Men's Polo Shirt", cat:'Knit',
+    fabric: document.getElementById('c_fabricqty').value+' kg/pc',
+    color:'#0D1B36',
+    qty: num(document.getElementById('bomQty').value).toLocaleString(),
+    price: document.getElementById('fobPrice').textContent,
+    ship: formatDate(document.getElementById('c_date').value) || '—',
+    status:'Open'
+  });
+  renderBomTable();
+  showToast('BoM & Cost saved successfully');
+});
+
+/* Created-date stamps */
+const nowStamp = new Date().toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+['bomCreatedDate','poCreatedDate','piCreatedDate'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent = nowStamp; });
+
+/* ===================================================================
+   PAGE 4 & 5 — Purchase Order / Proforma Invoice — Order Details tables
+   =================================================================== */
+const orderTables = {
+  poOrderBody: {
+    rows: [{no:'AB-4587',product:"Men's Polo Shirt",cat:'Knit',fabric:'95% Cotton 5% Elastane',color:'Black',size:'S - XL',qty:10000,price:4.50}],
+    totalEl:'poTotalValue'
+  },
+  piOrderBody: {
+    rows: [{no:'AB-4587',product:"Men's Basic T-Shirt",cat:'Knit',fabric:'100% Cotton Jersey 180 GSM',color:'Black',size:'S - XL',qty:10000,price:4.50}],
+    totalEl:'piTotalValue'
+  }
+};
+
+function renderOrderTable(bodyId){
+  const cfg = orderTables[bodyId];
+  const body = document.getElementById(bodyId);
+  body.innerHTML = cfg.rows.map((r,i)=>`
+    <tr data-idx="${i}">
+      <td>${i+1}</td><td><strong>${r.no}</strong></td><td>${r.product}</td><td>${r.cat}</td><td>${r.fabric}</td><td>${r.color}</td><td>${r.size}</td>
+      <td contenteditable="true" class="qtyCell" oninput="onOrderCellEdit('${bodyId}',${i},'qty',this.textContent)">${r.qty.toLocaleString()}</td>
+      <td contenteditable="true" class="priceCell" oninput="onOrderCellEdit('${bodyId}',${i},'price',this.textContent)">$${r.price.toFixed(2)}</td>
+      <td class="amountCell">$${(r.qty*r.price).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      <td><div class="row-actions">
+        <button class="edit" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg></button>
+        <button class="del" title="Delete" onclick="deleteOrderRow('${bodyId}',${i})"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></svg></button>
+      </div></td>
+    </tr>`).join('');
+  recalcOrderTotal(bodyId);
+}
+
+function onOrderCellEdit(bodyId, idx, field, raw){
+  const cfg = orderTables[bodyId];
+  const v = num(raw);
+  cfg.rows[idx][field] = v;
+  const row = document.querySelector(`#${bodyId} tr[data-idx="${idx}"]`);
+  row.querySelector('.amountCell').textContent = '$'+(cfg.rows[idx].qty*cfg.rows[idx].price).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  recalcOrderTotal(bodyId);
+}
+
+function recalcOrderTotal(bodyId){
+  const cfg = orderTables[bodyId];
+  const total = cfg.rows.reduce((s,r)=>s+(r.qty*r.price),0);
+  document.getElementById(cfg.totalEl).textContent = '$'+total.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function deleteOrderRow(bodyId, idx){
+  orderTables[bodyId].rows.splice(idx,1);
+  renderOrderTable(bodyId);
+  showToast('Item removed');
+}
+
+function addOrderRow(bodyId){
+  orderTables[bodyId].rows.push({no:'AB-NEW',product:'New Product',cat:'Knit',fabric:'—',color:'—',size:'S - XL',qty:1000,price:0});
+  renderOrderTable(bodyId);
+  showToast('Item added — edit quantity & price inline');
+}
+
+renderOrderTable('poOrderBody');
+renderOrderTable('piOrderBody');
+
+document.getElementById('savePoBtn').addEventListener('click', ()=>showToast('Purchase Order saved successfully'));
+document.getElementById('savePiBtn').addEventListener('click', ()=>showToast('Proforma Invoice saved successfully'));
+
+/* ---------- init ---------- */
+goToPage('buyer');
+</script>
+</body>
+</html>

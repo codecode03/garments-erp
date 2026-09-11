@@ -1,0 +1,3173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GarmentsERP — Dashboard (v4: refined tables)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+        colors: {
+          primary: 'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+          muted: 'var(--text-muted)',
+          disabled: 'var(--text-disabled)',
+          side: {
+            bg: 'var(--surface)',
+            hover: 'var(--hover)',
+            active: 'var(--active-tint)',
+            border: 'var(--border)',
+            panel: 'var(--border-panel)',
+            line: 'var(--border-inner)',
+            text: 'var(--text-secondary)',
+            textbright: 'var(--text-primary)',
+            accent: 'var(--accent)',
+            accentHover: 'var(--accent-hover)',
+            accentLight: 'var(--accent-light)',
+            navActiveBg: 'var(--nav-active-bg)',
+            navActiveText: 'var(--nav-active-text)',
+            navSubActiveBg: 'var(--nav-sub-active-bg)',
+            navSubActiveText: 'var(--nav-sub-active-text)',
+            navSubActiveDot: 'var(--nav-sub-active-dot)',
+            navHoverBg: 'var(--nav-hover-bg)',
+            navHoverText: 'var(--nav-hover-text)',
+            navText: 'var(--nav-text)',
+            navSubText: 'var(--nav-sub-text)',
+            navDot: 'var(--nav-dot)',
+          },
+          canvas: 'var(--bg)',
+          cardBg: 'var(--card-bg)',
+          success: 'var(--success)',
+          warning: 'var(--warning)',
+          danger: 'var(--danger)',
+          info: 'var(--info)',
+          neutral: 'var(--neutral)',
+          violet: 'var(--violet)',
+          successSoft: 'var(--success-soft)',
+          warningSoft: 'var(--warning-soft)',
+          dangerSoft: 'var(--danger-soft)',
+          infoSoft: 'var(--info-soft)',
+          neutralSoft: 'var(--neutral-soft)',
+          violetSoft: 'var(--violet-soft)',
+        },
+        /* Tight enterprise radius scale — 4 / 6 / 8 / 10, nothing larger. */
+        borderRadius: {
+          none: '0',
+          xs: 'var(--r-xs)',
+          sm: 'var(--r-sm)',
+          DEFAULT: 'var(--r-sm)',
+          md: 'var(--r-md)',
+          lg: 'var(--r-lg)',
+          full: '9999px',
+        },
+      }
+    }
+  }
+</script>
+<style>
+  /* ================================================================
+     Theme tokens — sourced from ERP_Color.html (GarmentsERP Color System)
+     ================================================================ */
+  :root,
+  html[data-theme="light"] {
+    color-scheme: light;   /* native controls (date picker) follow the theme */
+    --bg: #EAEFEE;
+    --surface: #F1F3F4;
+    --card-bg: #F7F9F8;
+    --hover: #E1E5E8;
+    --active-tint: rgba(13, 148, 136, 0.09);   /* selected row / list option */
+    --border: #AEB5BB;                       /* controls only: inputs, selects, tables */
+    --border-panel: rgba(16, 21, 27, 0.07);  /* panels lean on fill + shadow */
+    --border-inner: #E2E8F0;
+
+    --text-primary: #10151B;
+    --text-secondary: #3B4450;
+    --text-muted: #5B6572;
+    --text-disabled: #94A3B8;
+    --text-inverse: #FFFFFF;
+
+    --accent: #0D9488;
+    --accent-hover: #0F766E;
+    --accent-light: #D7F5F0;
+    --accent-soft: #E6FFFB;
+    --accent-ring: rgba(13, 148, 136, 0.28);
+
+    --success: #16A34A;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    --info: #3B82F6;
+    --neutral: #64748B;
+    --success-soft: #DCFCE7;
+    --warning-soft: #FEF3C7;
+    --danger-soft: #FEE2E2;
+    --info-soft: #DBEAFE;
+    --neutral-soft: #E2E8F0;
+    --violet: #8B5CF6;
+    --violet-soft: #EDE9FE;
+
+    --nav-active-bg: #0D9488;       /* unchanged — solid brand fill */
+    --nav-active-text: #FFFFFF;
+    --nav-active-icon: #FFFFFF;
+    --nav-active-border: transparent;
+    --nav-sub-active-bg: #99F6E4;   /* teal-200: sits between the loud teal-300 and the invisible teal-50 */
+    --nav-sub-active-text: #115E59;
+    --nav-sub-active-dot: #0D9488;
+    --nav-sub-active-bar: transparent;
+    --nav-hover-bg: #E1E5E8;
+    --nav-hover-text: #1F2937;
+    --nav-text: #3B4450;
+    --nav-sub-text: #4B5563;
+    --nav-icon: #6B7480;
+    --nav-dot: #9CA3AF;
+
+    --chart-1: #0D9488; --chart-2: #3B82F6; --chart-3: #F59E0B; --chart-4: #EF4444; --chart-5: #8B5CF6;
+    --chart-6: #06B6D4; --chart-7: #84CC16; --chart-8: #F97316; --chart-9: #EC4899; --chart-10: #64748B;
+
+    --scrollbar-track: #E7E9EB;
+    --scrollbar-thumb: #A8AEB5;
+    --overlay: rgba(16, 21, 27, 0.45);
+  }
+
+  html[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0F172A;
+    --surface: #141B2E;
+    --card-bg: #1E293B;
+    --hover: #273449;
+    --active-tint: rgba(45, 212, 191, 0.13);   /* selected row / list option */
+    --border: #334155;
+    --border-panel: #334155;                 /* no usable shadow on dark, border does the work */
+    --border-inner: #334155;
+
+    --text-primary: #F8FAFC;
+    --text-secondary: #CBD5E1;
+    --text-muted: #94A3B8;
+    --text-disabled: #64748B;
+    --text-inverse: #0F172A;
+
+    --accent: #2DD4BF;
+    --accent-hover: #5EEAD4;
+    --accent-light: #134E4A;
+    --accent-soft: #0F766E;
+    --accent-ring: rgba(45, 212, 191, 0.30);
+
+    --success: #22C55E;
+    --warning: #FBBF24;
+    --danger: #F87171;
+    --info: #60A5FA;
+    --neutral: #94A3B8;
+    --success-soft: rgba(34, 197, 94, 0.16);
+    --warning-soft: rgba(251, 191, 36, 0.16);
+    --danger-soft: rgba(248, 113, 113, 0.16);
+    --info-soft: rgba(96, 165, 250, 0.16);
+    --neutral-soft: rgba(148, 163, 184, 0.16);
+    --violet: #A78BFA;
+    --violet-soft: rgba(167, 139, 250, 0.18);
+
+    --nav-active-bg: rgba(20, 184, 166, 0.15);
+    --nav-active-text: #5EEAD4;
+    --nav-active-icon: #5EEAD4;
+    --nav-active-border: #2DD4BF;
+    --nav-sub-active-bg: rgba(45, 212, 191, 0.22);
+    --nav-sub-active-text: #99F6E4;
+    --nav-sub-active-dot: #5EEAD4;
+    --nav-sub-active-bar: transparent;
+    --nav-hover-bg: #273449;
+    --nav-hover-text: #F8FAFC;
+    --nav-text: #CBD5E1;
+    --nav-sub-text: #94A3B8;
+    --nav-icon: #64748B;
+    --nav-dot: #475569;
+
+    --chart-1: #2DD4BF; --chart-2: #60A5FA; --chart-3: #FBBF24; --chart-4: #F87171; --chart-5: #A78BFA;
+    --chart-6: #22D3EE; --chart-7: #A3E635; --chart-8: #FB923C; --chart-9: #F472B6; --chart-10: #94A3B8;
+
+    --scrollbar-track: #1E293B;
+    --scrollbar-thumb: #475569;
+    --overlay: rgba(0, 0, 0, 0.6);
+  }
+
+  /* ---------- Radius scale ---------- */
+  :root { --r-xs: 4px; --r-sm: 6px; --r-md: 8px; --r-lg: 10px; }
+
+  /* ---------- Motion ---------- */
+  :root { --ease: cubic-bezier(0.2, 0, 0, 1); --dur-fast: 120ms; --dur: 160ms; }
+
+  /* Specific properties only — never `all`, which animates layout and janks. */
+  button, a, input, .cmdk-row {
+    transition: background-color var(--dur-fast) var(--ease),
+                color var(--dur-fast) var(--ease),
+                border-color var(--dur-fast) var(--ease),
+                box-shadow var(--dur-fast) var(--ease);
+  }
+  body { transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* ---------- Focus ---------- */
+  :where(button, a, [tabindex]):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  :where(button, a, [tabindex]):focus:not(:focus-visible) { outline: none; }
+
+  /* ---------- Scrollbars ---------- */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: var(--r-xs); }
+  ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+
+  #nav { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+  #nav::-webkit-scrollbar { width: 4px; }
+  #nav::-webkit-scrollbar-track { background: transparent; }
+  #nav::-webkit-scrollbar-thumb { background: transparent; border-radius: var(--r-xs); }
+  #nav:hover { scrollbar-color: var(--scrollbar-thumb) transparent; }
+  #nav:hover::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); }
+
+  .submenu { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 200ms var(--ease); }
+  .submenu.open { grid-template-rows: 1fr; }
+  .submenu > div { overflow: hidden; }
+  .chev { transition: transform 180ms var(--ease); }
+  .chev.open { transform: rotate(180deg); }
+
+  /* ---------- Elevation ---------- */
+  .premium-shadow { box-shadow: 0 1px 3px rgba(16, 21, 27, 0.11), 0 1px 1px rgba(16, 21, 27, 0.05); }
+  html[data-theme="dark"] .premium-shadow { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.25); }
+
+  .card-shadow { box-shadow: 0 1px 3px rgba(16, 21, 27, 0.13), 0 4px 10px -4px rgba(16, 21, 27, 0.10); }
+  html[data-theme="dark"] .card-shadow { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3); }
+
+  .overlay-shadow { box-shadow: 0 16px 48px -12px rgba(16, 21, 27, 0.28), 0 4px 12px -4px rgba(16, 21, 27, 0.14); }
+  html[data-theme="dark"] .overlay-shadow { box-shadow: 0 16px 48px -12px rgba(0, 0, 0, 0.7), 0 4px 12px -4px rgba(0, 0, 0, 0.5); }
+
+  /* ---------- Typography scale ----------
+     Large numbers get lighter weight + tighter tracking, not heavier weight.
+     That is the difference between an enterprise figure and a marketing figure. */
+  .text-display       { font-size: 30px; line-height: 34px; font-weight: 600; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; }
+  .text-page-title    { font-size: 20px; line-height: 26px; font-weight: 600; letter-spacing: -0.02em; }
+  .text-section-title { font-size: 15px; line-height: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .text-body          { font-size: 13.5px; line-height: 20px; font-weight: 400; }
+  .text-body-medium   { font-size: 13.5px; line-height: 20px; font-weight: 500; }
+  .text-label         { font-size: 12.5px; line-height: 18px; font-weight: 500; }
+  .text-table-header  { font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: 0.045em; text-transform: uppercase; }
+  .text-table-body    { font-size: 13px; line-height: 20px; font-weight: 400; font-variant-numeric: tabular-nums; }
+  .text-helper        { font-size: 11.5px; line-height: 17px; font-weight: 400; }
+  .text-micro         { font-size: 10.5px; line-height: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  .num, input[type="number"], input[type="date"], .tabular { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body class="font-sans bg-canvas text-primary antialiased">
+
+<div class="flex h-screen w-full overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="w-72 shrink-0 h-full bg-side-bg border-r border-side-panel flex flex-col premium-shadow relative z-10">
+
+    <!-- Brand -->
+    <div class="h-14 flex items-center justify-between gap-3 px-5 border-b border-side-line shrink-0">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-md bg-side-accent flex items-center justify-center shrink-0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><path d="M4 21V9l8-6 8 6v12"/><path d="M9 21v-6h6v6"/></svg>
+        </div>
+        <p class="text-[15px] leading-tight tracking-tight">
+          <span class="font-bold text-primary">Garments</span><span class="font-bold text-side-accent">ERP</span>
+        </p>
+      </div>
+      <button class="w-7 h-7 rounded flex items-center justify-center text-side-text hover:bg-side-hover hover:text-side-textbright shrink-0" title="Collapse sidebar" aria-label="Collapse sidebar">
+        <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="M15 10l-2 2 2 2"/></svg>
+      </button>
+    </div>
+
+    <!-- Nav -->
+    <nav id="nav" class="flex-1 overflow-y-auto px-2.5 py-3 space-y-0.5" aria-label="Main navigation"></nav>
+
+    <!-- Footer -->
+    <div class="border-t border-side-line px-4 py-2.5 shrink-0">
+      <p class="text-micro text-disabled">GarmentsERP · v3.0</p>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="flex-1 h-full flex flex-col min-w-0">
+
+    <!-- Topbar -->
+    <header class="h-14 shrink-0 bg-side-bg border-b border-side-panel flex items-center justify-between px-5 premium-shadow">
+      <nav id="crumb" class="text-body text-secondary" aria-label="Breadcrumb">
+        <span class="text-primary font-semibold">Dashboard</span>
+      </nav>
+
+      <div class="flex items-center gap-1.5">
+        <!-- Command palette trigger -->
+        <button id="searchTrigger" class="group flex items-center gap-2 w-60 h-8 pl-2.5 pr-2 rounded border border-side-border bg-canvas text-left hover:border-side-accent" title="Search (Ctrl K)">
+          <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-muted shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+          <span class="flex-1 text-label text-muted">Search...</span>
+          <kbd id="searchKbd" class="px-1.5 py-0.5 rounded-xs border border-side-border bg-side-bg text-micro text-muted">Ctrl K</kbd>
+        </button>
+
+        <button id="themeToggle" class="w-8 h-8 rounded flex items-center justify-center text-secondary hover:bg-side-hover hover:text-primary" title="Toggle dark / light mode" aria-label="Toggle theme">
+          <svg id="themeIconSun" viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg id="themeIconMoon" viewBox="0 0 24 24" class="hidden w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        </button>
+
+        <button class="relative w-8 h-8 rounded flex items-center justify-center text-secondary hover:bg-side-hover hover:text-primary" title="Notifications" aria-label="Notifications, 4 unread">
+          <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          <span class="absolute top-0.5 right-0.5 min-w-[15px] h-[15px] px-1 rounded-full bg-danger text-white text-[9.5px] font-bold tabular-nums flex items-center justify-center leading-none">4</span>
+        </button>
+
+        <div class="w-px h-5 bg-side-line mx-1"></div>
+
+        <button class="flex items-center gap-2 pl-1 pr-1.5 h-8 rounded hover:bg-side-hover">
+          <div class="w-6 h-6 rounded-full bg-side-accent flex items-center justify-center text-white text-[10px] font-semibold shrink-0">AJ</div>
+          <span class="text-label font-semibold text-primary">Alex Johnson</span>
+          <svg viewBox="0 0 24 24" class="w-3 h-3 text-muted" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="flex-1 overflow-y-auto px-5 py-5">
+      <div class="max-w-[1400px] mx-auto">
+
+        <div id="page-header" class="flex items-end justify-between mb-5 gap-4">
+          <div class="min-w-0">
+            <h1 id="page-title" class="text-page-title text-primary mb-0.5">Dashboard</h1>
+            <p id="page-subtitle" class="text-body text-muted"></p>
+          </div>
+          <div id="page-actions" class="flex items-center gap-2 shrink-0"></div>
+        </div>
+
+        <div id="tabs" class="hidden mb-5 border-b border-side-panel"></div>
+        <div id="page-content"></div>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ---------- Command palette ---------- -->
+<div id="cmdk" class="hidden fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Search screens">
+  <div id="cmdkBackdrop" class="absolute inset-0" style="background: var(--overlay)"></div>
+  <div class="relative mx-auto mt-[10vh] w-full max-w-[560px] px-4">
+    <div class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
+      <div class="flex items-center gap-2.5 px-3.5 h-12 border-b border-side-line">
+        <svg viewBox="0 0 24 24" class="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input id="cmdkInput" type="text" autocomplete="off" spellcheck="false" placeholder="Jump to a module or screen..."
+          class="flex-1 bg-transparent border-0 text-body text-primary placeholder-muted focus:outline-none" aria-label="Search screens" />
+        <kbd class="px-1.5 py-0.5 rounded-xs border border-side-line text-micro text-muted shrink-0">ESC</kbd>
+      </div>
+      <div id="cmdkList" class="max-h-[50vh] overflow-y-auto py-1.5" role="listbox"></div>
+      <div class="flex items-center gap-4 px-3.5 h-9 border-t border-side-line">
+        <span class="text-helper text-muted">&uarr;&darr; navigate</span>
+        <span class="text-helper text-muted">&crarr; open</span>
+        <span id="cmdkCount" class="text-helper text-disabled ml-auto tabular"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- Icon paths ----------
+const icons = {
+  doc: 'M7 3h7l5 5v13a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1zM14 3v5h5',
+  flask: 'M9 3h6M10 3v6.5L4.5 19a1 1 0 00.9 1.5h13.2a1 1 0 00.9-1.5L14 9.5V3',
+  wallet: 'M3 7a2 2 0 012-2h11a3 3 0 013 3v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7zM16 12h.01M3 9h18',
+  truck: 'M3 7h11v8H3zM14 10h4l3 3v2h-7zM6.5 19a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM17.5 19a1.5 1.5 0 100-3 1.5 1.5 0 000 3z',
+  box: 'M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5m0-13v13m9-13v8l-9 5',
+  gear: 'M12 8a4 4 0 100 8 4 4 0 000-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
+  ship: 'M3 21h18M5 21l1-9h12l1 9M6 12l1-6h10l1 6M9 6V3h6v3',
+  users: 'M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m5-8.13a4 4 0 110 8 4 4 0 010-8zm7 2a3.5 3.5 0 11-3-5.5m-13 5.5a3.5 3.5 0 003-5.5',
+  sliders: 'M4 21V14M4 10V3M12 21v-8M12 9V3M20 21v-4M20 13V3M2 14h4M10 9h4M18 13h4',
+  chartbar: 'M4 20V10M10 20V4M16 20v-7M4 20h16',
+  grid: 'M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z',
+  info: 'M12 21a9 9 0 100-18 9 9 0 000 18zM12 11v6M12 7.5h.01',
+  user: 'M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z',
+  clipboard: 'M9 4H6a1 1 0 00-1 1v15a1 1 0 001 1h12a1 1 0 001-1V5a1 1 0 00-1-1h-3M9 4a1 1 0 011-1h4a1 1 0 011 1v1a1 1 0 01-1 1h-4a1 1 0 01-1-1V4zM8.5 11h7M8.5 15h5',
+  list: 'M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01',
+  shirt: 'M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.47a1 1 0 00.99.84H6v10a2 2 0 002 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.47a2 2 0 00-1.34-2.23z'
+};
+
+// ---------- Module / submodule data ----------
+const modules = [
+  { key:'dashboard', name:'Dashboard', icon:'grid', submodules:[{ name:'Dashboard' }]},
+  { key:'merchandising', name:'Merchandising', icon:'doc', submodules:[
+    { name:'Buyer & Inquiry' }, { name:'Style Management' },
+    { name:'BOM & Consumption' }, { name:'Purchase Order (PO)' }, { name:'Proforma Invoice (PI)' }, { name:'Reports' },
+  ]},
+  { key:'development', name:'Development', icon:'flask', submodules:[
+    { name:'Development Request' }, { name:'Sample Management' }, { name:'Sample Production' },
+    { name:'Sample Approval' }, { name:'Sample Tracking' }, { name:'Reports' },
+  ]},
+  { key:'finance', name:'Finance', icon:'wallet', submodules:[
+    { name:'Chart of Accounts' }, { name:'Voucher Management' }, { name:'Accounts Payable' },
+    { name:'Accounts Receivable' }, { name:'Cash & Bank' }, { name:'VAT & Tax' }, { name:'LC & Export Finance' },
+    { name:'Budget Management' }, { name:'Assets' }, { name:'General Ledger' }, { name:'Financial Statements' }, { name:'Reports' },
+  ]},
+  { key:'procurement', name:'Procurement', icon:'truck', submodules:[
+    { name:'Purchase Requisition' }, { name:'Supplier Selection/Management' }, { name:'Import Management' },
+    { name:'Purchase Order' }, { name:'Goods Receipt' }, { name:'Reports' },
+  ]},
+  { key:'inventory', name:'Inventory', icon:'box', submodules:[
+    { name:'Warehouse Management' }, { name:'Material Inventory' }, { name:'WIP Inventory' }, { name:'Finished Goods' },
+    { name:'Sample Inventory' }, { name:'QC Hold Stock' }, { name:'Stock Transfer' }, { name:'Reports' },
+  ]},
+  { key:'production', name:'Production', icon:'gear', submodules:[
+    { name:'Production Planning/Capacity Planning' }, { name:'Production Schedule' }, { name:'Production Order' },
+    { name:'Production Stage' }, { name:'Production Tracking' }, { name:'Quality Control' }, { name:'Defect & Rework' },
+    { name:'Efficiency & KPI' }, { name:'Production Costing' }, { name:'Reports' },
+  ]},
+  { key:'commercial', name:'Commercial', icon:'ship', submodules:[
+    { name:'Export Management' }, { name:'LC Management' }, { name:'Commercial Invoice' }, { name:'Packing List' },
+    { name:'Shipment Management' }, { name:'Document Management' }, { name:'Shipment Tracking' }, { name:'Reports' },
+  ]},
+  { key:'hr', name:'HR', icon:'users', submodules:[
+    { name:'Employee Management' }, { name:'Attendance' }, { name:'Shift Management' }, { name:'Leave Management' },
+    { name:'Holiday Calendar' }, { name:'Payroll Processing' }, { name:'Overtime' }, { name:'Bonus Management' },
+    { name:'Loan & Advance' }, { name:'Reports' },
+  ]},
+  { key:'admin', name:'Admin', icon:'sliders', submodules:[
+    { name:'Company' }, { name:'Branch & Factory' }, { name:'All Entry' }, { name:'Users Roles & Permissions' },
+    { name:'Approval Workflow' }, { name:'Barcode Setup' }, { name:'Templates' }, { name:'Activity Log' },
+    { name:'Audit Trail' }, { name:'System Settings' },
+  ]},
+  { key:'reports', name:'Reports', icon:'chartbar', submodules:[
+    { name:'Management Reports' }, { name:'KPI Reports' }, { name:'Merchandising Reports' }, { name:'Procurement Reports' },
+    { name:'Inventory Reports' }, { name:'Production Reports' }, { name:'Commercial Reports' }, { name:'Finance Reports' },
+    { name:'Export Reports' }, { name:'HR Reports' },
+  ]},
+  { key:'about', name:'About', icon:'info', submodules:[{ name:'About ERP' }]},
+];
+
+let state = { moduleKey: 'dashboard', subIndex: 0, tabIndex: 0 };
+
+const nav = document.getElementById('nav');
+
+function iconSvg(name, extraClass) {
+  return `<svg viewBox="0 0 24 24" class="${extraClass}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${icons[name]}"/></svg>`;
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+// ---------- Flat page index (drives the command palette) ----------
+const pageIndex = [];
+modules.forEach(mod => {
+  mod.submodules.forEach((sm, i) => {
+    const single = mod.submodules.length === 1;
+    pageIndex.push({
+      moduleKey: mod.key, subIndex: i, icon: mod.icon,
+      title: single ? mod.name : sm.name,
+      context: single ? '' : mod.name,
+      hay: (mod.name + ' ' + sm.name).toLowerCase(),
+    });
+  });
+});
+
+// ---------- Recently visited ----------
+let recent = [];
+try { recent = JSON.parse(localStorage.getItem('erp-recent') || '[]'); } catch (e) { recent = []; }
+
+function pushRecent(moduleKey, subIndex) {
+  if (moduleKey === 'dashboard') return;   // already pinned at the top of the nav
+  recent = recent.filter(r => !(r.m === moduleKey && r.s === subIndex));
+  recent.unshift({ m: moduleKey, s: subIndex });
+  recent = recent.slice(0, 3);
+  try { localStorage.setItem('erp-recent', JSON.stringify(recent)); } catch (e) { /* ignore */ }
+}
+
+function lookup(moduleKey, subIndex) {
+  const mod = modules.find(m => m.key === moduleKey);
+  if (!mod) return null;
+  const sm = mod.submodules[subIndex];
+  if (!sm) return null;
+  return { mod, sm, single: mod.submodules.length === 1 };
+}
+
+// ---------- Single navigation entry point ----------
+function goTo(moduleKey, subIndex) {
+  state.moduleKey = moduleKey;
+  state.subIndex = subIndex;
+  state.tabIndex = 0;
+  state.editingId = null;
+  state.editingBomId = null;
+  pushRecent(moduleKey, subIndex);
+  renderNav();
+  renderContent();
+}
+
+// Active top-level item: solid accent fill in light, teal tint + inset bar in dark.
+const NAV_ACTIVE_CLASS = 'bg-side-navActiveBg text-side-navActiveText font-semibold shadow-[inset_2px_0_0_0_var(--nav-active-border)]';
+const NAV_IDLE_CLASS = 'font-medium text-side-navText hover:bg-side-navHoverBg hover:text-side-navHoverText';
+
+function renderNav() {
+  nav.innerHTML = '';
+
+  // --- Recent section ---
+  const validRecent = recent.map(r => ({ r, hit: lookup(r.m, r.s) })).filter(x => x.hit);
+  if (validRecent.length) {
+    const head = document.createElement('p');
+    head.className = 'text-micro text-disabled px-3 pt-1 pb-1.5';
+    head.textContent = 'Recent';
+    nav.appendChild(head);
+
+    validRecent.forEach(({ r, hit }) => {
+      const isHere = state.moduleKey === r.m && state.subIndex === r.s;
+      const b = document.createElement('button');
+      b.className = `w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-label text-left ${isHere ? 'text-side-accent font-semibold' : 'text-side-navSubText hover:bg-side-navHoverBg hover:text-side-navHoverText'}`;
+      b.innerHTML = `${iconSvg(hit.mod.icon, 'w-3.5 h-3.5 shrink-0 opacity-70')}<span class="truncate">${escapeHtml(hit.sm.name)}</span>`;
+      b.addEventListener('click', () => goTo(r.m, r.s));
+      nav.appendChild(b);
+    });
+
+    const rule = document.createElement('div');
+    rule.className = 'h-px bg-side-line mx-3 my-2.5';
+    nav.appendChild(rule);
+  }
+
+  // --- Modules ---
+  modules.forEach(mod => {
+    const isModuleOpen = state.moduleKey === mod.key;
+
+    if (mod.submodules.length === 1) {
+      const flatBtn = document.createElement('button');
+      flatBtn.className = `w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-label ${isModuleOpen ? NAV_ACTIVE_CLASS : NAV_IDLE_CLASS}`;
+      flatBtn.innerHTML = `${iconSvg(mod.icon, 'w-4 h-4 shrink-0')}<span class="flex-1 text-left">${escapeHtml(mod.name)}</span>`;
+      flatBtn.addEventListener('click', () => goTo(mod.key, 0));
+      nav.appendChild(flatBtn);
+      return;
+    }
+
+    const wrap = document.createElement('div');
+
+    const btn = document.createElement('button');
+    btn.className = `w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-label ${isModuleOpen ? NAV_ACTIVE_CLASS : NAV_IDLE_CLASS}`;
+    btn.setAttribute('aria-expanded', String(isModuleOpen));
+    btn.innerHTML = `
+      ${iconSvg(mod.icon, 'w-4 h-4 shrink-0')}
+      <span class="flex-1 text-left">${escapeHtml(mod.name)}</span>
+      <svg class="chev ${isModuleOpen ? 'open' : ''} w-3 h-3 shrink-0 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    `;
+    btn.addEventListener('click', () => {
+      if (state.moduleKey === mod.key) { state.moduleKey = null; renderNav(); renderContent(); }
+      else { goTo(mod.key, 0); }
+    });
+
+    const sub = document.createElement('div');
+    sub.className = `submenu ${isModuleOpen ? 'open' : ''}`;
+    const subInner = document.createElement('div');
+    const list = document.createElement('div');
+    list.className = 'pt-0.5 pb-1 pl-[22px] flex flex-col gap-px';
+
+    mod.submodules.forEach((sm, i) => {
+      const active = isModuleOpen && state.subIndex === i;
+      const item = document.createElement('button');
+      item.className = `flex items-center gap-2 text-left px-2.5 py-1.5 text-[12.5px] rounded ${active ? 'bg-side-navSubActiveBg text-side-navSubActiveText font-semibold shadow-[inset_2px_0_0_0_var(--nav-sub-active-bar)]' : 'text-side-navSubText hover:bg-side-navHoverBg hover:text-side-navHoverText'}`;
+      item.setAttribute('aria-current', active ? 'page' : 'false');
+      item.innerHTML = `<span class="w-1 h-1 rounded-full shrink-0 ${active ? 'bg-side-navSubActiveDot' : 'bg-side-navDot'}"></span><span>${escapeHtml(sm.name)}</span>`;
+      item.addEventListener('click', (e) => { e.stopPropagation(); goTo(mod.key, i); });
+      list.appendChild(item);
+    });
+
+    subInner.appendChild(list);
+    sub.appendChild(subInner);
+    wrap.appendChild(btn);
+    wrap.appendChild(sub);
+    nav.appendChild(wrap);
+  });
+}
+
+// ---------- Page subtitles ----------
+const subtitles = {
+  dashboard: 'Live operations across merchandising, production and shipping',
+  'Buyer & Inquiry': 'Manage buyer information and their inquiries',
+  'Style Management': 'Create styles from buyer inquiries and manage the style list',
+  'BOM & Consumption': 'Prepare bill of material and costing for each style',
+  'Purchase Order (PO)': 'Complete purchase order information and details',
+  'Proforma Invoice (PI)': 'Complete proforma invoice information and details',
+};
+
+function renderContent() {
+  const mod = modules.find(m => m.key === state.moduleKey);
+  const crumb = document.getElementById('crumb');
+  const title = document.getElementById('page-title');
+  const subtitle = document.getElementById('page-subtitle');
+  const pageHeader = document.getElementById('page-header');
+  const tabsEl = document.getElementById('tabs');
+  const pageContent = document.getElementById('page-content');
+
+  if (!mod) {
+    crumb.innerHTML = `<span class="text-primary font-semibold">Dashboard</span>`;
+    pageHeader.classList.add('hidden');
+    tabsEl.classList.add('hidden');
+    tabsEl.innerHTML = '';
+    renderDashboardPage(pageContent);
+    return;
+  }
+
+  const sm = mod.submodules[state.subIndex];
+  const single = mod.submodules.length === 1;
+
+  if (single) {
+    crumb.innerHTML = `<span class="text-primary font-semibold">${escapeHtml(mod.name)}</span>`;
+    title.textContent = mod.name;
+  } else {
+    crumb.innerHTML = `<span class="text-muted">${escapeHtml(mod.name)}</span><span class="text-disabled mx-1.5">/</span><span class="text-primary font-semibold">${escapeHtml(sm.name)}</span>`;
+    title.textContent = sm.name;
+  }
+  subtitle.textContent = subtitles[sm.name] || subtitles[mod.key] || `${mod.name} module`;
+
+  const isDash = mod.key === 'dashboard';
+  pageHeader.classList.toggle('hidden', isDash);
+  tabsEl.classList.add('hidden');
+  tabsEl.innerHTML = '';
+  document.getElementById('page-actions').innerHTML = '';
+
+  if (isDash) renderDashboardPage(pageContent);
+  else if (mod.key === 'merchandising' && sm.name === 'Buyer & Inquiry') renderBuyerInquiry(pageContent);
+  else if (mod.key === 'merchandising' && sm.name === 'Style Management') renderStyleManagement(tabsEl, pageContent);
+  else if (mod.key === 'merchandising' && sm.name === 'BOM & Consumption') renderBOM(pageContent);
+  else if (mod.key === 'merchandising' && sm.name === 'Purchase Order (PO)') renderPOPI(pageContent, 'po');
+  else if (mod.key === 'merchandising' && sm.name === 'Proforma Invoice (PI)') renderPOPI(pageContent, 'pi');
+  else renderNotBuilt(pageContent, mod, sm, single);
+}
+
+// ---------- Honest empty state (was: "Select a module to get started") ----------
+function renderNotBuilt(container, mod, sm, single) {
+  const label = single ? mod.name : `${mod.name} › ${sm.name}`;
+  container.innerHTML = `
+    <div class="bg-cardBg border border-side-panel rounded-lg min-h-[56vh] flex items-center justify-center card-shadow px-6">
+      <div class="text-center max-w-sm">
+        <div class="w-11 h-11 rounded-md bg-side-active flex items-center justify-center mx-auto mb-3.5 text-side-accent">
+          ${iconSvg(mod.icon, 'w-5 h-5')}
+        </div>
+        <p class="text-section-title text-primary mb-1">${escapeHtml(sm.name)}</p>
+        <p class="text-body text-muted mb-4">This screen has not been built yet. It will live under <span class="text-secondary font-medium">${escapeHtml(label)}</span>.</p>
+        <button class="h-8 px-3.5 rounded border border-side-border text-label font-semibold text-secondary hover:bg-side-hover" onclick="goTo('dashboard', 0)">Back to Dashboard</button>
+      </div>
+    </div>
+  `;
+}
+
+// ---------- Primitives ----------
+function sectionCard(title, action, innerHtml) {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+      <div class="flex items-center justify-between gap-3 mb-3.5">
+        <h3 class="text-section-title text-primary">${escapeHtml(title)}</h3>
+        ${action || ''}
+      </div>
+      ${innerHtml}
+    </section>
+  `;
+}
+
+/* Sparkline: a trend arrow tells you the sign, a sparkline tells you the shape. */
+function sparkline(points, colorVar) {
+  const w = 68, h = 24, pad = 2;
+  const max = Math.max(...points), min = Math.min(...points);
+  const range = (max - min) || 1;
+  const step = w / (points.length - 1);
+  const d = points.map((p, i) => {
+    const x = (i * step).toFixed(1);
+    const y = (h - pad - ((p - min) / range) * (h - pad * 2)).toFixed(1);
+    return `${i === 0 ? 'M' : 'L'}${x},${y}`;
+  }).join(' ');
+  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" fill="none" preserveAspectRatio="none" aria-hidden="true" class="shrink-0">
+    <path d="${d}" stroke="var(${colorVar})" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+  </svg>`;
+}
+
+function statCard(s) {
+  const up = s.delta.startsWith('+');
+  return `
+    <div class="bg-cardBg border border-side-panel rounded-lg card-shadow px-4 py-3.5">
+      <div class="flex items-start justify-between gap-3 mb-2.5">
+        <p class="text-micro text-muted">${escapeHtml(s.label)}</p>
+        ${sparkline(s.series, s.color)}
+      </div>
+      <p class="text-display text-primary">${escapeHtml(s.value)}</p>
+      <div class="flex items-baseline gap-1.5 mt-1.5">
+        <span class="text-helper font-semibold ${up ? 'text-success' : 'text-danger'} tabular">${escapeHtml(s.delta)}</span>
+        <span class="text-helper text-muted truncate">${escapeHtml(s.note)}</span>
+      </div>
+    </div>
+  `;
+}
+
+/* Metrics reflect the actual garments business rhythm, not generic template tiles. */
+const dashboardStats = [
+  { label: 'Order Book', value: '$2.41M', delta: '+8.2%', note: 'vs last month', color: '--chart-1',
+    series: [18, 22, 20, 27, 25, 31, 29, 36, 34, 41] },
+  { label: 'On-Time Delivery', value: '92.4%', delta: '+1.8pt', note: '30-day rolling', color: '--chart-2',
+    series: [86, 88, 87, 90, 89, 91, 90, 92, 91, 92.4] },
+  { label: 'WIP Units', value: '148,200', delta: '+4.1%', note: 'across 8 lines', color: '--chart-3',
+    series: [120, 128, 124, 133, 138, 135, 142, 140, 145, 148] },
+  { label: 'Pending Receivables', value: '$128,400', delta: '-6.2%', note: '3 invoices overdue', color: '--chart-4',
+    series: [162, 158, 149, 152, 144, 140, 137, 133, 130, 128] },
+];
+
+const dashboardNotifications = [
+  { title: 'New Purchase Order received', desc: 'PO-2031 from Everest Apparels Ltd. is awaiting confirmation.', time: '10 min ago', unread: true },
+  { title: 'Sample approval pending', desc: 'Style STY-118 sample is awaiting buyer approval.', time: '1 hr ago', unread: true },
+  { title: 'LC document uploaded', desc: 'LC acceptance document added for Sales Contract SC-4471.', time: '3 hrs ago', unread: false },
+  { title: 'Shipment delayed', desc: 'Shipment SHP-2209 delivery date pushed back by 2 days.', time: 'Yesterday', unread: false },
+];
+
+const dashboardTasks = [
+  { title: 'Approve Style Management request', due: 'Due today', priority: 'High' },
+  { title: 'Review Purchase Order PO-2031', due: 'Due today', priority: 'High' },
+  { title: 'Confirm Goods Receipt for GRN-118', due: 'Due tomorrow', priority: 'Medium' },
+  { title: 'Update Production Schedule — Line 3', due: 'Due in 2 days', priority: 'Low' },
+];
+
+function priorityBadge(priority) {
+  const styles = {
+    High: 'bg-dangerSoft text-danger',
+    Medium: 'bg-warningSoft text-warning',
+    Low: 'bg-successSoft text-success',
+  };
+  return `<span class="text-micro px-1.5 py-0.5 rounded-xs shrink-0 ${styles[priority] || styles.Low}">${priority}</span>`;
+}
+
+function renderDashboardPage(container) {
+  const stats = `<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">${dashboardStats.map(statCard).join('')}</div>`;
+
+  const notificationsList = `
+    <div class="divide-y divide-side-line -mx-5">
+      ${dashboardNotifications.map(n => `
+        <div class="flex items-start gap-2.5 px-5 py-2.5">
+          <span class="w-1.5 h-1.5 rounded-full mt-[7px] shrink-0 ${n.unread ? 'bg-side-accent' : 'bg-transparent'}"></span>
+          <div class="flex-1 min-w-0">
+            <p class="text-body-medium text-primary">${escapeHtml(n.title)}</p>
+            <p class="text-helper text-muted mt-0.5">${escapeHtml(n.desc)}</p>
+          </div>
+          <span class="text-helper text-disabled whitespace-nowrap shrink-0">${escapeHtml(n.time)}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  const tasksList = `
+    <div class="divide-y divide-side-line -mx-5">
+      ${dashboardTasks.map(t => `
+        <div class="flex items-center gap-2.5 px-5 py-2.5">
+          <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-disabled shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <div class="flex-1 min-w-0">
+            <p class="text-body-medium text-primary truncate">${escapeHtml(t.title)}</p>
+            <p class="text-helper text-muted mt-0.5">${escapeHtml(t.due)}</p>
+          </div>
+          ${priorityBadge(t.priority)}
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  const linkBtn = (label) => `<button class="text-helper font-semibold text-side-accent hover:text-side-accentHover">${label}</button>`;
+
+  container.innerHTML = `
+    <div class="space-y-5 pb-8">
+      <div class="flex items-end justify-between gap-4">
+        <div>
+          <h1 class="text-page-title text-primary mb-0.5">Dashboard</h1>
+          <p class="text-body text-muted">${subtitles.dashboard}</p>
+        </div>
+        <p class="text-helper text-disabled shrink-0 hidden sm:block tabular">Updated just now</p>
+      </div>
+      ${stats}
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        ${sectionCard('Notifications', linkBtn('Mark all read'), notificationsList)}
+        ${sectionCard('Pending Tasks', linkBtn('View all'), tasksList)}
+      </div>
+    </div>
+  `;
+}
+
+// ---------- Buyer & Inquiry ----------
+/* UI-only prototype. Saving writes to the in-memory arrays below and re-renders;
+   there is no backend, so a page refresh restores the seed data. */
+
+const BI_STATUS_VAR = {
+  New: '--success', Old: '--warning', Reference: '--info',
+  Good: '--success', Moderate: '--warning', Bad: '--danger',
+};
+
+const BI_QUALITY = ['New', 'Old', 'Reference', 'Good', 'Moderate', 'Bad'];
+
+const BI_SEASONS = ['Spring/Summer 2027', 'Autumn/Winter 2026', 'Autumn/Winter 2027', 'Resort 2027'];
+const BI_COUNTRIES = ['UK', 'USA', 'Canada', 'Germany', 'France', 'Netherlands', 'Japan', 'Australia'];
+
+/* Buyer master. Picking one fills the beneficiary card, the auto fields in the
+   inquiry card and the previous-order card. `prev: null` = first-time buyer. */
+const biBuyers = [
+  { id:'BUY-001', name:'ABC Fashion Ltd.', beneficiary:'ABC Fashion Ltd.', contact:'John Smith',
+    address:'12 Kingsway, London WC2B 6UF, United Kingdom', bank:'UK - Barclays Bank Ltd.',
+    season:'Spring/Summer 2027', country:'UK', quality:'New', prev:null },
+  { id:'BUY-002', name:'XYZ Garments Ltd.', beneficiary:'XYZ Garments Inc.', contact:'Maria Lopez',
+    address:'480 Fashion Ave, New York, NY 10018, USA', bank:'USA - Citibank N.A.',
+    season:'Spring/Summer 2027', country:'USA', quality:'Reference',
+    prev:{ style:'XZ-4390', qty:'28,000', price:'$4.15', bank:'USA - Citibank N.A.', lc:'18-Feb-2026', port:'Chittagong' } },
+  { id:'BUY-003', name:'Global Apparel Inc.', beneficiary:'Global Apparel Holdings', contact:'Daniel Reed',
+    address:'220 Bay Street, Toronto ON M5J 2W4, Canada', bank:'Canada - RBC Royal Bank',
+    season:'Autumn/Winter 2026', country:'Canada', quality:'Good',
+    prev:{ style:'GA-4372', qty:'24,500', price:'$5.60', bank:'Canada - RBC Royal Bank', lc:'02-Jan-2026', port:'Mongla' } },
+  { id:'BUY-004', name:'Fashion Hub Ltd.', beneficiary:'Fashion Hub Ltd.', contact:'Olivia Bennett',
+    address:'7 Deansgate, Manchester M3 2FW, United Kingdom', bank:'UK - HSBC Bank plc',
+    season:'Spring/Summer 2027', country:'UK', quality:'Old',
+    prev:{ style:'FH-4310', qty:'19,000', price:'$3.90', bank:'UK - HSBC Bank plc', lc:'25-Nov-2025', port:'Chittagong' } },
+  { id:'BUY-005', name:'Trend Tex Ltd.', beneficiary:'Trend Tex GmbH', contact:'Lukas Weber',
+    address:'Konigsallee 30, 40212 Dusseldorf, Germany', bank:'Germany - Deutsche Bank AG',
+    season:'Autumn/Winter 2026', country:'Germany', quality:'Moderate',
+    prev:{ style:'TT-4288', qty:'14,000', price:'$6.25', bank:'Germany - Deutsche Bank AG', lc:'09-Oct-2025', port:'Chittagong' } },
+  { id:'BUY-006', name:'Smart Wear Ltd.', beneficiary:'Smart Wear Ltd.', contact:'Ethan Clarke',
+    address:'19 Queen Street, Glasgow G1 3DX, United Kingdom', bank:'UK - NatWest Bank plc',
+    season:'Spring/Summer 2027', country:'UK', quality:'Bad',
+    prev:{ style:'SW-4201', qty:'9,500', price:'$3.45', bank:'UK - NatWest Bank plc', lc:'14-Aug-2025', port:'Payra' } },
+];
+
+const biInquiries = [
+  { no:'INQ-2026-00235', date:'03-Sep-2026', buyer:'ABC Fashion Ltd.',    contact:'John Smith',     style:'AB-4587', qty:'50,000', season:'Spring/Summer 2027', country:'UK',      status:'New' },
+  { no:'INQ-2026-00234', date:'01-Sep-2026', buyer:'XYZ Garments Ltd.',   contact:'Maria Lopez',    style:'AB-4586', qty:'30,000', season:'Spring/Summer 2027', country:'USA',     status:'Reference' },
+  { no:'INQ-2026-00233', date:'30-Aug-2026', buyer:'Global Apparel Inc.', contact:'Daniel Reed',    style:'AB-4585', qty:'25,000', season:'Autumn/Winter 2026', country:'Canada',  status:'Good' },
+  { no:'INQ-2026-00232', date:'28-Aug-2026', buyer:'Fashion Hub Ltd.',    contact:'Olivia Bennett', style:'AB-4584', qty:'20,000', season:'Spring/Summer 2027', country:'UK',      status:'Old' },
+  { no:'INQ-2026-00231', date:'25-Aug-2026', buyer:'Trend Tex Ltd.',      contact:'Lukas Weber',    style:'AB-4583', qty:'15,000', season:'Autumn/Winter 2026', country:'Germany', status:'Moderate' },
+  { no:'INQ-2026-00230', date:'20-Aug-2026', buyer:'Smart Wear Ltd.',     contact:'Ethan Clarke',   style:'AB-4582', qty:'10,000', season:'Spring/Summer 2027', country:'UK',      status:'Bad' },
+];
+
+/* ---------- form state ---------- */
+const BI_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function biToday() {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2, '0')}-${BI_MONTHS[d.getMonth()]}-${d.getFullYear()}`;
+}
+
+/* <input type="date"> only speaks YYYY-MM-DD, so the form holds ISO and the
+   table keeps the DD-Mon-YYYY the rest of the app already uses. */
+function biTodayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function biToISO(display) {
+  const m = /^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/.exec(String(display || '').trim());
+  if (!m) return '';
+  const i = BI_MONTHS.findIndex(x => x.toLowerCase() === m[2].toLowerCase());
+  return i < 0 ? '' : `${m[3]}-${String(i + 1).padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+}
+
+function biFromISO(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '').trim());
+  return m ? `${m[3]}-${BI_MONTHS[Number(m[2]) - 1]}-${m[1]}` : '';
+}
+
+/* Auto number: highest existing serial + 1, stamped with the current year. */
+function biNextNo() {
+  const max = biInquiries.reduce((m, i) => Math.max(m, parseInt(i.no.split('-').pop(), 10) || 0), 0);
+  return `INQ-${new Date().getFullYear()}-${String(max + 1).padStart(5, '0')}`;
+}
+
+function biFmtQty(v) {
+  const digits = String(v == null ? '' : v).replace(/\D/g, '');
+  return digits ? Number(digits).toLocaleString('en-US') : '';
+}
+
+/* Card A stands on its own — nothing in the inquiry writes to it, and it
+   survives New, row clicks and saves. Typed by hand, start to finish. */
+const biBuyerForm = { beneficiary: '', name: '', address: '', bank: '' };
+
+const biForm = {
+  no: '', date: '',
+  buyerId: '', buyerText: '',
+  contact: '', season: '', country: '',
+  style: '', qty: '',
+  msg: '', msgTone: 'muted',
+};
+
+const biCombo = { open: false, cursor: 0, items: [] };
+let biOutsideClick = null;   // one document listener, re-bound on each render
+
+function biBuyerById(id) { return biBuyers.find(b => b.id === id) || null; }
+
+function biResetForm() {
+  Object.assign(biForm, {
+    no: biNextNo(), date: biTodayISO(),
+    buyerId: '', buyerText: '',
+    contact: '', season: '', country: '', style: '', qty: '', msg: '', msgTone: 'muted',
+  });
+  state.inqSel = null;
+}
+
+/* Buyer chosen -> Contact Person, Season, Country and the previous-order card.
+   Nothing else, and all three stay editable afterwards. */
+function biApplyBuyer(id) {
+  const b = biBuyerById(id);
+  if (!b) return;
+  Object.assign(biForm, {
+    buyerId: b.id, buyerText: b.name,
+    contact: b.contact, season: b.season, country: b.country,
+  });
+}
+
+/* Row click copies that inquiry's details into the form as a starting point.
+   The number stays newly generated, so saving never overwrites the row. */
+function biLoadInquiry(no) {
+  const inq = biInquiries.find(i => i.no === no);
+  if (!inq) return;
+  const b = biBuyers.find(x => x.name === inq.buyer);
+  biResetForm();
+  state.inqSel = inq.no;
+  biForm.date = biToISO(inq.date);
+  biForm.buyerText = inq.buyer;
+  if (b) biApplyBuyer(b.id);
+  /* The row may have been edited away from the buyer default — it wins. */
+  biForm.contact = inq.contact;
+  biForm.season = inq.season;
+  biForm.country = inq.country;
+  biForm.style = inq.style;
+  biForm.qty = inq.qty;
+}
+
+/* ---------- shared bits ---------- */
+const BI_INPUT = 'w-full h-9 px-3 rounded border border-side-border bg-canvas text-[13px] font-medium text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent';
+const BI_AUTO  = 'w-full h-9 px-3 rounded border border-side-line bg-side-hover text-[13px] font-medium text-secondary cursor-default focus:outline-none';
+const BI_BTN   = 'h-9 px-3.5 rounded border border-side-border text-label font-semibold text-secondary hover:bg-side-hover inline-flex items-center gap-1.5';
+const BI_BTN_PRIMARY = 'h-9 px-3.5 rounded bg-side-accent text-white text-label font-semibold hover:bg-side-accentHover inline-flex items-center gap-1.5';
+const BI_SAVE_ICON = '<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>';
+
+/* A filled pill says the same thing twice (colour + word). A dot is quieter. */
+function biStatus(text, strong) {
+  return `<span class="inline-flex items-center gap-1.5 whitespace-nowrap">
+    <span class="w-[7px] h-[7px] rounded-full shrink-0" style="background:var(${BI_STATUS_VAR[text] || '--neutral'})"></span>
+    <span class="text-[13px] ${strong ? 'font-medium text-primary' : 'text-secondary'}">${escapeHtml(text)}</span>
+  </span>`;
+}
+
+/* Label recedes, value leads. No standalone colon column — alignment does that job. */
+function biRow(label, value) {
+  const empty = value === null || value === undefined || value === '';
+  return `
+    <div class="flex items-baseline gap-3 py-[5px]">
+      <span class="text-[13px] text-muted w-[106px] shrink-0">${escapeHtml(label)}</span>
+      <span class="text-[13px] ${empty ? 'text-disabled' : 'font-medium text-primary'} min-w-0">${empty ? '&mdash;' : escapeHtml(String(value))}</span>
+    </div>`;
+}
+
+function biCard(icon, title, body, opts) {
+  const o = opts || {};
+  return `
+    <section class="${o.span || ''} bg-cardBg border border-side-panel rounded-lg card-shadow p-4 flex flex-col">
+      <div class="flex items-center gap-2 pb-2.5 mb-2.5 border-b border-side-line">
+        <span class="text-side-accent shrink-0">${iconSvg(icon, 'w-4 h-4')}</span>
+        <h3 class="text-[13px] font-semibold text-primary">${escapeHtml(title)}</h3>
+        ${o.right ? `<div class="ml-auto shrink-0">${o.right}</div>` : ''}
+      </div>
+      <div class="flex-1">${body}</div>
+    </section>`;
+}
+
+function biLabel(text, opts) {
+  const o = opts || {};
+  return `<span class="flex items-center gap-1.5 mb-1">
+    <span class="text-[12px] font-medium text-muted">${escapeHtml(text)}</span>
+    ${o.req ? '<span class="text-[12px] font-medium text-danger">*</span>' : ''}
+  </span>`;
+}
+
+function biField(label, inner, opts) {
+  return `<label class="block min-w-0">${biLabel(label, opts)}${inner}</label>`;
+}
+
+function biTextInput(key, placeholder, opts) {
+  const o = opts || {};
+  return `<input id="biF_${key}" data-bif="${key}" type="text" autocomplete="off"
+    value="${escapeHtml(biForm[key] || '')}" placeholder="${escapeHtml(placeholder)}"
+    class="${BI_INPUT} ${o.extra || ''}" />`;
+}
+
+/* Same control, bound to the standalone buyer card instead of the inquiry. */
+function biBuyerFormInput(key, placeholder) {
+  return `<input id="biB_${key}" data-bib="${key}" type="text" autocomplete="off"
+    value="${escapeHtml(biBuyerForm[key] || '')}" placeholder="${escapeHtml(placeholder)}"
+    class="${BI_INPUT}" />`;
+}
+
+function biAutoInput(id, value, placeholder) {
+  return `<input id="${id}" type="text" readonly tabindex="-1" value="${escapeHtml(value || '')}"
+    placeholder="${escapeHtml(placeholder)}" class="${BI_AUTO}" />`;
+}
+
+/* ---------- card A: buyer / beneficiary ---------- */
+function biBuyerCard() {
+  const body = `
+    <div class="space-y-2.5">
+      ${biField('First Beneficiary', biBuyerFormInput('beneficiary', 'Beneficiary name'), { req: true })}
+      ${biField('Name', biBuyerFormInput('name', 'Contact name'))}
+      ${biField('Address', biBuyerFormInput('address', 'Street, city, country'))}
+      ${biField('Bank Details', biBuyerFormInput('bank', 'Country - bank name'))}
+    </div>`;
+  return biCard('user', 'Buyer', body, { span: 'lg:col-span-4 xl:col-span-3' });
+}
+
+/* ---------- card B: buyer inquiry ---------- */
+function biBuyerCombo() {
+  const chev = '<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+  const plus = '<svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+  /* The bare + told nobody what it did. Labelling it in the label row says so
+     outright and gives the whole cell width back to the search box. */
+  return `
+    <div class="min-w-0">
+      <span class="flex items-center gap-1.5 mb-1">
+        <span class="text-[12px] font-medium text-muted">Buyer</span>
+        <span class="text-[12px] font-medium text-danger">*</span>
+        <button type="button" id="biBuyerAdd" title="Create a buyer that is not in the list"
+          class="ml-auto inline-flex items-center gap-1 text-[12px] font-semibold text-side-accent hover:text-side-accentHover">${plus}Add Buyer</button>
+      </span>
+      <div class="relative">
+        <input id="biBuyerInput" type="text" role="combobox" aria-expanded="false" aria-controls="biBuyerList"
+          aria-autocomplete="list" autocomplete="off" value="${escapeHtml(biForm.buyerText)}"
+          placeholder="Search buyer..." class="${BI_INPUT} pr-8" />
+        <button type="button" id="biBuyerToggle" aria-label="Show all buyers"
+          class="absolute right-0 top-0 h-9 w-8 flex items-center justify-center text-muted hover:text-primary">${chev}</button>
+        <ul id="biBuyerList" role="listbox" aria-label="Buyers"
+          class="hidden absolute left-0 right-0 top-[38px] z-30 max-h-56 overflow-y-auto py-1 rounded-md border border-side-panel bg-cardBg overlay-shadow"></ul>
+      </div>
+    </div>`;
+}
+
+function biInquiryCard() {
+  /* Saving lives below the card grid now, so the card ends at its last field —
+     the status line sits above the grid instead of in a bottom strip. */
+  const body = `
+    <p id="biFormMsg" class="${biForm.msg ? '' : 'hidden '}text-helper text-${biForm.msgTone} mb-2.5">${escapeHtml(biForm.msg)}</p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5">
+      ${biField('Inquiry No.', biAutoInput('biF_no', biForm.no, ''))}
+      ${biField('Inquiry Date', `<input id="biF_date" data-bif="date" type="date"
+        value="${escapeHtml(biForm.date)}" class="${BI_INPUT} tabular" />`)}
+      ${biBuyerCombo()}
+      ${biField('Contact Person', biTextInput('contact', 'Contact name'))}
+      ${biField('Season', biTextInput('season', 'e.g. Spring/Summer 2027'))}
+      ${biField('Country', biTextInput('country', 'e.g. UK'))}
+      ${biField('Style', biTextInput('style', 'e.g. AB-4588'))}
+      ${biField('Style Quantity', `
+        <div class="relative">
+          <input id="biF_qty" data-bif="qty" type="text" inputmode="numeric" autocomplete="off"
+            value="${escapeHtml(biForm.qty)}" placeholder="0" class="${BI_INPUT} pr-11 tabular" />
+          <span class="absolute right-3 top-0 h-9 flex items-center text-helper text-disabled pointer-events-none">PCS</span>
+        </div>`, { req: true })}
+    </div>`;
+
+  return biCard('doc', 'Buyer Inquiry', body, { span: 'lg:col-span-8 xl:col-span-6' });
+}
+
+/* ---------- card C: previous order ---------- */
+function biPreviousCard() {
+  const b = biBuyerById(biForm.buyerId);
+  let body;
+  /* Cards share a height, so an empty state centres instead of clinging to the top. */
+  const empty = (text) => `<div class="h-full flex items-center"><p class="text-body text-disabled">${text}</p></div>`;
+  if (!b) {
+    body = empty('Select a buyer to see their last order.');
+  } else if (!b.prev) {
+    body = empty(`No previous order &mdash; ${escapeHtml(b.name)} is a first-time buyer.`);
+  } else {
+    const p = b.prev;
+    body = [
+      biRow('Style', p.style),
+      biRow('Quantity', p.qty + ' PCS'),
+      biRow('Price', p.price),
+      biRow('Bank Details', p.bank),
+      biRow('LC Date', p.lc),
+      biRow('Port Of Loading', p.port),
+    ].join('');
+  }
+  return biCard('clipboard', 'Previous Order', `<div id="biPrevBody" class="h-full">${body}</div>`, {
+    span: 'lg:col-span-12 xl:col-span-3',
+    right: b ? `<span class="text-helper text-muted truncate max-w-[160px]">${escapeHtml(b.name)}</span>` : '',
+  });
+}
+
+function biRenderCards() {
+  const el = document.getElementById('biCards');
+  if (!el) return;
+  biCombo.open = false;
+  el.innerHTML = biBuyerCard() + biInquiryCard() + biPreviousCard();
+}
+
+/* ---------- buyer combobox ---------- */
+function biMatchBuyers(q) {
+  const s = (q || '').trim().toLowerCase();
+  if (!s) return biBuyers.slice();
+  return biBuyers.filter(b => (b.name + ' ' + b.contact + ' ' + b.country + ' ' + b.season).toLowerCase().includes(s));
+}
+
+function biPaintList() {
+  const list = document.getElementById('biBuyerList');
+  if (!list) return;
+  const items = biCombo.items;
+  list.innerHTML = items.length ? items.map((b, i) => `
+    <li role="option" data-id="${b.id}" aria-selected="${i === biCombo.cursor}"
+      class="px-3 py-2 cursor-pointer flex items-center gap-2 ${i === biCombo.cursor ? 'bg-side-active' : ''}">
+      <span class="w-[7px] h-[7px] rounded-full shrink-0" style="background:var(${BI_STATUS_VAR[b.quality] || '--neutral'})"></span>
+      <span class="text-[13px] font-medium text-primary truncate">${escapeHtml(b.name)}</span>
+      <span class="text-helper text-muted ml-auto shrink-0">${escapeHtml(b.country)}</span>
+    </li>`).join('') : `
+    <li class="px-3 py-2.5">
+      <p class="text-helper text-muted">No buyer matches.</p>
+      <button type="button" id="biAddFromList" class="text-helper font-semibold text-side-accent hover:text-side-accentHover mt-1">Add as a new buyer</button>
+    </li>`;
+}
+
+function biOpenList(q) {
+  const list = document.getElementById('biBuyerList');
+  const input = document.getElementById('biBuyerInput');
+  if (!list || !input) return;
+  biCombo.items = biMatchBuyers(q);
+  biCombo.cursor = 0;
+  biCombo.open = true;
+  list.classList.remove('hidden');
+  input.setAttribute('aria-expanded', 'true');
+  biPaintList();
+}
+
+function biCloseList() {
+  const list = document.getElementById('biBuyerList');
+  const input = document.getElementById('biBuyerInput');
+  biCombo.open = false;
+  if (list) list.classList.add('hidden');
+  if (input) input.setAttribute('aria-expanded', 'false');
+}
+
+/* Targeted repaint — a full innerHTML rebuild here would steal focus mid-typing. */
+function biPaintBuyer() {
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  set('biBuyerInput', biForm.buyerText);
+  set('biF_contact', biForm.contact);
+  set('biF_season', biForm.season);
+  set('biF_country', biForm.country);
+
+  const prev = document.getElementById('biPrevBody');
+  if (prev) prev.parentElement.parentElement.outerHTML = biPreviousCard();
+}
+
+function biSetMsg(text, tone) {
+  biForm.msg = text || '';
+  biForm.msgTone = tone || 'muted';
+  const el = document.getElementById('biFormMsg');
+  if (el) {
+    el.textContent = biForm.msg;
+    el.className = `${biForm.msg ? '' : 'hidden '}text-helper text-${biForm.msgTone} mb-2.5`;
+  }
+}
+
+function biSelectBuyer(id) {
+  biApplyBuyer(id);
+  biCloseList();
+  biPaintBuyer();
+  biSetMsg('');   /* the fields filling in is the feedback — also clears a stale error */
+}
+
+/* ---------- add new buyer ---------- */
+function biOpenBuyerModal(prefillName) {
+  if (document.getElementById('biModal')) return;
+  const close = '<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  const opts = (arr, sel) => arr.map(v => `<option value="${escapeHtml(v)}" ${v === sel ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+
+  const wrap = document.createElement('div');
+  wrap.id = 'biModal';
+  wrap.className = 'fixed inset-0 z-50';
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
+  wrap.setAttribute('aria-label', 'Add new buyer');
+  wrap.innerHTML = `
+    <div data-close class="absolute inset-0" style="background: var(--overlay)"></div>
+    <div class="relative mx-auto mt-[8vh] w-full max-w-[580px] px-4">
+      <form id="biBuyerForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
+        <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
+          <span class="text-side-accent shrink-0">${iconSvg('user', 'w-4 h-4')}</span>
+          <h3 class="text-[13px] font-semibold text-primary">Add New Buyer</h3>
+          <button type="button" data-close aria-label="Close"
+            class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
+        </div>
+
+        <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5 max-h-[62vh] overflow-y-auto">
+          <label class="block min-w-0">${biLabel('Buyer Name', { req: true })}
+            <input name="name" type="text" autocomplete="off" value="${escapeHtml(prefillName || '')}" placeholder="Company name" class="${BI_INPUT}" /></label>
+          <label class="block min-w-0">${biLabel('First Beneficiary')}
+            <input name="beneficiary" type="text" autocomplete="off" placeholder="Beneficiary name" class="${BI_INPUT}" /></label>
+          <label class="block min-w-0">${biLabel('Contact Person', { req: true })}
+            <input name="contact" type="text" autocomplete="off" placeholder="Contact name" class="${BI_INPUT}" /></label>
+          <label class="block min-w-0">${biLabel('Buyer Quality')}
+            <select name="quality" class="${BI_INPUT}">${opts(BI_QUALITY, 'New')}</select></label>
+          <label class="block min-w-0">${biLabel('Season')}
+            <select name="season" class="${BI_INPUT}">${opts(BI_SEASONS, BI_SEASONS[0])}</select></label>
+          <label class="block min-w-0">${biLabel('Country')}
+            <select name="country" class="${BI_INPUT}">${opts(BI_COUNTRIES, BI_COUNTRIES[0])}</select></label>
+          <label class="block min-w-0 sm:col-span-2">${biLabel('Address')}
+            <input name="address" type="text" autocomplete="off" placeholder="Street, city, country" class="${BI_INPUT}" /></label>
+          <label class="block min-w-0 sm:col-span-2">${biLabel('Bank Details')}
+            <input name="bank" type="text" autocomplete="off" placeholder="Country - bank name" class="${BI_INPUT}" /></label>
+          <p id="biModalMsg" class="sm:col-span-2 text-helper text-danger min-h-[17px]"></p>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-side-line">
+          <button type="button" data-close class="${BI_BTN}">Cancel</button>
+          <button type="submit" class="${BI_BTN_PRIMARY}">Save Buyer</button>
+        </div>
+      </form>
+    </div>`;
+
+  document.body.appendChild(wrap);
+  const form = wrap.querySelector('#biBuyerForm');
+  const done = () => { document.removeEventListener('keydown', onKey); wrap.remove(); };
+  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); done(); } };
+
+  wrap.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) done(); });
+  document.addEventListener('keydown', onKey);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = (n) => (form.elements[n].value || '').trim();
+    const msg = form.querySelector('#biModalMsg');
+    if (!val('name') || !val('contact')) {
+      msg.textContent = 'Buyer Name and Contact Person are required.';
+      return;
+    }
+    const buyer = {
+      id: 'BUY-' + String(biBuyers.length + 1).padStart(3, '0'),
+      name: val('name'),
+      beneficiary: val('beneficiary') || val('name'),
+      contact: val('contact'),
+      address: val('address'),
+      bank: val('bank'),
+      season: val('season'),
+      country: val('country'),
+      quality: val('quality'),
+      prev: null,
+    };
+    biBuyers.push(buyer);
+    done();
+    biApplyBuyer(buyer.id);
+    biRenderCards();
+    biSetMsg(`${buyer.name} added and selected.`, 'success');
+  });
+
+  const first = form.querySelector('input[name="name"]');
+  if (first) first.focus();
+}
+
+/* ---------- save ---------- */
+function biSaveInquiry() {
+  const b = biBuyerById(biForm.buyerId);
+  if (!b) { biSetMsg('Pick a buyer before saving.', 'danger'); document.getElementById('biBuyerInput')?.focus(); return; }
+  const qty = biFmtQty(biForm.qty);
+  if (!qty) { biSetMsg('Style Quantity is required.', 'danger'); document.getElementById('biF_qty')?.focus(); return; }
+
+  const rec = {
+    no: biForm.no,
+    date: biFromISO(biForm.date) || biToday(),
+    buyer: b.name,
+    contact: biForm.contact.trim() || b.contact,
+    style: biForm.style.trim() || '—',
+    qty,
+    season: biForm.season.trim() || b.season,
+    country: biForm.country.trim() || b.country,
+    status: b.quality,
+  };
+
+  biInquiries.unshift(rec);
+
+  /* Cleared and ready for the next one — the saved row is highlighted below. */
+  biResetForm();
+  state.inqSel = rec.no;
+  state.inqQuery = '';
+  const search = document.getElementById('biSearch');
+  if (search) search.value = '';
+  biRenderCards();
+  refreshBiTable();
+  biSetMsg(`Inquiry ${rec.no} saved.`, 'success');
+}
+
+/* ---------- table ---------- */
+function biFiltered() {
+  const q = (state.inqQuery || '').trim().toLowerCase();
+  if (!q) return biInquiries;
+  return biInquiries.filter(i =>
+    (i.no + ' ' + i.buyer + ' ' + i.style + ' ' + i.season + ' ' + i.country + ' ' + i.status).toLowerCase().includes(q));
+}
+
+function refreshBiTable() {
+  const body = document.getElementById('biTableBody');
+  const count = document.getElementById('biCount');
+  if (!body) return;
+  const rows = biFiltered();
+
+  body.innerHTML = rows.length ? rows.map((i, n) => {
+    const on = i.no === state.inqSel;
+    return `
+      <tr data-no="${i.no}" tabindex="0"
+        class="group cursor-pointer border-b border-side-line last:border-b-0 ${on ? 'bg-side-active' : 'hover:bg-side-hover'}">
+        <td class="pl-4 pr-2 py-2 text-[13px] text-disabled tabular">${n + 1}</td>
+        <td class="px-3 py-2 text-[13px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(i.no)}</td>
+        <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap tabular">${escapeHtml(i.date)}</td>
+        <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap">${escapeHtml(i.buyer)}</td>
+        <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(i.style)}</td>
+        <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(i.qty)}<span class="text-disabled font-normal ml-1">PCS</span></td>
+        <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(i.season)}</td>
+        <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(i.country)}</td>
+        <td class="px-3 py-2">${biStatus(i.status)}</td>
+        <td class="pr-4 pl-3 py-2">
+          <div class="flex items-center gap-0.5 text-disabled group-hover:text-muted">
+            <button class="w-7 h-7 rounded flex items-center justify-center hover:text-side-accent hover:bg-side-hover" title="View" aria-label="View inquiry">
+              <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <button class="w-7 h-7 rounded flex items-center justify-center hover:text-primary hover:bg-side-hover" title="More" aria-label="More actions">
+              <svg viewBox="0 0 24 24" class="w-4 h-4" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>`;
+  }).join('') : `
+    <tr><td colspan="10" class="px-4 py-10 text-center">
+      <p class="text-body text-muted">No inquiries match &ldquo;${escapeHtml(state.inqQuery || '')}&rdquo;.</p>
+      <button id="biClear" class="text-helper font-semibold text-side-accent hover:text-side-accentHover mt-1.5">Clear search</button>
+    </td></tr>`;
+
+  if (count) {
+    count.textContent = rows.length
+      ? `Showing 1 to ${rows.length} of ${rows.length} entries`
+      : 'Showing 0 of 0 entries';
+  }
+}
+
+/* ---------- page ---------- */
+function renderBuyerInquiry(container) {
+  if (state.inqQuery === undefined) state.inqQuery = '';
+  /* First visit: a blank inquiry with a buyer already picked, so the auto-filled
+     fields and the previous-order card have something to show. */
+  if (!biForm.no) { biResetForm(); biApplyBuyer(biBuyers[0].id); }
+
+  // Numeric columns are right-aligned so the digits stack and can be scanned.
+  const headers = [
+    ['#', 'left'], ['Inquiry No.', 'left'], ['Inquiry Date', 'left'], ['Buyer', 'left'],
+    ['Style', 'left'], ['Quantity', 'right'], ['Season', 'left'], ['Country', 'left'],
+    ['Status', 'left'], ['Action', 'left'],
+  ];
+
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      <div id="biCards" class="grid grid-cols-1 lg:grid-cols-12 gap-4"></div>
+
+      <div class="flex justify-end">
+        <button id="biPageSave" class="${BI_BTN_PRIMARY}">${BI_SAVE_ICON}Save Inquiry</button>
+      </div>
+
+      <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+        <div class="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div class="flex items-center gap-2">
+            <span class="text-side-accent shrink-0">${iconSvg('list', 'w-4 h-4')}</span>
+            <div>
+              <h3 class="text-[13px] font-semibold text-primary">Current Inquiries / Orders</h3>
+              <p class="text-helper text-muted mt-0.5">Select a row to load it into the inquiry card</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="relative">
+              <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+              <input id="biSearch" type="text" value="${escapeHtml(state.inqQuery)}" placeholder="Search by Inquiry No, Buyer, Style..."
+                class="w-72 h-9 pl-9 pr-3 rounded border border-side-border bg-canvas text-[13px] font-medium text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
+            </div>
+            <button class="${BI_BTN}">
+              <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>
+              Filter
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto border-t border-side-line">
+          <table class="w-full min-w-[900px]">
+            <thead>
+              <tr class="border-b border-side-line">
+                ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[12px] font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody id="biTableBody"></tbody>
+          </table>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
+          <p id="biCount" class="text-helper text-muted tabular"></p>
+          <div class="flex items-center gap-1.5">
+            <button class="w-8 h-8 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:pointer-events-none" disabled aria-label="Previous page">
+              <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <button class="w-8 h-8 rounded bg-side-accent text-white text-label font-semibold tabular">1</button>
+            <button class="w-8 h-8 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:pointer-events-none" disabled aria-label="Next page">
+              <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  `;
+
+  biRenderCards();
+  refreshBiTable();
+
+  const cards = document.getElementById('biCards');
+
+  /* Text fields just mirror into biForm — no repaint, so focus is never stolen. */
+  cards.addEventListener('input', (e) => {
+    const key = e.target.dataset.bif;
+    if (key) { biForm[key] = e.target.value; return; }
+    const bKey = e.target.dataset.bib;
+    if (bKey) { biBuyerForm[bKey] = e.target.value; return; }
+    if (e.target.id === 'biBuyerInput') {
+      biForm.buyerText = e.target.value;
+      const exact = biBuyers.find(b => b.name.toLowerCase() === e.target.value.trim().toLowerCase());
+      biForm.buyerId = exact ? exact.id : '';
+      biOpenList(e.target.value);
+    }
+  });
+
+  cards.addEventListener('change', (e) => {
+    if (e.target.id === 'biF_qty') { biForm.qty = biFmtQty(e.target.value); e.target.value = biForm.qty; }
+  });
+
+  cards.addEventListener('click', (e) => {
+    if (e.target.closest('#biBuyerToggle')) {
+      const input = document.getElementById('biBuyerInput');
+      if (biCombo.open) biCloseList(); else { biOpenList(''); input.focus(); }
+      return;
+    }
+    if (e.target.closest('#biBuyerAdd')) { biOpenBuyerModal(''); return; }
+    if (e.target.closest('#biAddFromList')) { biOpenBuyerModal(biForm.buyerText); return; }
+    const opt = e.target.closest('li[data-id]');
+    if (opt) biSelectBuyer(opt.dataset.id);
+  });
+
+  cards.addEventListener('mousemove', (e) => {
+    const opt = e.target.closest('li[data-id]');
+    if (!opt || !biCombo.open) return;
+    const i = biCombo.items.findIndex(b => b.id === opt.dataset.id);
+    if (i > -1 && i !== biCombo.cursor) { biCombo.cursor = i; biPaintList(); }
+  });
+
+  cards.addEventListener('keydown', (e) => {
+    if (e.target.id !== 'biBuyerInput') return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      /* A buyer already picked? Open the full list, like the chevron does —
+         filtering by their exact name would leave nothing to arrow through. */
+      if (!biCombo.open) { biOpenList(biForm.buyerId ? '' : e.target.value); return; }
+      const n = biCombo.items.length;
+      if (!n) return;
+      biCombo.cursor = (biCombo.cursor + (e.key === 'ArrowDown' ? 1 : n - 1)) % n;
+      biPaintList();
+      document.querySelector(`#biBuyerList li[aria-selected="true"]`)?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') {
+      if (!biCombo.open) return;
+      e.preventDefault();
+      const pick = biCombo.items[biCombo.cursor];
+      if (pick) biSelectBuyer(pick.id);
+    } else if (e.key === 'Escape') {
+      if (biCombo.open) { e.preventDefault(); biCloseList(); }
+    }
+  });
+
+  /* One document listener, re-bound per render so they never stack up. */
+  if (biOutsideClick) document.removeEventListener('click', biOutsideClick);
+  biOutsideClick = (e) => {
+    if (!biCombo.open) return;
+    if (!e.target.closest('#biBuyerInput, #biBuyerList, #biBuyerToggle')) biCloseList();
+  };
+  document.addEventListener('click', biOutsideClick);
+
+  document.getElementById('biPageSave').addEventListener('click', biSaveInquiry);
+
+  const tbody = document.getElementById('biTableBody');
+  /* No early-out on the current row: after editing the form, clicking the row
+     again is how you reload it and discard those edits. */
+  const select = (no) => {
+    if (!no) return;
+    biLoadInquiry(no);
+    biRenderCards();
+    refreshBiTable();
+  };
+  tbody.addEventListener('click', (e) => {
+    if (e.target.closest('#biClear')) { state.inqQuery = ''; document.getElementById('biSearch').value = ''; refreshBiTable(); return; }
+    select(e.target.closest('tr[data-no]')?.dataset.no);
+  });
+  tbody.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const row = e.target.closest('tr[data-no]');
+    if (row) { e.preventDefault(); select(row.dataset.no); }
+  });
+  document.getElementById('biSearch').addEventListener('input', (e) => {
+    state.inqQuery = e.target.value;
+    refreshBiTable();
+  });
+}
+
+// ---------- Generic search combobox ----------
+/* Replaces the old "readonly input + magnifying-glass button that opens a
+   modal" picker pattern used for Inquiry/Style lookups: a typeable field
+   that filters a dropdown of matches live, underneath it — the same
+   interaction as the Buyer combobox above. One instance per field; each
+   host page wires the returned handlers into its own delegated
+   input/click/mousemove/keydown listeners and registers a document-level
+   outside-click via `isOutside`, the same way biBuyerCombo already does. */
+function createCombo(opts) {
+  const state = { open: false, cursor: 0, items: [] };
+
+  function paint() {
+    const list = document.getElementById(opts.id + 'List');
+    if (!list) return;
+    list.innerHTML = state.items.length
+      ? state.items.map((it, i) => opts.renderItem(it, i === state.cursor)).join('')
+      : `<li class="px-3 py-2.5"><p class="text-helper text-muted">${escapeHtml(opts.emptyText || 'No matches.')}</p></li>`;
+  }
+
+  function open(q) {
+    const list = document.getElementById(opts.id + 'List');
+    const input = document.getElementById(opts.id + 'Input');
+    if (!list || !input) return;
+    state.items = opts.match(q || '');
+    state.cursor = 0;
+    state.open = true;
+    list.classList.remove('hidden');
+    input.setAttribute('aria-expanded', 'true');
+    paint();
+  }
+
+  function close() {
+    const list = document.getElementById(opts.id + 'List');
+    const input = document.getElementById(opts.id + 'Input');
+    state.open = false;
+    if (list) list.classList.add('hidden');
+    if (input) input.setAttribute('aria-expanded', 'false');
+  }
+
+  function select(item) {
+    close();
+    opts.onSelect(item);
+  }
+
+  function handleInput(e) {
+    if (e.target.id !== opts.id + 'Input') return false;
+    open(e.target.value);
+    return true;
+  }
+
+  function handleClick(e) {
+    if (e.target.closest('#' + opts.id + 'Toggle')) {
+      const input = document.getElementById(opts.id + 'Input');
+      if (state.open) close(); else { open(''); input.focus(); }
+      return true;
+    }
+    const li = e.target.closest('#' + opts.id + 'List li[data-combo-key]');
+    if (li) {
+      const item = state.items.find(it => opts.key(it) === li.dataset.comboKey);
+      if (item) select(item);
+      return true;
+    }
+    return false;
+  }
+
+  function handleMousemove(e) {
+    const li = e.target.closest('#' + opts.id + 'List li[data-combo-key]');
+    if (!li || !state.open) return false;
+    const i = state.items.findIndex(it => opts.key(it) === li.dataset.comboKey);
+    if (i > -1 && i !== state.cursor) { state.cursor = i; paint(); }
+    return true;
+  }
+
+  function handleKeydown(e) {
+    if (e.target.id !== opts.id + 'Input') return false;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!state.open) { open(e.target.value); return true; }
+      const n = state.items.length;
+      if (!n) return true;
+      state.cursor = (state.cursor + (e.key === 'ArrowDown' ? 1 : n - 1)) % n;
+      paint();
+      document.querySelector(`#${opts.id}List li[aria-selected="true"]`)?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') {
+      if (!state.open) return true;
+      e.preventDefault();
+      const pick = state.items[state.cursor];
+      if (pick) select(pick);
+    } else if (e.key === 'Escape') {
+      if (state.open) { e.preventDefault(); close(); }
+    }
+    return true;
+  }
+
+  function isOutside(target) {
+    return !target.closest(`#${opts.id}Input, #${opts.id}List, #${opts.id}Toggle`);
+  }
+
+  return { state, open, close, select, handleInput, handleClick, handleMousemove, handleKeydown, isOutside };
+}
+
+function comboFieldHtml(id, label, value, opts) {
+  const o = opts || {};
+  const chev = '<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+  return `
+    <label class="block min-w-0">
+      ${biLabel(label, { req: o.req })}
+      <div class="relative">
+        <input id="${id}Input" type="text" role="combobox" aria-expanded="false" aria-controls="${id}List"
+          aria-autocomplete="list" autocomplete="off" value="${escapeHtml(value || '')}"
+          placeholder="${escapeHtml(o.placeholder || 'Search...')}" class="${o.inputClass || STY_INPUT} pr-8" />
+        <button type="button" id="${id}Toggle" aria-label="Show all" tabindex="-1"
+          class="absolute right-0 top-0 h-9 w-8 flex items-center justify-center text-muted hover:text-primary">${chev}</button>
+        <ul id="${id}List" role="listbox" aria-label="${escapeHtml(label)}"
+          class="hidden absolute left-0 right-0 top-[38px] z-30 max-h-56 overflow-y-auto py-1 rounded-md border border-side-panel bg-cardBg overlay-shadow"></ul>
+      </div>
+    </label>`;
+}
+
+function comboInquiryItem(inq, active) {
+  return `<li role="option" data-combo-key="${escapeHtml(inq.no)}" aria-selected="${active}"
+    class="px-3 py-2 cursor-pointer flex items-center gap-3 ${active ? 'bg-side-active' : ''}">
+    <span class="text-[13px] font-medium text-primary w-[130px] shrink-0 truncate">${escapeHtml(inq.no)}</span>
+    <span class="text-[13px] text-secondary flex-1 min-w-0 truncate">${escapeHtml(inq.buyer)}</span>
+    <span class="text-helper text-muted shrink-0">${escapeHtml(inq.style)}</span>
+  </li>`;
+}
+
+function matchInquiries(q) {
+  const s = (q || '').trim().toLowerCase();
+  if (!s) return biInquiries.slice();
+  return biInquiries.filter(i => (i.no + ' ' + i.buyer + ' ' + i.style).toLowerCase().includes(s));
+}
+
+function comboStyleItem(s, active) {
+  return `<li role="option" data-combo-key="${escapeHtml(String(s.id))}" aria-selected="${active}"
+    class="px-3 py-2 cursor-pointer flex items-center gap-3 ${active ? 'bg-side-active' : ''}">
+    <span class="text-[13px] font-medium text-primary w-[100px] shrink-0 truncate">${escapeHtml(s.style)}</span>
+    <span class="text-[13px] text-secondary flex-1 min-w-0 truncate">${escapeHtml(s.product)}</span>
+    <span class="text-helper text-muted shrink-0">${escapeHtml(s.qty)} Pcs</span>
+  </li>`;
+}
+
+function matchStyles(q) {
+  const s = (q || '').trim().toLowerCase();
+  if (!s) return styStyles.slice();
+  return styStyles.filter(x => (x.style + ' ' + x.product + ' ' + x.category).toLowerCase().includes(s));
+}
+
+// ---------- Style Management ----------
+/* UI-only prototype, like Buyer & Inquiry above. Reads biInquiries / biBuyers
+   directly so picking an inquiry here pulls real buyer data — that's the
+   "automatically linked" behaviour the page advertises. */
+
+const STY_INPUT = BI_INPUT;
+const STY_BTN = BI_BTN;
+const STY_BTN_PRIMARY = BI_BTN_PRIMARY;
+
+const STY_PRODUCTS = ["Men's Polo Shirt", "Women's Blouse", 'T-Shirt', 'Hoodie', 'Trousers', 'Denim Jacket'];
+const STY_CATEGORIES = ['Knit', 'Woven', 'Sweater', 'Denim'];
+const STY_FABRICS = ['95% Cotton 5% Elastane', '100% Cotton', 'Cotton Polyester Blend', '100% Polyester'];
+const STY_CURRENCIES = ['USD - US Dollar', 'EUR - Euro', 'GBP - British Pound'];
+const STY_TERMS = ['FOB', 'CIF', 'CNF', 'EXW', 'DDP'];
+const STY_TYPES = ['Regular', 'Sample', 'Replacement'];
+const STY_STATUSES = ['Open', 'Closed', 'On Hold'];
+const STY_STATUS_VAR = { Open: '--success', Closed: '--neutral', 'On Hold': '--warning' };
+const STY_COLORS = [
+  { label: 'Navy / White / Black', hex: '#1E293B' },
+  { label: 'Black', hex: '#111827' },
+  { label: 'White / Grey', hex: '#CBD5E1' },
+  { label: 'Red / Maroon', hex: '#B91C1C' },
+  { label: 'Olive / Khaki', hex: '#65733F' },
+];
+function styColorHex(label) { return (STY_COLORS.find(c => c.label === label) || STY_COLORS[0]).hex; }
+
+const styForm = {
+  inquiryNo: '', inquiryDate: '', buyer: '', contact: '', season: '', country: '',
+  styleNo: '', targetPrice: '', product: STY_PRODUCTS[0], currency: STY_CURRENCIES[0],
+  category: STY_CATEGORIES[0], shipmentDate: '', fabric: STY_FABRICS[0], shipmentTerm: STY_TERMS[0],
+  gsm: '', status: 'Open', color: STY_COLORS[0].label, type: 'Regular', qty: '',
+  msg: '', msgTone: 'muted',
+};
+
+let styStyleSeq = 1;
+const styStyles = [
+  { id: 1, style: 'AB-4587', product: "Men's Polo Shirt", category: 'Knit', fabric: '95% Cotton 5% Elastane',
+    color: 'Navy / White / Black', qty: '50,000', price: '$4.50', shipDate: '15-Feb-2027', status: 'Open' },
+];
+
+/* Style Details reset to blank; Buyer & Inquiry card (whichever inquiry is
+   linked) is left alone — that part isn't per-style. */
+function styBlankStyleDetails() {
+  Object.assign(styForm, {
+    styleNo: '', targetPrice: '', product: STY_PRODUCTS[0], currency: STY_CURRENCIES[0],
+    category: STY_CATEGORIES[0], shipmentDate: '', fabric: STY_FABRICS[0], shipmentTerm: STY_TERMS[0],
+    gsm: '', status: 'Open', color: STY_COLORS[0].label, type: 'Regular', qty: '',
+  });
+}
+
+function styApplyInquiry(no) {
+  const inq = biInquiries.find(i => i.no === no);
+  if (!inq) return;
+  const b = biBuyers.find(x => x.name === inq.buyer);
+  styForm.inquiryNo = inq.no;
+  styForm.inquiryDate = biToISO(inq.date);
+  styForm.buyer = inq.buyer;
+  styForm.contact = (b && b.contact) || inq.contact;
+  styForm.season = inq.season;
+  styForm.country = inq.country;
+}
+
+function styResetForm() {
+  styBlankStyleDetails();
+  state.editingId = null;
+  styForm.msg = '';
+  styForm.msgTone = 'muted';
+}
+
+/* First visit only: seed with the demo inquiry + style so the screen matches
+   what a filled-in form looks like, instead of opening empty. */
+function styEnsureSeeded() {
+  if (styForm.inquiryNo) return;
+  styApplyInquiry(biInquiries[0].no);
+  Object.assign(styForm, {
+    styleNo: 'AB-4587', targetPrice: '4.50', product: "Women's Blouse", currency: STY_CURRENCIES[0],
+    category: 'Knit', shipmentDate: '2027-02-15', fabric: '95% Cotton 5% Elastane', shipmentTerm: 'FOB',
+    gsm: '220', status: 'Open', color: STY_COLORS[0].label, type: 'Regular', qty: '50,000',
+  });
+}
+
+/* ---------- shared bits ---------- */
+function styBadge(icon, bgVar, fgVar) {
+  return `<span class="w-8 h-8 rounded-md flex items-center justify-center shrink-0" style="background:var(${bgVar});color:var(${fgVar})">${iconSvg(icon, 'w-4 h-4')}</span>`;
+}
+
+function styCard(icon, bgVar, fgVar, title, body, opts) {
+  const o = opts || {};
+  return `
+    <section class="${o.span || ''} bg-cardBg border border-side-panel rounded-lg card-shadow p-4 flex flex-col">
+      <div class="flex items-center gap-2.5 pb-3 mb-3 border-b border-side-line">
+        ${styBadge(icon, bgVar, fgVar)}
+        <div class="min-w-0">
+          <h3 class="text-[13px] font-semibold text-primary">${escapeHtml(title)}</h3>
+          ${o.subtitle ? `<p class="text-helper text-muted mt-0.5">${escapeHtml(o.subtitle)}</p>` : ''}
+        </div>
+        ${o.right ? `<div class="ml-auto shrink-0">${o.right}</div>` : ''}
+      </div>
+      <div class="flex-1">${body}</div>
+    </section>`;
+}
+
+function styText(key, placeholder) {
+  return `<input id="styF_${key}" data-styf="${key}" type="text" autocomplete="off"
+    value="${escapeHtml(styForm[key] || '')}" placeholder="${escapeHtml(placeholder || '')}" class="${STY_INPUT}" />`;
+}
+
+function styDateInput(key) {
+  return `<input id="styF_${key}" data-styf="${key}" type="date" value="${escapeHtml(styForm[key] || '')}" class="${STY_INPUT} tabular" />`;
+}
+
+function stySelect(key, options) {
+  return `<select id="styF_${key}" data-styf="${key}" class="${STY_INPUT}">
+    ${options.map(v => `<option value="${escapeHtml(v)}" ${v === styForm[key] ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('')}
+  </select>`;
+}
+
+/* Input + fixed suffix chip, e.g. "220 | GSM" — a compound control instead of
+   a placeholder-style overlay label, so the unit reads as part of the value. */
+function stySuffix(key, suffix, placeholder) {
+  return `<div class="flex h-9 rounded border border-side-border bg-canvas overflow-hidden focus-within:ring-2 focus-within:ring-[var(--accent-ring)] focus-within:border-side-accent">
+    <input id="styF_${key}" data-styf="${key}" type="text" inputmode="decimal" autocomplete="off"
+      value="${escapeHtml(styForm[key] || '')}" placeholder="${escapeHtml(placeholder || '0')}"
+      class="flex-1 min-w-0 px-3 bg-transparent text-[13px] font-medium text-primary placeholder-muted focus:outline-none tabular" />
+    <span id="styS_${key}" class="px-2.5 flex items-center text-[12px] font-semibold text-muted bg-side-hover border-l border-side-border shrink-0">${escapeHtml(suffix)}</span>
+  </div>`;
+}
+
+/* Native <select> with a colour dot pinned over its left padding — options
+   can't be styled individually, so the dot only reflects the current value. */
+function styDotSelect(key, labels, colorOf) {
+  const cur = styForm[key];
+  return `<div class="relative">
+    <span id="styDot_${key}" class="absolute left-3 top-1/2 -translate-y-1/2 w-[9px] h-[9px] rounded-full shrink-0 pointer-events-none" style="background:${colorOf(cur)}"></span>
+    <select id="styF_${key}" data-styf="${key}" class="${STY_INPUT} pl-7">
+      ${labels.map(v => `<option value="${escapeHtml(v)}" ${v === cur ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('')}
+    </select>
+  </div>`;
+}
+
+/* ---------- tab 1: Buyer & Inquiry / Style Details ---------- */
+const styInqCombo = createCombo({
+  id: 'styInq',
+  match: matchInquiries,
+  renderItem: comboInquiryItem,
+  key: (i) => i.no,
+  emptyText: 'No inquiry matches.',
+  onSelect: (inq) => { styApplyInquiry(inq.no); styRerenderCards(); },
+});
+
+function styBuyerCard() {
+  const body = `
+    <div class="space-y-2.5">
+      ${comboFieldHtml('styInq', 'Select Buyer', styForm.inquiryNo, { req: true, placeholder: 'Search inquiry no, buyer, style...' })}
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5">
+        ${biField('Inquiry Date', styDateInput('inquiryDate'), { req: true })}
+        ${biField('Buyer', stySelect('buyer', biBuyers.map(b => b.name)), { req: true })}
+        <div class="sm:col-span-2">${biField('Contact Person', styText('contact', 'Contact name'))}</div>
+        ${biField('Season', stySelect('season', BI_SEASONS), { req: true })}
+        ${biField('Country', stySelect('country', BI_COUNTRIES), { req: true })}
+      </div>
+    </div>`;
+  return styCard('users', '--info-soft', '--info', 'Buyer & Inquiry', body);
+}
+
+function styDetailsCard() {
+  const currencyCode = (styForm.currency || '').split(' ')[0] || 'USD';
+  const body = `
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5">
+      ${biField('Style No.', styText('styleNo', 'e.g. AB-4587'), { req: true })}
+      ${biField('Target Price', stySuffix('targetPrice', currencyCode, '0.00'))}
+      ${biField('Product', stySelect('product', STY_PRODUCTS))}
+      ${biField('Currency', stySelect('currency', STY_CURRENCIES))}
+      ${biField('Product Category', stySelect('category', STY_CATEGORIES), { req: true })}
+      ${biField('Shipment Date', styDateInput('shipmentDate'))}
+      ${biField('Fabric', stySelect('fabric', STY_FABRICS), { req: true })}
+      ${biField('Shipment Term', stySelect('shipmentTerm', STY_TERMS))}
+      ${biField('GSM', stySuffix('gsm', 'GSM', '0'))}
+      ${biField('Current Status', styDotSelect('status', STY_STATUSES, v => `var(${STY_STATUS_VAR[v] || '--neutral'})`))}
+      ${biField('Color', styDotSelect('color', STY_COLORS.map(c => c.label), styColorHex), { req: true })}
+      ${biField('Type', stySelect('type', STY_TYPES))}
+      <div class="sm:col-span-2">${biField('Quantity', stySuffix('qty', 'Pcs', '0'), { req: true })}</div>
+    </div>`;
+  return styCard('shirt', '--success-soft', '--success', 'Style Details', body);
+}
+
+/* ---------- Style List ---------- */
+function styStatusPill(status) {
+  const map = { Open: ['successSoft', 'success'], Closed: ['neutralSoft', 'neutral'], 'On Hold': ['warningSoft', 'warning'] };
+  const [bg, fg] = map[status] || map.Open;
+  return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg}">${escapeHtml(status)}</span>`;
+}
+
+const STY_EDIT_ICON = '<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+const STY_DELETE_ICON = '<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"/></svg>';
+const STY_PLUS_ICON = '<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+const STY_X_ICON = '<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+const STY_RESET_ICON = '<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>';
+
+function styListSection() {
+  const headers = [
+    ['#', 'left'], ['Style No.', 'left'], ['Product', 'left'], ['Category', 'left'], ['Fabric', 'left'],
+    ['Color', 'left'], ['Quantity', 'right'], ['Target Price', 'right'], ['Shipment Date', 'left'],
+    ['Status', 'left'], ['Action', 'left'],
+  ];
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex flex-wrap items-center justify-between gap-3 p-4">
+        <div class="flex items-center gap-2.5">
+          <span class="text-side-accent shrink-0">${iconSvg('list', 'w-4 h-4')}</span>
+          <div>
+            <h3 class="text-[13px] font-semibold text-primary">Style List</h3>
+            <p class="text-helper text-muted mt-0.5">Style information is automatically linked with the selected inquiry.</p>
+          </div>
+        </div>
+        <button type="button" id="styAddRow" class="${STY_BTN_PRIMARY}">${STY_PLUS_ICON}Add Style</button>
+      </div>
+      <div class="overflow-x-auto border-t border-side-line">
+        <table class="w-full min-w-[980px]">
+          <thead><tr class="border-b border-side-line">
+            ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[12px] font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          </tr></thead>
+          <tbody id="styTableBody"></tbody>
+        </table>
+      </div>
+    </section>`;
+}
+
+function styRefreshTable() {
+  const body = document.getElementById('styTableBody');
+  if (!body) return;
+  body.innerHTML = styStyles.length ? styStyles.map((s, n) => {
+    const editing = s.id === state.editingId;
+    return `
+    <tr data-id="${s.id}" class="group border-b border-side-line last:border-b-0 ${editing ? 'bg-side-active' : 'hover:bg-side-hover'}">
+      <td class="pl-4 pr-2 py-2 text-[13px] text-disabled tabular">${n + 1}</td>
+      <td class="px-3 py-2 text-[13px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(s.style)}</td>
+      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap">${escapeHtml(s.product)}</td>
+      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(s.category)}</td>
+      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(s.fabric)}</td>
+      <td class="px-3 py-2"><span class="w-3 h-3 rounded-full inline-block" style="background:${styColorHex(s.color)}" title="${escapeHtml(s.color)}"></span></td>
+      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(s.qty)}<span class="text-disabled font-normal ml-1">Pcs</span></td>
+      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(s.price)}</td>
+      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap tabular">${escapeHtml(s.shipDate)}</td>
+      <td class="px-3 py-2">${styStatusPill(s.status)}</td>
+      <td class="pr-4 pl-3 py-2">
+        <div class="flex items-center gap-1.5">
+          <button data-edit="${s.id}" class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:text-side-accent hover:bg-side-hover" title="Edit">${STY_EDIT_ICON}</button>
+          <button data-del="${s.id}" class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:text-danger hover:bg-dangerSoft" title="Delete">${STY_DELETE_ICON}</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('') : `
+    <tr><td colspan="11" class="px-4 py-10 text-center"><p class="text-body text-muted">No styles added yet.</p></td></tr>`;
+}
+
+/* ---------- info banner + footer ---------- */
+function styInfoBanner() {
+  return `
+    <div class="flex items-start gap-2.5 px-4 py-3 rounded-md bg-infoSoft">
+      <span class="text-info shrink-0 mt-0.5">${iconSvg('info', 'w-4 h-4')}</span>
+      <p class="text-[13px] text-secondary">Style information is automatically linked with the selected inquiry. You can proceed to Costing, BOM, and PQ.</p>
+    </div>`;
+}
+
+function styFooterButtons() {
+  return `
+    <p id="styFormMsg" class="${styForm.msg ? '' : 'hidden '}text-helper text-${styForm.msgTone}">${escapeHtml(styForm.msg)}</p>
+    <div class="flex items-center justify-end gap-2">
+      <button type="button" id="styReset" class="${STY_BTN}">${STY_RESET_ICON}Reset</button>
+      <button type="button" id="stySave" class="${STY_BTN_PRIMARY}">${BI_SAVE_ICON}Save Style</button>
+    </div>`;
+}
+
+function stySetMsg(text, tone) {
+  styForm.msg = text || '';
+  styForm.msgTone = tone || 'muted';
+  const el = document.getElementById('styFormMsg');
+  if (el) {
+    el.textContent = styForm.msg;
+    el.className = `${styForm.msg ? '' : 'hidden '}text-helper text-${styForm.msgTone}`;
+  }
+}
+
+
+/* ---------- actions ---------- */
+function styRerenderCards() {
+  const el = document.getElementById('styCards');
+  if (!el) return;
+  el.innerHTML = styBuyerCard() + styDetailsCard();
+}
+
+function styStartNew() {
+  styBlankStyleDetails();
+  state.editingId = null;
+  styRerenderCards();
+  styRefreshTable();
+  stySetMsg('Ready for a new style.', 'muted');
+  document.getElementById('styCards')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function styLoadStyle(id) {
+  const s = styStyles.find(x => x.id === id);
+  if (!s) return;
+  Object.assign(styForm, {
+    styleNo: s.style, product: s.product, category: s.category, fabric: s.fabric,
+    color: s.color, qty: s.qty, targetPrice: (s.price || '').replace(/[^0-9.]/g, ''),
+    shipmentDate: biToISO(s.shipDate) || '', status: s.status,
+  });
+  state.editingId = id;
+  styRerenderCards();
+  styRefreshTable();
+  stySetMsg(`Editing style ${s.style} — update the fields and click Save Style.`, 'muted');
+  document.getElementById('styCards')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function styDeleteStyle(id) {
+  const s = styStyles.find(x => x.id === id);
+  if (!s) return;
+  if (!window.confirm(`Delete style ${s.style}?`)) return;
+  const idx = styStyles.findIndex(x => x.id === id);
+  if (idx > -1) styStyles.splice(idx, 1);
+  if (state.editingId === id) styResetForm();
+  styRerenderCards();
+  styRefreshTable();
+}
+
+function stySave() {
+  const styleNo = (styForm.styleNo || '').trim();
+  if (!styleNo) { stySetMsg('Style No. is required.', 'danger'); document.getElementById('styF_styleNo')?.focus(); return; }
+  const qtyDigits = String(styForm.qty || '').replace(/\D/g, '');
+  if (!qtyDigits) { stySetMsg('Quantity is required.', 'danger'); document.getElementById('styF_qty')?.focus(); return; }
+  const priceNum = parseFloat(String(styForm.targetPrice || '').replace(/[^0-9.]/g, ''));
+
+  const rec = {
+    id: state.editingId || ++styStyleSeq,
+    style: styleNo,
+    product: styForm.product,
+    category: styForm.category,
+    fabric: styForm.fabric,
+    color: styForm.color,
+    qty: Number(qtyDigits).toLocaleString('en-US'),
+    price: isNaN(priceNum) ? '—' : `$${priceNum.toFixed(2)}`,
+    shipDate: biFromISO(styForm.shipmentDate) || '—',
+    status: styForm.status,
+  };
+
+  if (state.editingId) {
+    const idx = styStyles.findIndex(s => s.id === state.editingId);
+    if (idx > -1) styStyles[idx] = rec;
+  } else {
+    styStyles.unshift(rec);
+  }
+
+  styResetForm();
+  styRerenderCards();
+  styRefreshTable();
+  stySetMsg(`Style ${rec.style} saved.`, 'success');
+}
+
+let styClickHandler = null;
+
+let styOutsideClick = null;
+
+function styBindEvents(container) {
+  const cards = document.getElementById('styCards');
+
+  cards.addEventListener('input', (e) => {
+    if (styInqCombo.handleInput(e)) return;
+    const key = e.target.dataset.styf;
+    if (key) styForm[key] = e.target.value;
+  });
+
+  cards.addEventListener('mousemove', (e) => { styInqCombo.handleMousemove(e); });
+  cards.addEventListener('keydown', (e) => { styInqCombo.handleKeydown(e); });
+
+  cards.addEventListener('change', (e) => {
+    const key = e.target.dataset.styf;
+    if (!key) return;
+    if (key === 'status') {
+      const dot = document.getElementById('styDot_status');
+      if (dot) dot.style.background = `var(${STY_STATUS_VAR[e.target.value] || '--neutral'})`;
+    } else if (key === 'color') {
+      const dot = document.getElementById('styDot_color');
+      if (dot) dot.style.background = styColorHex(e.target.value);
+    } else if (key === 'currency') {
+      const suffix = document.getElementById('styS_targetPrice');
+      if (suffix) suffix.textContent = e.target.value.split(' ')[0] || 'USD';
+    } else if (key === 'buyer') {
+      const b = biBuyers.find(x => x.name === e.target.value);
+      if (b) {
+        styForm.contact = b.contact;
+        const c = document.getElementById('styF_contact');
+        if (c) c.value = b.contact;
+      }
+    }
+  });
+
+  /* container (page-content) persists across re-renders, so the old listener
+     is removed first — otherwise every re-render would stack another. */
+  if (styClickHandler) container.removeEventListener('click', styClickHandler);
+  styClickHandler = (e) => {
+    if (styInqCombo.handleClick(e)) return;
+    if (e.target.closest('#styAddRow')) { styStartNew(); return; }
+    if (e.target.closest('#stySave')) { stySave(); return; }
+    if (e.target.closest('#styReset')) { styResetForm(); styRerenderCards(); styRefreshTable(); stySetMsg('Form reset.', 'muted'); return; }
+    const editBtn = e.target.closest('[data-edit]');
+    if (editBtn) { styLoadStyle(Number(editBtn.dataset.edit)); return; }
+    const delBtn = e.target.closest('[data-del]');
+    if (delBtn) { styDeleteStyle(Number(delBtn.dataset.del)); return; }
+  };
+  container.addEventListener('click', styClickHandler);
+
+  if (styOutsideClick) document.removeEventListener('click', styOutsideClick);
+  styOutsideClick = (e) => {
+    if (styInqCombo.state.open && styInqCombo.isOutside(e.target)) styInqCombo.close();
+  };
+  document.addEventListener('click', styOutsideClick);
+}
+
+/* ---------- page ---------- */
+function renderStyleManagement(tabsEl, container) {
+  styEnsureSeeded();
+
+  tabsEl.classList.add('hidden');
+  tabsEl.innerHTML = '';
+
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      <div id="styCards" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        ${styBuyerCard() + styDetailsCard()}
+      </div>
+      ${styFooterButtons()}
+      ${styListSection()}
+      ${styInfoBanner()}
+    </div>`;
+
+  styRefreshTable();
+  styBindEvents(container);
+}
+
+// ---------- BOM & Consumption ----------
+/* UI-only prototype, same shape as Style Management. A style is picked from
+   styStyles; BOM & Costing are saved as a linked snapshot in bomRecords. */
+
+const BOM_INPUT = STY_INPUT;
+const BOM_BTN = STY_BTN;
+const BOM_BTN_PRIMARY = STY_BTN_PRIMARY;
+
+const BOM_ITEM_DEFS = [
+  { label: 'Sewing Thread', options: ['Poly-cotton', '100% Polyester', '100% Cotton'] },
+  { label: 'Main Label', options: ['Woven Label', 'Printed Label'] },
+  { label: 'Care Label', options: ['Printed', 'Woven'] },
+  { label: 'Hangtag', options: ['Paper Hangtag', 'Recycled Hangtag'] },
+  { label: 'Polybag', options: ['OPP Polybag', 'Biodegradable Polybag'] },
+  { label: 'Carton', options: ['5 Ply Export Carton', '3 Ply Export Carton'] },
+];
+
+const BOM_COST_FIELDS = [
+  { key: 'trims', label: 'Trims' },
+  { key: 'accessories', label: 'Accessories' },
+  { key: 'cm', label: 'CM' },
+  { key: 'wash', label: 'Wash' },
+  { key: 'printing', label: 'Printing' },
+  { key: 'embroidery', label: 'Embroidery' },
+  { key: 'packing', label: 'Packing' },
+  { key: 'overhead', label: 'Commercial/Overhead' },
+];
+
+const bomForm = {
+  inquiryNo: '', inquiryDate: '', buyer: '', contact: '', season: '', country: '',
+  styleId: null, styleNo: '', fabric: '', items: [],
+  trims: '', accessories: '', cm: '', wash: '', printing: '', embroidery: '', packing: '', overhead: '',
+  profit: '', qty: '',
+  msg: '', msgTone: 'muted',
+};
+
+let bomRecordSeq = 1;
+const bomRecords = [
+  { id: 1, styleId: 1, style: 'AB-4587', product: "Men's Polo Shirt", category: 'Knit',
+    fabric: '95% Cotton 5% Elastane', color: 'Navy / White / Black', qty: '50,000',
+    price: '$4.50', shipDate: '15-Feb-2027', status: 'Open' },
+];
+
+function bomBlankItems() { return BOM_ITEM_DEFS.map(d => ({ label: d.label, value: d.options[0], options: d.options })); }
+
+function bomResetForm() {
+  Object.assign(bomForm, {
+    styleId: null, styleNo: '', fabric: '', items: bomBlankItems(),
+    trims: '', accessories: '', cm: '', wash: '', printing: '', embroidery: '', packing: '', overhead: '',
+    profit: '', qty: '', msg: '', msgTone: 'muted',
+  });
+  state.editingBomId = null;
+}
+
+function bomApplyInquiry(no) {
+  const inq = biInquiries.find(i => i.no === no);
+  if (!inq) return;
+  const b = biBuyers.find(x => x.name === inq.buyer);
+  bomForm.inquiryNo = inq.no;
+  bomForm.inquiryDate = biToISO(inq.date);
+  bomForm.buyer = inq.buyer;
+  bomForm.contact = (b && b.contact) || inq.contact;
+  bomForm.season = inq.season;
+  bomForm.country = inq.country;
+}
+
+function bomApplyStyle(id) {
+  const s = styStyles.find(x => x.id === id);
+  if (!s) return;
+  bomForm.styleId = s.id;
+  bomForm.styleNo = s.style;
+}
+
+/* First visit only: seed with the demo inquiry + style + costing so the screen
+   matches what a filled-in form looks like, instead of opening empty. */
+function bomEnsureSeeded() {
+  if (bomForm.styleId) return;
+  bomApplyInquiry(biInquiries[0].no);
+  bomApplyStyle(styStyles[0].id);
+  Object.assign(bomForm, {
+    fabric: '1.80', items: bomBlankItems(),
+    trims: '1.85', accessories: '0.25', cm: '0.18', wash: '0.65', printing: '0.20',
+    embroidery: '0.15', packing: '0.10', overhead: '0.12',
+    profit: '0.30', qty: '1000',
+  });
+}
+
+function bomNum(v) {
+  const n = parseFloat(String(v || '').replace(/[^0-9.]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
+function bomTotals() {
+  const cost = BOM_COST_FIELDS.reduce((sum, f) => sum + bomNum(bomForm[f.key]), 0);
+  const profit = bomNum(bomForm.profit);
+  const fob = cost + profit;
+  const profitPct = cost > 0 ? (profit / cost) * 100 : 0;
+  const qty = bomNum(bomForm.qty);
+  const total = fob * qty;
+  return { cost, profit, fob, profitPct, qty, total };
+}
+
+function bomMoney(n) { return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+/* ---------- shared bits ---------- */
+function bomText(key, placeholder) {
+  return `<input id="bomF_${key}" data-bomf="${key}" type="text" autocomplete="off"
+    value="${escapeHtml(bomForm[key] || '')}" placeholder="${escapeHtml(placeholder || '')}" class="${BOM_INPUT}" />`;
+}
+
+function bomSelect(key, options) {
+  return `<select id="bomF_${key}" data-bomf="${key}" class="${BOM_INPUT}">
+    ${options.map(v => `<option value="${escapeHtml(v)}" ${v === bomForm[key] ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('')}
+  </select>`;
+}
+
+function bomDateInput(key) {
+  return `<input id="bomF_${key}" data-bomf="${key}" type="date" value="${escapeHtml(bomForm[key] || '')}" class="${BOM_INPUT} tabular" />`;
+}
+
+/* ---------- card 1: buyer / style pickers ---------- */
+const bomInqCombo = createCombo({
+  id: 'bomInq',
+  match: matchInquiries,
+  renderItem: comboInquiryItem,
+  key: (i) => i.no,
+  emptyText: 'No inquiry matches.',
+  onSelect: (inq) => { bomApplyInquiry(inq.no); bomRerenderCards(); },
+});
+
+function bomBuyerCard() {
+  const body = `
+    <div class="space-y-2.5">
+      ${comboFieldHtml('bomInq', 'Select Buyer', bomForm.inquiryNo, { req: true, placeholder: 'Search inquiry no, buyer, style...', inputClass: BOM_INPUT })}
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5">
+        ${biField('Inquiry Date', bomDateInput('inquiryDate'), { req: true })}
+        ${biField('Buyer', bomSelect('buyer', biBuyers.map(b => b.name)), { req: true })}
+        <div class="sm:col-span-2">${biField('Contact Person', bomText('contact', 'Contact name'))}</div>
+        ${biField('Season', bomSelect('season', BI_SEASONS), { req: true })}
+        ${biField('Country', bomSelect('country', BI_COUNTRIES), { req: true })}
+      </div>
+    </div>`;
+  return styCard('users', '--info-soft', '--info', 'Select Buyer & Style Info', body);
+}
+
+/* ---------- card 2: bill of material ---------- */
+const bomStyleCombo = createCombo({
+  id: 'bomStyle',
+  match: matchStyles,
+  renderItem: comboStyleItem,
+  key: (s) => String(s.id),
+  emptyText: 'No styles yet — add one in Style Management.',
+  onSelect: (s) => { bomApplyStyle(s.id); bomRerenderCards(); },
+});
+
+function bomMaterialCard() {
+  const itemRow = (item, i) => {
+    const control = `<select data-bomi="${i}" class="${BOM_INPUT}">
+        ${item.options.map(o => `<option value="${escapeHtml(o)}" ${o === item.value ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('')}
+      </select>`;
+    return biField(item.label, control);
+  };
+  const body = `
+    <div class="space-y-2.5">
+      ${comboFieldHtml('bomStyle', 'Style No.', bomForm.styleNo, { req: true, placeholder: 'Search style no, product...', inputClass: BOM_INPUT })}
+      ${biField('Fabric', `
+        <div class="flex h-9 rounded border border-side-border bg-canvas overflow-hidden focus-within:ring-2 focus-within:ring-[var(--accent-ring)] focus-within:border-side-accent">
+          <input id="bomF_fabric" data-bomf="fabric" type="text" inputmode="decimal" autocomplete="off"
+            value="${escapeHtml(bomForm.fabric)}" placeholder="0.00"
+            class="flex-1 min-w-0 px-3 bg-transparent text-[13px] font-medium text-primary placeholder-muted focus:outline-none tabular" />
+          <span class="px-2.5 flex items-center text-[12px] font-semibold text-muted bg-side-hover border-l border-side-border shrink-0">kg/pc</span>
+        </div>`, { req: true })}
+      <div id="bomItems" class="space-y-2">${bomForm.items.map(itemRow).join('')}</div>
+    </div>`;
+  return styCard('clipboard', '--success-soft', '--success', 'Bill Of Material', body);
+}
+
+/* ---------- card 3: costing ---------- */
+function bomCostRow(label, key) {
+  return `<div class="flex items-center justify-between gap-3 py-1">
+    <span class="text-[13px] text-secondary">${escapeHtml(label)}</span>
+    <div class="flex items-center gap-1.5">
+      <span class="text-[12px] font-semibold text-muted">$</span>
+      <input id="bomF_${key}" data-bomf="${key}" type="text" inputmode="decimal" autocomplete="off"
+        value="${escapeHtml(bomForm[key] || '')}" placeholder="0.00"
+        class="w-[72px] h-8 px-2 rounded border border-side-border bg-canvas text-[13px] font-medium text-primary text-right tabular focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
+    </div>
+  </div>`;
+}
+
+function bomCostingCard() {
+  const t = bomTotals();
+  const body = `
+    <div class="mb-3">
+      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-semibold bg-successSoft text-success">STYLE: ${escapeHtml(bomForm.styleNo || '—')}</span>
+    </div>
+    <div class="flex items-center justify-between pb-1.5 mb-1 border-b border-side-line">
+      <span class="text-[12px] font-semibold text-muted">Fabric</span>
+      <span class="text-[12px] font-semibold text-muted">Price / pcs</span>
+    </div>
+    <div class="divide-y divide-side-line">
+      ${BOM_COST_FIELDS.map(f => bomCostRow(f.label, f.key)).join('')}
+    </div>
+    <div class="mt-3 rounded-md bg-side-hover p-3 space-y-2.5">
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-[13px] text-muted">Total Cost</span>
+        <span id="bomTotalCost" class="text-[13px] font-semibold text-primary">${bomMoney(t.cost)}</span>
+      </div>
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-[13px] text-muted shrink-0">Profit</span>
+        <div class="flex items-center gap-1.5">
+          <span class="text-[12px] text-muted">$</span>
+          <input id="bomF_profit" data-bomf="profit" type="text" inputmode="decimal" autocomplete="off"
+            value="${escapeHtml(bomForm.profit || '')}" placeholder="0.00"
+            class="w-[64px] h-7 px-2 rounded border border-side-border bg-cardBg text-[13px] font-medium text-primary text-right tabular focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
+          <span id="bomProfitPct" class="inline-flex items-center justify-center h-7 px-2 rounded border border-side-border bg-cardBg text-[13px] font-medium text-primary tabular">${t.profitPct.toFixed(1)}</span>
+          <span class="text-[12px] text-muted">%</span>
+        </div>
+      </div>
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-[13px] text-muted">FOB Price</span>
+        <span id="bomFobPrice" class="text-[13px] font-semibold text-primary">${bomMoney(t.fob)}</span>
+      </div>
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-[13px] text-muted">Quantity</span>
+        <div class="flex items-center gap-1.5">
+          <input id="bomF_qty" data-bomf="qty" type="text" inputmode="numeric" autocomplete="off"
+            value="${escapeHtml(bomForm.qty || '')}" placeholder="0"
+            class="w-20 h-7 px-2 rounded border border-side-border bg-cardBg text-[13px] font-medium text-primary text-right tabular focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
+          <span class="text-[12px] text-muted">PCS</span>
+        </div>
+      </div>
+    </div>
+    <div class="mt-3 flex items-center justify-between px-3 py-2.5 rounded-md bg-successSoft">
+      <span class="text-[13px] font-semibold text-success">Total</span>
+      <span id="bomTotalValue" class="text-[15px] font-bold text-success">${bomMoney(t.total)}</span>
+    </div>`;
+  return styCard('chartbar', '--violet-soft', '--violet', 'Costing', body);
+}
+
+function bomRecalc() {
+  const t = bomTotals();
+  const cost = document.getElementById('bomTotalCost');
+  const pct = document.getElementById('bomProfitPct');
+  const fob = document.getElementById('bomFobPrice');
+  const total = document.getElementById('bomTotalValue');
+  if (cost) cost.textContent = bomMoney(t.cost);
+  if (pct) pct.textContent = t.profitPct.toFixed(1);
+  if (fob) fob.textContent = bomMoney(t.fob);
+  if (total) total.textContent = bomMoney(t.total);
+}
+
+/* ---------- saved list ---------- */
+function bomListSection() {
+  const headers = [
+    ['#', 'left'], ['Style No.', 'left'], ['Product', 'left'], ['Category', 'left'], ['Fabric', 'left'],
+    ['Color', 'left'], ['Quantity', 'right'], ['Target Price', 'right'], ['Shipment Date', 'left'],
+    ['Status', 'left'], ['Action', 'left'],
+  ];
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex flex-wrap items-center justify-between gap-3 p-4">
+        <div class="flex items-center gap-2.5">
+          <span class="text-side-accent shrink-0">${iconSvg('list', 'w-4 h-4')}</span>
+          <div>
+            <h3 class="text-[13px] font-semibold text-primary">Save BoM & Costing DATA LIST</h3>
+            <p class="text-helper text-muted mt-0.5">Styles with completed BOM & Costing</p>
+          </div>
+        </div>
+      </div>
+      <div class="overflow-x-auto border-t border-side-line">
+        <table class="w-full min-w-[980px]">
+          <thead><tr class="border-b border-side-line">
+            ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[12px] font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          </tr></thead>
+          <tbody id="bomTableBody"></tbody>
+        </table>
+      </div>
+    </section>`;
+}
+
+function bomRefreshTable() {
+  const body = document.getElementById('bomTableBody');
+  if (!body) return;
+  body.innerHTML = bomRecords.length ? bomRecords.map((r, n) => {
+    const editing = r.id === state.editingBomId;
+    return `
+    <tr data-id="${r.id}" class="group border-b border-side-line last:border-b-0 ${editing ? 'bg-side-active' : 'hover:bg-side-hover'}">
+      <td class="pl-4 pr-2 py-2 text-[13px] text-disabled tabular">${n + 1}</td>
+      <td class="px-3 py-2 text-[13px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(r.style)}</td>
+      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap">${escapeHtml(r.product)}</td>
+      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(r.category)}</td>
+      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(r.fabric)}</td>
+      <td class="px-3 py-2"><span class="w-3 h-3 rounded-full inline-block" style="background:${styColorHex(r.color)}" title="${escapeHtml(r.color)}"></span></td>
+      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(r.qty)}<span class="text-disabled font-normal ml-1">Pcs</span></td>
+      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(r.price)}</td>
+      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap tabular">${escapeHtml(r.shipDate)}</td>
+      <td class="px-3 py-2">${styStatusPill(r.status)}</td>
+      <td class="pr-4 pl-3 py-2">
+        <div class="flex items-center gap-1.5">
+          <button data-bom-edit="${r.id}" class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:text-side-accent hover:bg-side-hover" title="Edit">${STY_EDIT_ICON}</button>
+          <button data-bom-del="${r.id}" class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:text-danger hover:bg-dangerSoft" title="Delete">${STY_DELETE_ICON}</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('') : `
+    <tr><td colspan="11" class="px-4 py-10 text-center"><p class="text-body text-muted">No BOM & Costing saved yet.</p></td></tr>`;
+}
+
+/* ---------- info banner + footer ---------- */
+function bomInfoBanner() {
+  return `
+    <div class="flex items-start gap-2.5 px-4 py-3 rounded-md bg-infoSoft">
+      <span class="text-info shrink-0 mt-0.5">${iconSvg('info', 'w-4 h-4')}</span>
+      <p class="text-[13px] text-secondary">BOM & costing information is automatically linked with the selected inquiry. You can proceed to Costing, PO, and other related modules.</p>
+    </div>`;
+}
+
+function bomFooterButtons() {
+  return `
+    <p id="bomFormMsg" class="${bomForm.msg ? '' : 'hidden '}text-helper text-${bomForm.msgTone}">${escapeHtml(bomForm.msg)}</p>
+    <div class="flex items-center justify-end gap-2">
+      <button type="button" id="bomReset" class="${BOM_BTN}">${STY_RESET_ICON}Reset</button>
+      <button type="button" id="bomSave" class="${BOM_BTN_PRIMARY}">${BI_SAVE_ICON}Save BoM & Cost</button>
+    </div>`;
+}
+
+function bomSetMsg(text, tone) {
+  bomForm.msg = text || '';
+  bomForm.msgTone = tone || 'muted';
+  const el = document.getElementById('bomFormMsg');
+  if (el) {
+    el.textContent = bomForm.msg;
+    el.className = `${bomForm.msg ? '' : 'hidden '}text-helper text-${bomForm.msgTone}`;
+  }
+}
+
+/* ---------- actions ---------- */
+function bomRerenderCards() {
+  const el = document.getElementById('bomCards');
+  if (!el) return;
+  el.innerHTML = bomBuyerCard() + bomMaterialCard() + bomCostingCard();
+}
+
+function bomSave() {
+  if (!bomForm.styleId) { bomSetMsg('Pick a style before saving.', 'danger'); document.getElementById('bomStyleInput')?.focus(); return; }
+  if (!bomForm.fabric.trim()) { bomSetMsg('Fabric consumption is required.', 'danger'); document.getElementById('bomF_fabric')?.focus(); return; }
+
+  const s = styStyles.find(x => x.id === bomForm.styleId);
+  if (!s) { bomSetMsg('Linked style no longer exists.', 'danger'); return; }
+
+  const rec = {
+    id: state.editingBomId || ++bomRecordSeq,
+    styleId: s.id, style: s.style, product: s.product, category: s.category,
+    fabric: s.fabric, color: s.color, qty: s.qty, price: s.price, shipDate: s.shipDate, status: s.status,
+  };
+
+  if (state.editingBomId) {
+    const idx = bomRecords.findIndex(r => r.id === state.editingBomId);
+    if (idx > -1) bomRecords[idx] = rec; else bomRecords.unshift(rec);
+  } else {
+    bomRecords.unshift(rec);
+  }
+
+  bomResetForm();
+  bomRerenderCards();
+  bomRefreshTable();
+  bomSetMsg(`BOM & Costing for ${rec.style} saved.`, 'success');
+}
+
+function bomLoadRecord(id) {
+  const r = bomRecords.find(x => x.id === id);
+  if (!r) return;
+  bomApplyStyle(r.styleId);
+  state.editingBomId = id;
+  bomRerenderCards();
+  bomRefreshTable();
+  bomSetMsg(`Editing BOM & Costing for ${r.style} — update the fields and click Save BoM & Cost.`, 'muted');
+  document.getElementById('bomCards')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function bomDeleteRecord(id) {
+  const r = bomRecords.find(x => x.id === id);
+  if (!r) return;
+  if (!window.confirm(`Delete BOM & Costing for style ${r.style}?`)) return;
+  const idx = bomRecords.findIndex(x => x.id === id);
+  if (idx > -1) bomRecords.splice(idx, 1);
+  if (state.editingBomId === id) { bomResetForm(); bomRerenderCards(); }
+  bomRefreshTable();
+}
+
+let bomClickHandler = null;
+
+let bomOutsideClick = null;
+
+function bomBindEvents(container) {
+  const cards = document.getElementById('bomCards');
+
+  cards.addEventListener('input', (e) => {
+    if (bomInqCombo.handleInput(e) || bomStyleCombo.handleInput(e)) return;
+    const key = e.target.dataset.bomf;
+    if (key) {
+      bomForm[key] = e.target.value;
+      if (BOM_COST_FIELDS.some(f => f.key === key) || key === 'profit' || key === 'qty') bomRecalc();
+      return;
+    }
+    const idx = e.target.dataset.bomi;
+    if (idx !== undefined) bomForm.items[Number(idx)].value = e.target.value;
+  });
+
+  cards.addEventListener('mousemove', (e) => { bomInqCombo.handleMousemove(e); bomStyleCombo.handleMousemove(e); });
+  cards.addEventListener('keydown', (e) => { bomInqCombo.handleKeydown(e); bomStyleCombo.handleKeydown(e); });
+
+  cards.addEventListener('change', (e) => {
+    if (e.target.dataset.bomf === 'buyer') {
+      const b = biBuyers.find(x => x.name === e.target.value);
+      if (b) {
+        bomForm.contact = b.contact;
+        const c = document.getElementById('bomF_contact');
+        if (c) c.value = b.contact;
+      }
+      return;
+    }
+    const idx = e.target.dataset.bomi;
+    if (idx !== undefined) bomForm.items[Number(idx)].value = e.target.value;
+  });
+
+  /* container (page-content) persists across re-renders, so the old listener
+     is removed first — otherwise every re-render would stack another. */
+  if (bomClickHandler) container.removeEventListener('click', bomClickHandler);
+  bomClickHandler = (e) => {
+    if (bomInqCombo.handleClick(e) || bomStyleCombo.handleClick(e)) return;
+    if (e.target.closest('#bomSave')) { bomSave(); return; }
+    if (e.target.closest('#bomReset')) { bomResetForm(); bomRerenderCards(); bomRefreshTable(); bomSetMsg('Form reset.', 'muted'); return; }
+    const editBtn = e.target.closest('[data-bom-edit]');
+    if (editBtn) { bomLoadRecord(Number(editBtn.dataset.bomEdit)); return; }
+    const delBtn = e.target.closest('[data-bom-del]');
+    if (delBtn) { bomDeleteRecord(Number(delBtn.dataset.bomDel)); return; }
+  };
+  container.addEventListener('click', bomClickHandler);
+
+  if (bomOutsideClick) document.removeEventListener('click', bomOutsideClick);
+  bomOutsideClick = (e) => {
+    if (bomInqCombo.state.open && bomInqCombo.isOutside(e.target)) bomInqCombo.close();
+    if (bomStyleCombo.state.open && bomStyleCombo.isOutside(e.target)) bomStyleCombo.close();
+  };
+  document.addEventListener('click', bomOutsideClick);
+}
+
+/* ---------- page ---------- */
+function renderBOM(container) {
+  bomEnsureSeeded();
+
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      <div id="bomCards" class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        ${bomBuyerCard() + bomMaterialCard() + bomCostingCard()}
+      </div>
+      ${bomFooterButtons()}
+      ${bomListSection()}
+      ${bomInfoBanner()}
+    </div>`;
+
+  bomRefreshTable();
+  bomBindEvents(container);
+}
+
+// ---------- Purchase Order (PO) / Proforma Invoice (PI) ----------
+/* UI-only prototype. PO and PI share an identical set of cards (Buyer &
+   Inquiry, Bank Details, Style Details, Sewing/Construction, Commercial
+   Terms, Shipping) plus an editable Order Details table — only the header
+   strip labels, doc number and save label differ, so one engine renders
+   both; only one of the two is ever mounted at a time. */
+
+const POPI_INPUT = STY_INPUT;
+const POPI_BTN = STY_BTN;
+const POPI_BTN_PRIMARY = STY_BTN_PRIMARY;
+
+const POPI_PRICE_TERMS = ['FOB', 'CIF', 'EXW'];
+const POPI_CURRENCIES = ['USD', 'GBP', 'EUR'];
+const POPI_SHIP_MODES = ['Sea', 'Air'];
+const POPI_YESNO = ['Allowed', 'Not Allowed'];
+
+const POPI_CONFIG = {
+  po: { noLabel: 'PO / Order No.', dateLabel: 'PO Date', statusLabel: 'BOM No.', saveLabel: 'Save PO' },
+  pi: { noLabel: 'PI No.', dateLabel: 'PI Date', statusLabel: 'BOM Status', saveLabel: 'Save PI' },
+};
+
+const popiState = { po: null, pi: null };
+
+function popiSeedForm(type) {
+  return {
+    no: type === 'po' ? 'PO-2026-00852' : 'PI-2026-00318',
+    buyerPoNo: 'ABC-PO-4587', inquiryNo: 'INQ-2026-00235', date: biTodayISO(),
+    sampleNo: 'SMP-2026-00125', costingNo: 'CST-2026-00125', bomNo: 'BOM-AB-4587',
+    buyer: 'ABC Fashion Ltd.', inquiryDate: '2026-09-03', contact: 'John Smith',
+    season: 'Spring/Summer 2027', country: 'UK',
+    bankName: 'Standard Chartered Bank', bankAddress: 'London, United Kingdom',
+    accountName: 'ABC Fashion Ltd.', accountNo: '1234567890', swift: 'SCBLGB2L',
+    styleNo: 'AB-4587', product: "Men's Basic T-Shirt", garmentType: 'T-Shirt',
+    fabric: type === 'po' ? '100% Cotton Jersey' : '100% Cotton Jersey 180 GSM',
+    gsm: '180 GSM', color: 'Black', sizeRange: 'S - XL',
+    seam: '4 Thread Overlock', stitch: '301', needle: '11#', thread: '100% Polyester',
+    mainLabel: 'Woven Label', careLabel: 'Printed', hangtag: 'Paper Hangtag',
+    polybag: 'OPP Polybag', carton: '5 Ply Export Carton',
+    priceTerm: 'FOB', currency: 'USD', unitPrice: '$4.50 / PCS',
+    paymentTerms: '30% Advance / 70% Against BL', creditTerms: 'LC 60 Days', incoterms: 'FOB',
+    discount: '0.00', other: '0.00', vat: '0.00',
+    shipMode: 'Sea', portLoading: 'Chittagong, Bangladesh', portDest: 'London, UK',
+    finalDest: 'London, UK', shipDate: '2027-02-10', deliveryDate: '2027-02-15',
+    partial: 'Allowed', transship: 'Allowed', shippingMarks: 'ABC-4587',
+    instructions: 'As per buyer packing requirement.',
+    msg: '', msgTone: 'muted',
+  };
+}
+
+/* Reset blanks the style/bank/construction/commercial/shipping details but
+   leaves the document header and buyer/inquiry link alone — same convention
+   as Style Management's Reset. */
+function popiBlankDetails(type) {
+  const f = popiState[type].form;
+  Object.assign(f, {
+    bankName: '', bankAddress: '', accountName: '', accountNo: '', swift: '',
+    styleNo: '', product: '', garmentType: '', fabric: '', gsm: '', color: '', sizeRange: '',
+    seam: '', stitch: '', needle: '', thread: '', mainLabel: '', careLabel: '', hangtag: '', polybag: '', carton: '',
+    priceTerm: POPI_PRICE_TERMS[0], currency: POPI_CURRENCIES[0], unitPrice: '',
+    paymentTerms: '', creditTerms: '', incoterms: POPI_PRICE_TERMS[0],
+    discount: '0.00', other: '0.00', vat: '0.00',
+    shipMode: POPI_SHIP_MODES[0], portLoading: '', portDest: '', finalDest: '', shipDate: '', deliveryDate: '',
+    partial: POPI_YESNO[0], transship: POPI_YESNO[0], shippingMarks: '', instructions: '',
+  });
+  popiState[type].rows = [];
+}
+
+function popiEnsureSeeded(type) {
+  if (popiState[type]) return;
+  popiState[type] = {
+    form: popiSeedForm(type),
+    rows: [type === 'po'
+      ? { no: 'AB-4587', product: "Men's Polo Shirt", cat: 'Knit', fabric: '95% Cotton 5% Elastane', color: 'Black', size: 'S - XL', qty: 10000, price: 4.50 }
+      : { no: 'AB-4587', product: "Men's Basic T-Shirt", cat: 'Knit', fabric: '100% Cotton Jersey 180 GSM', color: 'Black', size: 'S - XL', qty: 10000, price: 4.50 }],
+  };
+}
+
+function popiRowsSum(type) {
+  return popiState[type].rows.reduce((s, r) => s + r.qty * r.price, 0);
+}
+
+function popiGrandTotal(type) {
+  const f = popiState[type].form;
+  return popiRowsSum(type) - bomNum(f.discount) + bomNum(f.other) + bomNum(f.vat);
+}
+
+/* ---------- shared bits ---------- */
+function popiText(type, key, placeholder) {
+  const f = popiState[type].form;
+  return `<input data-popif="${key}" type="text" autocomplete="off"
+    value="${escapeHtml(f[key] || '')}" placeholder="${escapeHtml(placeholder || '')}" class="${POPI_INPUT}" />`;
+}
+
+function popiSelect(type, key, options) {
+  const f = popiState[type].form;
+  return `<select data-popif="${key}" class="${POPI_INPUT}">
+    ${options.map(v => `<option value="${escapeHtml(v)}" ${v === f[key] ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('')}
+  </select>`;
+}
+
+function popiDateInput(type, key) {
+  const f = popiState[type].form;
+  return `<input data-popif="${key}" type="date" value="${escapeHtml(f[key] || '')}" class="${POPI_INPUT} tabular" />`;
+}
+
+/* ---------- header strip ---------- */
+function popiHeaderStrip(type) {
+  const cfg = POPI_CONFIG[type];
+  const f = popiState[type].form;
+  const chip = (k, v, opts) => {
+    const o = opts || {};
+    return `<div class="flex flex-col gap-1 min-w-[128px]">
+      <span class="text-[11px] font-medium text-muted whitespace-nowrap">${escapeHtml(k)}</span>
+      <span class="text-[13px] font-semibold ${o.link ? 'text-side-accent' : 'text-primary'} whitespace-nowrap">${o.html || escapeHtml(v)}</span>
+    </div>`;
+  };
+  const dateChip = `<div class="flex flex-col gap-1 min-w-[128px]">
+    <span class="text-[11px] font-medium text-muted whitespace-nowrap">${escapeHtml(cfg.dateLabel)}</span>
+    <input data-popif="date" type="date" value="${escapeHtml(f.date)}"
+      class="text-[13px] font-semibold text-primary bg-transparent border-none p-0 h-auto focus:outline-none tabular" />
+  </div>`;
+  const statusChip = `<div class="flex flex-col gap-1 min-w-[170px]">
+    <span class="text-[11px] font-medium text-muted whitespace-nowrap">${escapeHtml(cfg.statusLabel)}</span>
+    <div class="flex items-center gap-2">
+      <span class="text-[13px] font-semibold text-side-accent whitespace-nowrap">${escapeHtml(f.bomNo)}</span>
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-successSoft text-success w-fit">Confirmed</span>
+    </div>
+  </div>`;
+  const fields = [
+    chip(cfg.noLabel, f.no),
+    dateChip,
+    chip('Buyer PO No.', f.buyerPoNo, { link: true }),
+    chip('Inquiry No.', f.inquiryNo, { link: true }),
+    type === 'pi' ? chip('Costing No.', f.costingNo, { link: true }) : '',
+    chip('Sample No.', f.sampleNo, { link: true }),
+    statusChip,
+  ].join('');
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="flex flex-wrap items-start gap-x-8 gap-y-3">${fields}</div>
+    </section>`;
+}
+
+/* ---------- cards ---------- */
+function popiBuyerCard(type) {
+  const body = `
+    <div class="space-y-2.5">
+      ${biField('Select Buyer', popiSelect(type, 'buyer', biBuyers.map(b => b.name)), { req: true })}
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5">
+        ${biField('Inquiry Date', popiDateInput(type, 'inquiryDate'), { req: true })}
+        <div class="sm:col-span-2">${biField('Contact Person', popiText(type, 'contact', 'Contact name'))}</div>
+        ${biField('Season', popiSelect(type, 'season', BI_SEASONS), { req: true })}
+        ${biField('Country', popiSelect(type, 'country', BI_COUNTRIES), { req: true })}
+      </div>
+    </div>`;
+  return styCard('users', '--info-soft', '--info', 'Buyer & Inquiry', body);
+}
+
+function popiBankCard(type) {
+  const body = `
+    <div class="space-y-2.5">
+      ${biField('Bank Name', popiText(type, 'bankName', 'Bank name'))}
+      ${biField('Bank Address', popiText(type, 'bankAddress', 'Bank address'))}
+      ${biField('Account Name', popiText(type, 'accountName', 'Account name'))}
+      ${biField('Account No', popiText(type, 'accountNo', 'Account number'))}
+      ${biField('SWIFT Code', popiText(type, 'swift', 'SWIFT code'))}
+    </div>`;
+  return styCard('wallet', '--success-soft', '--success', 'Bank Details', body);
+}
+
+let popiActiveType = 'po';
+
+const popiStyleCombo = createCombo({
+  id: 'popiStyle',
+  match: matchStyles,
+  renderItem: comboStyleItem,
+  key: (s) => String(s.id),
+  emptyText: 'No styles yet — add one in Style Management.',
+  onSelect: (s) => {
+    Object.assign(popiState[popiActiveType].form, { styleNo: s.style, product: s.product, fabric: s.fabric, color: s.color });
+    popiRerenderCards(popiActiveType);
+  },
+});
+
+function popiStyleCard(type) {
+  const f = popiState[type].form;
+  const body = `
+    <div class="flex gap-3">
+      <div class="flex-1 min-w-0 space-y-2.5">
+        ${comboFieldHtml('popiStyle', 'Style No.', f.styleNo, { placeholder: 'Search style no, product...', inputClass: POPI_INPUT })}
+        ${biField('Product', popiText(type, 'product', 'Product'))}
+        ${biField('Garment Type', popiText(type, 'garmentType', 'Garment type'))}
+        ${biField('Fabric', popiText(type, 'fabric', 'Fabric'))}
+        ${biField('Fabric GSM', popiText(type, 'gsm', 'e.g. 180 GSM'))}
+        ${biField('Color', popiText(type, 'color', 'Color'))}
+        ${biField('Size Range', popiText(type, 'sizeRange', 'e.g. S - XL'))}
+      </div>
+      <div class="w-[100px] shrink-0">
+        <div class="rounded-md border border-side-line bg-side-hover p-3 text-center h-full flex flex-col items-center justify-center gap-1.5">
+          <span class="text-side-accent">${iconSvg('shirt', 'w-6 h-6')}</span>
+          <span class="text-[12px] font-semibold text-primary truncate w-full">${escapeHtml(f.styleNo || '—')}</span>
+          <span class="text-helper text-muted truncate w-full">${escapeHtml(f.product || '')}</span>
+        </div>
+      </div>
+    </div>`;
+  return styCard('shirt', '--violet-soft', '--violet', 'Style Details', body);
+}
+
+function popiConstructionCard(type) {
+  const body = `
+    <div class="grid grid-cols-1 gap-x-3 gap-y-2.5">
+      ${biField('Seam', popiText(type, 'seam', 'Seam'))}
+      ${biField('Stitch Type', popiText(type, 'stitch', 'Stitch type'))}
+      ${biField('Needle', popiText(type, 'needle', 'Needle'))}
+      ${biField('Thread', popiText(type, 'thread', 'Thread'))}
+      ${biField('Main Label', popiText(type, 'mainLabel', 'Main label'))}
+      ${biField('Care Label', popiText(type, 'careLabel', 'Care label'))}
+      ${biField('Hangtag', popiText(type, 'hangtag', 'Hangtag'))}
+      ${biField('Polybag', popiText(type, 'polybag', 'Polybag'))}
+      ${biField('Carton', popiText(type, 'carton', 'Carton'))}
+    </div>`;
+  return styCard('list', '--info-soft', '--info', 'Sewing / Construction Details', body);
+}
+
+function popiCommercialCard(type) {
+  const body = `
+    <div class="grid grid-cols-1 gap-x-3 gap-y-2.5">
+      ${biField('Price Term', popiSelect(type, 'priceTerm', POPI_PRICE_TERMS))}
+      ${biField('Currency', popiSelect(type, 'currency', POPI_CURRENCIES))}
+      ${biField('Unit Price', popiText(type, 'unitPrice', 'e.g. $4.50 / PCS'))}
+      ${biField('Payment Terms', popiText(type, 'paymentTerms', 'Payment terms'))}
+      ${biField('Credit Terms', popiText(type, 'creditTerms', 'Credit terms'))}
+      ${biField('Incoterms', popiSelect(type, 'incoterms', POPI_PRICE_TERMS))}
+      ${biField('Discount', popiText(type, 'discount', '0.00'))}
+      ${biField('Other Charges', popiText(type, 'other', '0.00'))}
+      ${biField('VAT / Tax', popiText(type, 'vat', '0.00'))}
+    </div>
+    <div class="mt-3 flex items-center justify-between px-3 py-2.5 rounded-md bg-successSoft">
+      <span class="text-[13px] font-semibold text-success">Total Order Value</span>
+      <span data-popi-total class="text-[15px] font-bold text-success">${bomMoney(popiGrandTotal(type))}</span>
+    </div>`;
+  return styCard('chartbar', '--success-soft', '--success', 'Commercial Terms', body);
+}
+
+function popiShippingCard(type) {
+  const body = `
+    <div class="grid grid-cols-1 gap-x-3 gap-y-2.5">
+      ${biField('Shipment Mode', popiSelect(type, 'shipMode', POPI_SHIP_MODES))}
+      ${biField('Port of Loading', popiText(type, 'portLoading', 'Port of loading'))}
+      ${biField('Port of Destination', popiText(type, 'portDest', 'Port of destination'))}
+      ${biField('Final Destination', popiText(type, 'finalDest', 'Final destination'))}
+      ${biField('Shipment Date', popiDateInput(type, 'shipDate'))}
+      ${biField('Delivery Date', popiDateInput(type, 'deliveryDate'))}
+      ${biField('Partial Shipment', popiSelect(type, 'partial', POPI_YESNO))}
+      ${biField('Transshipment', popiSelect(type, 'transship', POPI_YESNO))}
+      ${biField('Shipping Marks', popiText(type, 'shippingMarks', 'Shipping marks'))}
+      ${biField('Special Instructions', popiText(type, 'instructions', 'Special instructions'))}
+    </div>`;
+  return styCard('truck', '--violet-soft', '--violet', 'Shipping Details', body);
+}
+
+/* ---------- order details table ---------- */
+function popiRowHtml(r, i) {
+  return `
+    <tr data-idx="${i}">
+      <td class="pl-4 pr-2 py-2 text-[13px] text-disabled tabular">${i + 1}</td>
+      <td class="px-3 py-2 text-[13px] font-medium text-primary whitespace-nowrap">${escapeHtml(r.no)}</td>
+      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap">${escapeHtml(r.product)}</td>
+      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(r.cat)}</td>
+      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(r.fabric)}</td>
+      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(r.color)}</td>
+      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(r.size)}</td>
+      <td class="px-3 py-2 text-right">
+        <input type="text" inputmode="numeric" data-popi-row="${i}" data-popi-cell="qty" value="${r.qty}"
+          class="w-20 h-8 px-2 rounded border border-side-border bg-canvas text-[13px] font-medium text-primary text-right tabular focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
+      </td>
+      <td class="px-3 py-2">
+        <div class="flex items-center justify-end gap-1">
+          <span class="text-[12px] text-muted">$</span>
+          <input type="text" inputmode="decimal" data-popi-row="${i}" data-popi-cell="price" value="${r.price.toFixed(2)}"
+            class="w-16 h-8 px-2 rounded border border-side-border bg-canvas text-[13px] font-medium text-primary text-right tabular focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
+        </div>
+      </td>
+      <td class="px-3 py-2 text-[13px] font-semibold text-primary whitespace-nowrap tabular text-right" data-popi-amount="${i}">${bomMoney(r.qty * r.price)}</td>
+      <td class="pr-4 pl-3 py-2">
+        <button type="button" data-popi-rowdel="${i}" class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:text-danger hover:bg-dangerSoft" title="Remove">${STY_DELETE_ICON}</button>
+      </td>
+    </tr>`;
+}
+
+function popiTableSection(type) {
+  const headers = [
+    ['#', 'left'], ['Style No.', 'left'], ['Product', 'left'], ['Category', 'left'], ['Fabric', 'left'],
+    ['Color', 'left'], ['Size', 'left'], ['Quantity', 'right'], ['Unit Price', 'right'], ['Amount', 'right'], ['Action', 'left'],
+  ];
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex flex-wrap items-center justify-between gap-3 p-4">
+        <div class="flex items-center gap-2.5">
+          <span class="text-side-accent shrink-0">${iconSvg('list', 'w-4 h-4')}</span>
+          <h3 class="text-[13px] font-semibold text-primary">Order Details</h3>
+        </div>
+        <button type="button" data-popi-addrow class="${POPI_BTN_PRIMARY}">${STY_PLUS_ICON}Add Item</button>
+      </div>
+      <div class="overflow-x-auto border-t border-side-line">
+        <table class="w-full min-w-[980px]">
+          <thead><tr class="border-b border-side-line">
+            ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[12px] font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          </tr></thead>
+          <tbody data-popi-rows>${popiState[type].rows.map((r, i) => popiRowHtml(r, i)).join('')}</tbody>
+        </table>
+      </div>
+    </section>`;
+}
+
+function popiRefreshTable(type) {
+  const body = document.querySelector('[data-popi-rows]');
+  if (!body) return;
+  const rows = popiState[type].rows;
+  body.innerHTML = rows.length ? rows.map((r, i) => popiRowHtml(r, i)).join('') : `
+    <tr><td colspan="11" class="px-4 py-10 text-center"><p class="text-body text-muted">No items added yet.</p></td></tr>`;
+}
+
+function popiRecalcTotal(type) {
+  const el = document.querySelector('[data-popi-total]');
+  if (el) el.textContent = bomMoney(popiGrandTotal(type));
+}
+
+/* ---------- info banner + footer ---------- */
+function popiInfoBanner() {
+  return `
+    <div class="flex items-start gap-2.5 px-4 py-3 rounded-md bg-infoSoft">
+      <span class="text-info shrink-0 mt-0.5">${iconSvg('info', 'w-4 h-4')}</span>
+      <p class="text-[13px] text-secondary">Order information is automatically linked with the selected inquiry. You can proceed to shipment and finance modules.</p>
+    </div>`;
+}
+
+function popiFooterButtons(type) {
+  const cfg = POPI_CONFIG[type];
+  const f = popiState[type].form;
+  return `
+    <p id="popiFormMsg" class="${f.msg ? '' : 'hidden '}text-helper text-${f.msgTone}">${escapeHtml(f.msg)}</p>
+    <div class="flex items-center justify-end gap-2">
+      <button type="button" data-popi-reset class="${POPI_BTN}">${STY_RESET_ICON}Reset</button>
+      <button type="button" data-popi-save class="${POPI_BTN_PRIMARY}">${BI_SAVE_ICON}${escapeHtml(cfg.saveLabel)}</button>
+    </div>`;
+}
+
+function popiSetMsg(type, text, tone) {
+  const f = popiState[type].form;
+  f.msg = text || '';
+  f.msgTone = tone || 'muted';
+  const el = document.getElementById('popiFormMsg');
+  if (el) {
+    el.textContent = f.msg;
+    el.className = `${f.msg ? '' : 'hidden '}text-helper text-${f.msgTone}`;
+  }
+}
+
+/* ---------- actions ---------- */
+function popiRerenderCards(type) {
+  const el = document.getElementById('popiCards');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">${popiBuyerCard(type) + popiBankCard(type) + popiStyleCard(type)}</div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">${popiConstructionCard(type) + popiCommercialCard(type) + popiShippingCard(type)}</div>`;
+}
+
+function popiSave(type) {
+  const cfg = POPI_CONFIG[type];
+  const f = popiState[type].form;
+  if (!f.styleNo.trim()) { popiSetMsg(type, 'Style No. is required.', 'danger'); return; }
+  if (!popiState[type].rows.length) { popiSetMsg(type, 'Add at least one order item.', 'danger'); return; }
+  popiSetMsg(type, `${cfg.saveLabel} saved successfully.`, 'success');
+}
+
+let popiInputHandler = null;
+let popiChangeHandler = null;
+let popiClickHandler = null;
+
+let popiMousemoveHandler = null;
+let popiKeydownHandler = null;
+let popiOutsideClick = null;
+
+function popiBindEvents(container, type) {
+  if (popiInputHandler) container.removeEventListener('input', popiInputHandler);
+  popiInputHandler = (e) => {
+    if (popiStyleCombo.handleInput(e)) return;
+    const key = e.target.dataset.popif;
+    if (key) {
+      popiState[type].form[key] = e.target.value;
+      if (key === 'discount' || key === 'other' || key === 'vat') popiRecalcTotal(type);
+      return;
+    }
+    const rowIdx = e.target.dataset.popiRow;
+    const cell = e.target.dataset.popiCell;
+    if (rowIdx === undefined || !cell) return;
+    const r = popiState[type].rows[Number(rowIdx)];
+    if (!r) return;
+    r[cell] = cell === 'qty' ? (parseInt(String(e.target.value).replace(/\D/g, ''), 10) || 0) : bomNum(e.target.value);
+    const amountEl = document.querySelector(`[data-popi-amount="${rowIdx}"]`);
+    if (amountEl) amountEl.textContent = bomMoney(r.qty * r.price);
+    popiRecalcTotal(type);
+  };
+  container.addEventListener('input', popiInputHandler);
+
+  if (popiMousemoveHandler) container.removeEventListener('mousemove', popiMousemoveHandler);
+  popiMousemoveHandler = (e) => { popiStyleCombo.handleMousemove(e); };
+  container.addEventListener('mousemove', popiMousemoveHandler);
+
+  if (popiKeydownHandler) container.removeEventListener('keydown', popiKeydownHandler);
+  popiKeydownHandler = (e) => { popiStyleCombo.handleKeydown(e); };
+  container.addEventListener('keydown', popiKeydownHandler);
+
+  if (popiChangeHandler) container.removeEventListener('change', popiChangeHandler);
+  popiChangeHandler = (e) => {
+    if (e.target.dataset.popif === 'buyer') {
+      const b = biBuyers.find(x => x.name === e.target.value);
+      if (b) {
+        popiState[type].form.contact = b.contact;
+        const c = document.querySelector('#popiCards [data-popif="contact"]');
+        if (c) c.value = b.contact;
+      }
+    }
+  };
+  container.addEventListener('change', popiChangeHandler);
+
+  if (popiClickHandler) container.removeEventListener('click', popiClickHandler);
+  popiClickHandler = (e) => {
+    if (popiStyleCombo.handleClick(e)) return;
+    if (e.target.closest('[data-popi-addrow]')) {
+      popiState[type].rows.push({ no: 'AB-NEW', product: 'New Product', cat: 'Knit', fabric: '—', color: '—', size: 'S - XL', qty: 1000, price: 0 });
+      popiRefreshTable(type); popiRecalcTotal(type); return;
+    }
+    const rowDel = e.target.closest('[data-popi-rowdel]');
+    if (rowDel) { popiState[type].rows.splice(Number(rowDel.dataset.popiRowdel), 1); popiRefreshTable(type); popiRecalcTotal(type); return; }
+    if (e.target.closest('[data-popi-save]')) { popiSave(type); return; }
+    if (e.target.closest('[data-popi-reset]')) {
+      popiBlankDetails(type);
+      popiRerenderCards(type); popiRefreshTable(type); popiRecalcTotal(type);
+      popiSetMsg(type, 'Form reset.', 'muted');
+      return;
+    }
+  };
+  container.addEventListener('click', popiClickHandler);
+
+  if (popiOutsideClick) document.removeEventListener('click', popiOutsideClick);
+  popiOutsideClick = (e) => {
+    if (popiStyleCombo.state.open && popiStyleCombo.isOutside(e.target)) popiStyleCombo.close();
+  };
+  document.addEventListener('click', popiOutsideClick);
+}
+
+/* ---------- page ---------- */
+function renderPOPI(container, type) {
+  popiActiveType = type;
+  popiEnsureSeeded(type);
+
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      ${popiHeaderStrip(type)}
+      <div id="popiCards" class="space-y-4">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">${popiBuyerCard(type) + popiBankCard(type) + popiStyleCard(type)}</div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">${popiConstructionCard(type) + popiCommercialCard(type) + popiShippingCard(type)}</div>
+      </div>
+      ${popiFooterButtons(type)}
+      ${popiTableSection(type)}
+      ${popiInfoBanner()}
+    </div>`;
+
+  popiBindEvents(container, type);
+}
+
+// ---------- Command palette ----------
+const cmdk = document.getElementById('cmdk');
+const cmdkInput = document.getElementById('cmdkInput');
+const cmdkList = document.getElementById('cmdkList');
+const cmdkCount = document.getElementById('cmdkCount');
+let cmdkResults = [];
+let cmdkCursor = 0;
+let lastFocused = null;
+
+function scoreEntry(e, q) {
+  const i = e.hay.indexOf(q);
+  if (i !== -1) return (i === 0 ? 1000 : e.hay[i - 1] === ' ' ? 800 : 500) - i;
+  let qi = 0;                                   // subsequence fallback: "pom" -> "PrOduction Management"
+  for (let c = 0; c < e.hay.length && qi < q.length; c++) if (e.hay[c] === q[qi]) qi++;
+  return qi === q.length ? 100 - e.hay.length / 10 : -1;
+}
+
+function renderCmdkList() {
+  if (!cmdkResults.length) {
+    cmdkList.innerHTML = `<p class="px-4 py-6 text-center text-body text-muted">No screens match that search.</p>`;
+    cmdkCount.textContent = '';
+    return;
+  }
+  cmdkList.innerHTML = cmdkResults.map((e, i) => `
+    <button role="option" aria-selected="${i === cmdkCursor}" data-i="${i}"
+      class="cmdk-row w-full flex items-center gap-2.5 px-3.5 py-2 text-left ${i === cmdkCursor ? 'bg-side-hover' : ''}">
+      ${iconSvg(e.icon, 'w-4 h-4 shrink-0 ' + (i === cmdkCursor ? 'text-side-accent' : 'text-muted'))}
+      <span class="text-body-medium text-primary truncate">${escapeHtml(e.title)}</span>
+      ${e.context ? `<span class="text-helper text-disabled truncate ml-auto shrink-0">${escapeHtml(e.context)}</span>` : ''}
+    </button>
+  `).join('');
+  cmdkCount.textContent = `${cmdkResults.length} of ${pageIndex.length}`;
+  cmdkList.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
+}
+
+function updateCmdk() {
+  const q = cmdkInput.value.trim().toLowerCase();
+  cmdkResults = !q
+    ? pageIndex.slice(0, 40)
+    : pageIndex.map(e => ({ e, s: scoreEntry(e, q) })).filter(x => x.s >= 0)
+        .sort((a, b) => b.s - a.s).slice(0, 40).map(x => x.e);
+  cmdkCursor = 0;
+  renderCmdkList();
+}
+
+function openCmdk() {
+  lastFocused = document.activeElement;
+  cmdk.classList.remove('hidden');
+  cmdkInput.value = '';
+  updateCmdk();
+  cmdkInput.focus();
+}
+
+function closeCmdk() {
+  cmdk.classList.add('hidden');
+  if (lastFocused && document.contains(lastFocused)) lastFocused.focus();
+}
+
+function commitCmdk() {
+  const pick = cmdkResults[cmdkCursor];
+  if (!pick) return;
+  closeCmdk();
+  goTo(pick.moduleKey, pick.subIndex);
+}
+
+cmdkInput.addEventListener('input', updateCmdk);
+document.getElementById('cmdkBackdrop').addEventListener('click', closeCmdk);
+document.getElementById('searchTrigger').addEventListener('click', openCmdk);
+
+cmdkList.addEventListener('mousemove', (e) => {
+  const row = e.target.closest('[data-i]');
+  if (row && +row.dataset.i !== cmdkCursor) { cmdkCursor = +row.dataset.i; renderCmdkList(); }
+});
+cmdkList.addEventListener('click', (e) => {
+  const row = e.target.closest('[data-i]');
+  if (row) { cmdkCursor = +row.dataset.i; commitCmdk(); }
+});
+
+cmdk.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown') { e.preventDefault(); cmdkCursor = Math.min(cmdkCursor + 1, cmdkResults.length - 1); renderCmdkList(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); cmdkCursor = Math.max(cmdkCursor - 1, 0); renderCmdkList(); }
+  else if (e.key === 'Enter') { e.preventDefault(); commitCmdk(); }
+  else if (e.key === 'Escape') { e.preventDefault(); closeCmdk(); }
+});
+
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openCmdk(); }
+});
+
+// ---------- Theme ----------
+function applyThemeIcon(theme) {
+  document.getElementById('themeIconSun').classList.toggle('hidden', theme === 'dark');
+  document.getElementById('themeIconMoon').classList.toggle('hidden', theme !== 'dark');
+}
+
+(function initTheme() {
+  let saved = null;
+  try { saved = localStorage.getItem('erp-theme'); } catch (e) { /* ignore */ }
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = saved || (prefersDark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+  applyThemeIcon(theme);
+})();
+
+document.getElementById('themeToggle').addEventListener('click', () => {
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  applyThemeIcon(next);
+  try { localStorage.setItem('erp-theme', next); } catch (e) { /* ignore */ }
+});
+
+if (/Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent)) {
+  document.getElementById('searchKbd').textContent = '⌘K';
+}
+
+renderNav();
+renderContent();
+</script>
+
+</body>
+</html>
