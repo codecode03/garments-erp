@@ -260,9 +260,9 @@
   .text-section-title { font-size: 15px; line-height: 22px; font-weight: 600; letter-spacing: -0.01em; }
   .text-body          { font-size: 13.5px; line-height: 20px; font-weight: 400; }
   .text-body-medium   { font-size: 13.5px; line-height: 20px; font-weight: 500; }
-  .text-label         { font-size: 12.5px; line-height: 18px; font-weight: 500; }
+  .text-label         { font-size: 13.5px; line-height: 19px; font-weight: 500; }
   .text-table-header  { font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: 0.045em; text-transform: uppercase; }
-  .text-table-body    { font-size: 13px; line-height: 20px; font-weight: 400; font-variant-numeric: tabular-nums; }
+  .text-table-body    { font-size: 13.5px; line-height: 20px; font-weight: 400; font-variant-numeric: tabular-nums; }
   .text-helper        { font-size: 11.5px; line-height: 17px; font-weight: 400; }
   .text-micro         { font-size: 10.5px; line-height: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
 
@@ -450,7 +450,7 @@ const modules = [
   { key:'about', name:'About', icon:'info', submodules:[{ name:'About ERP' }]},
 ];
 
-let state = { moduleKey: 'dashboard', subIndex: 0, tabIndex: 0 };
+let state = { moduleKey: 'dashboard', subIndex: 0, tabIndex: 0, openKey: null };
 
 const nav = document.getElementById('nav');
 
@@ -479,6 +479,7 @@ modules.forEach(mod => {
 function goTo(moduleKey, subIndex) {
   state.moduleKey = moduleKey;
   state.subIndex = subIndex;
+  state.openKey = moduleKey;
   state.tabIndex = 0;
   state.editingId = null;
   state.editingBomId = null;
@@ -495,42 +496,44 @@ function renderNav() {
 
   // --- Modules ---
   modules.forEach(mod => {
-    const isModuleOpen = state.moduleKey === mod.key;
+    const isActive = state.moduleKey === mod.key;
 
     if (mod.submodules.length === 1) {
       const flatBtn = document.createElement('button');
-      flatBtn.className = `w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-label ${isModuleOpen ? NAV_ACTIVE_CLASS : NAV_IDLE_CLASS}`;
+      flatBtn.className = `w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-label ${isActive ? NAV_ACTIVE_CLASS : NAV_IDLE_CLASS}`;
       flatBtn.innerHTML = `${iconSvg(mod.icon, 'w-4 h-4 shrink-0')}<span class="flex-1 text-left">${escapeHtml(mod.name)}</span>`;
       flatBtn.addEventListener('click', () => goTo(mod.key, 0));
       nav.appendChild(flatBtn);
       return;
     }
 
+    const isExpanded = state.openKey === mod.key;
+
     const wrap = document.createElement('div');
 
     const btn = document.createElement('button');
-    btn.className = `w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-label ${isModuleOpen ? NAV_ACTIVE_CLASS : NAV_IDLE_CLASS}`;
-    btn.setAttribute('aria-expanded', String(isModuleOpen));
+    btn.className = `w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-label ${isActive ? NAV_ACTIVE_CLASS : NAV_IDLE_CLASS}`;
+    btn.setAttribute('aria-expanded', String(isExpanded));
     btn.innerHTML = `
       ${iconSvg(mod.icon, 'w-4 h-4 shrink-0')}
       <span class="flex-1 text-left">${escapeHtml(mod.name)}</span>
-      <svg class="chev ${isModuleOpen ? 'open' : ''} w-3 h-3 shrink-0 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      <svg class="chev ${isExpanded ? 'open' : ''} w-3 h-3 shrink-0 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
     `;
     btn.addEventListener('click', () => {
-      if (state.moduleKey === mod.key) { state.moduleKey = null; renderNav(); renderContent(); }
-      else { goTo(mod.key, 0); }
+      state.openKey = isExpanded ? null : mod.key;
+      renderNav();
     });
 
     const sub = document.createElement('div');
-    sub.className = `submenu ${isModuleOpen ? 'open' : ''}`;
+    sub.className = `submenu ${isExpanded ? 'open' : ''}`;
     const subInner = document.createElement('div');
     const list = document.createElement('div');
     list.className = 'pt-0.5 pb-1 pl-[22px] flex flex-col gap-px';
 
     mod.submodules.forEach((sm, i) => {
-      const active = isModuleOpen && state.subIndex === i;
+      const active = isActive && state.subIndex === i;
       const item = document.createElement('button');
-      item.className = `flex items-center gap-2 text-left px-2.5 py-1.5 text-[12.5px] rounded ${active ? 'bg-side-navSubActiveBg text-side-navSubActiveText font-semibold shadow-[inset_2px_0_0_0_var(--nav-sub-active-bar)]' : 'text-side-navSubText hover:bg-side-navHoverBg hover:text-side-navHoverText'}`;
+      item.className = `flex items-center gap-2 text-left px-2.5 py-1.5 text-[13.5px] rounded ${active ? 'bg-side-navSubActiveBg text-side-navSubActiveText font-semibold shadow-[inset_2px_0_0_0_var(--nav-sub-active-bar)]' : 'text-side-navSubText hover:bg-side-navHoverBg hover:text-side-navHoverText'}`;
       item.setAttribute('aria-current', active ? 'page' : 'false');
       item.innerHTML = `<span class="w-1 h-1 rounded-full shrink-0 ${active ? 'bg-side-navSubActiveDot' : 'bg-side-navDot'}"></span><span>${escapeHtml(sm.name)}</span>`;
       item.addEventListener('click', (e) => { e.stopPropagation(); goTo(mod.key, i); });
@@ -929,7 +932,7 @@ function biCard(icon, title, body, opts) {
     <section class="${o.span || ''} bg-cardBg border border-side-panel rounded-lg card-shadow p-4 flex flex-col">
       <div class="flex items-center gap-2 pb-2.5 mb-2.5 border-b border-side-line">
         <span class="text-side-accent shrink-0">${iconSvg(icon, 'w-4 h-4')}</span>
-        <h3 class="text-[13px] font-semibold text-primary">${escapeHtml(title)}</h3>
+        <h3 class="text-[14.5px] font-semibold text-primary">${escapeHtml(title)}</h3>
         ${o.right ? `<div class="ml-auto shrink-0">${o.right}</div>` : ''}
       </div>
       <div class="flex-1">${body}</div>
@@ -1155,7 +1158,7 @@ function biOpenBuyerModal(prefillName) {
       <form id="biBuyerForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
         <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
           <span class="text-side-accent shrink-0">${iconSvg('user', 'w-4 h-4')}</span>
-          <h3 class="text-[13px] font-semibold text-primary">Add New Buyer</h3>
+          <h3 class="text-[14.5px] font-semibold text-primary">Add New Buyer</h3>
           <button type="button" data-close aria-label="Close"
             class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
         </div>
@@ -1277,14 +1280,14 @@ function refreshBiTable() {
     return `
       <tr data-no="${i.no}" tabindex="0"
         class="group cursor-pointer border-b border-side-line last:border-b-0 ${on ? 'bg-side-active' : 'hover:bg-side-hover'}">
-        <td class="pl-4 pr-2 py-2 text-[13px] text-disabled tabular">${n + 1}</td>
-        <td class="px-3 py-2 text-[13px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(i.no)}</td>
-        <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap tabular">${escapeHtml(i.date)}</td>
-        <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap">${escapeHtml(i.buyer)}</td>
-        <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(i.style)}</td>
-        <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(i.qty)}<span class="text-disabled font-normal ml-1">PCS</span></td>
-        <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(i.season)}</td>
-        <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(i.country)}</td>
+        <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n + 1}</td>
+        <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(i.no)}</td>
+        <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(i.date)}</td>
+        <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(i.buyer)}</td>
+        <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(i.style)}</td>
+        <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(i.qty)}<span class="text-disabled font-normal ml-1">PCS</span></td>
+        <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(i.season)}</td>
+        <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(i.country)}</td>
         <td class="px-3 py-2">${biStatus(i.status)}</td>
         <td class="pr-4 pl-3 py-2">
           <div class="flex items-center gap-0.5 text-disabled group-hover:text-muted">
@@ -1337,7 +1340,7 @@ function renderBuyerInquiry(container) {
           <div class="flex items-center gap-2">
             <span class="text-side-accent shrink-0">${iconSvg('list', 'w-4 h-4')}</span>
             <div>
-              <h3 class="text-[13px] font-semibold text-primary">Current Inquiries / Orders</h3>
+              <h3 class="text-[14.5px] font-semibold text-primary">Current Inquiries / Orders</h3>
               <p class="text-helper text-muted mt-0.5">Select a row to load it into the inquiry card</p>
             </div>
           </div>
@@ -1358,7 +1361,7 @@ function renderBuyerInquiry(container) {
           <table class="w-full min-w-[900px]">
             <thead>
               <tr class="border-b border-side-line">
-                ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[12px] font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+                ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
               </tr>
             </thead>
             <tbody id="biTableBody"></tbody>
@@ -1721,7 +1724,7 @@ function styCard(icon, bgVar, fgVar, title, body, opts) {
       <div class="flex items-center gap-2.5 pb-3 mb-3 border-b border-side-line">
         ${styBadge(icon, bgVar, fgVar)}
         <div class="min-w-0">
-          <h3 class="text-[13px] font-semibold text-primary">${escapeHtml(title)}</h3>
+          <h3 class="text-[14.5px] font-semibold text-primary">${escapeHtml(title)}</h3>
           ${o.subtitle ? `<p class="text-helper text-muted mt-0.5">${escapeHtml(o.subtitle)}</p>` : ''}
         </div>
         ${o.right ? `<div class="ml-auto shrink-0">${o.right}</div>` : ''}
@@ -1839,7 +1842,7 @@ function styListSection() {
         <div class="flex items-center gap-2.5">
           <span class="text-side-accent shrink-0">${iconSvg('list', 'w-4 h-4')}</span>
           <div>
-            <h3 class="text-[13px] font-semibold text-primary">Style List</h3>
+            <h3 class="text-[14.5px] font-semibold text-primary">Style List</h3>
             <p class="text-helper text-muted mt-0.5">Style information is automatically linked with the selected inquiry.</p>
           </div>
         </div>
@@ -1848,7 +1851,7 @@ function styListSection() {
       <div class="overflow-x-auto border-t border-side-line">
         <table class="w-full min-w-[980px]">
           <thead><tr class="border-b border-side-line">
-            ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[12px] font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+            ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
           </tr></thead>
           <tbody id="styTableBody"></tbody>
         </table>
@@ -1863,15 +1866,15 @@ function styRefreshTable() {
     const editing = s.id === state.editingId;
     return `
     <tr data-id="${s.id}" class="group border-b border-side-line last:border-b-0 ${editing ? 'bg-side-active' : 'hover:bg-side-hover'}">
-      <td class="pl-4 pr-2 py-2 text-[13px] text-disabled tabular">${n + 1}</td>
-      <td class="px-3 py-2 text-[13px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(s.style)}</td>
-      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap">${escapeHtml(s.product)}</td>
-      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(s.category)}</td>
-      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(s.fabric)}</td>
+      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n + 1}</td>
+      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(s.style)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(s.product)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(s.category)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(s.fabric)}</td>
       <td class="px-3 py-2"><span class="w-3 h-3 rounded-full inline-block" style="background:${styColorHex(s.color)}" title="${escapeHtml(s.color)}"></span></td>
-      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(s.qty)}<span class="text-disabled font-normal ml-1">Pcs</span></td>
-      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(s.price)}</td>
-      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap tabular">${escapeHtml(s.shipDate)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(s.qty)}<span class="text-disabled font-normal ml-1">Pcs</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(s.price)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(s.shipDate)}</td>
       <td class="px-3 py-2">${styStatusPill(s.status)}</td>
       <td class="pr-4 pl-3 py-2">
         <div class="flex items-center gap-1.5">
@@ -2334,7 +2337,7 @@ function bomListSection() {
         <div class="flex items-center gap-2.5">
           <span class="text-side-accent shrink-0">${iconSvg('list', 'w-4 h-4')}</span>
           <div>
-            <h3 class="text-[13px] font-semibold text-primary">Save BoM & Costing DATA LIST</h3>
+            <h3 class="text-[14.5px] font-semibold text-primary">Save BoM & Costing DATA LIST</h3>
             <p class="text-helper text-muted mt-0.5">Styles with completed BOM & Costing</p>
           </div>
         </div>
@@ -2342,7 +2345,7 @@ function bomListSection() {
       <div class="overflow-x-auto border-t border-side-line">
         <table class="w-full min-w-[980px]">
           <thead><tr class="border-b border-side-line">
-            ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[12px] font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+            ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
           </tr></thead>
           <tbody id="bomTableBody"></tbody>
         </table>
@@ -2357,15 +2360,15 @@ function bomRefreshTable() {
     const editing = r.id === state.editingBomId;
     return `
     <tr data-id="${r.id}" class="group border-b border-side-line last:border-b-0 ${editing ? 'bg-side-active' : 'hover:bg-side-hover'}">
-      <td class="pl-4 pr-2 py-2 text-[13px] text-disabled tabular">${n + 1}</td>
-      <td class="px-3 py-2 text-[13px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(r.style)}</td>
-      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap">${escapeHtml(r.product)}</td>
-      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(r.category)}</td>
-      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(r.fabric)}</td>
+      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n + 1}</td>
+      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(r.style)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(r.product)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(r.category)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(r.fabric)}</td>
       <td class="px-3 py-2"><span class="w-3 h-3 rounded-full inline-block" style="background:${styColorHex(r.color)}" title="${escapeHtml(r.color)}"></span></td>
-      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(r.qty)}<span class="text-disabled font-normal ml-1">Pcs</span></td>
-      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(r.price)}</td>
-      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap tabular">${escapeHtml(r.shipDate)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(r.qty)}<span class="text-disabled font-normal ml-1">Pcs</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(r.price)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(r.shipDate)}</td>
       <td class="px-3 py-2">${styStatusPill(r.status)}</td>
       <td class="pr-4 pl-3 py-2">
         <div class="flex items-center gap-1.5">
@@ -2801,13 +2804,13 @@ function popiShippingCard(type) {
 function popiRowHtml(r, i) {
   return `
     <tr data-idx="${i}">
-      <td class="pl-4 pr-2 py-2 text-[13px] text-disabled tabular">${i + 1}</td>
-      <td class="px-3 py-2 text-[13px] font-medium text-primary whitespace-nowrap">${escapeHtml(r.no)}</td>
-      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap">${escapeHtml(r.product)}</td>
-      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(r.cat)}</td>
-      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(r.fabric)}</td>
-      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(r.color)}</td>
-      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap">${escapeHtml(r.size)}</td>
+      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${i + 1}</td>
+      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap">${escapeHtml(r.no)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(r.product)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(r.cat)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(r.fabric)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(r.color)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(r.size)}</td>
       <td class="px-3 py-2 text-right">
         <input type="text" inputmode="numeric" data-popi-row="${i}" data-popi-cell="qty" value="${r.qty}"
           class="w-20 h-8 px-2 rounded border border-side-border bg-canvas text-[13px] font-medium text-primary text-right tabular focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
@@ -2819,7 +2822,7 @@ function popiRowHtml(r, i) {
             class="w-16 h-8 px-2 rounded border border-side-border bg-canvas text-[13px] font-medium text-primary text-right tabular focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
         </div>
       </td>
-      <td class="px-3 py-2 text-[13px] font-semibold text-primary whitespace-nowrap tabular text-right" data-popi-amount="${i}">${bomMoney(r.qty * r.price)}</td>
+      <td class="px-3 py-2 text-[13.5px] font-semibold text-primary whitespace-nowrap tabular text-right" data-popi-amount="${i}">${bomMoney(r.qty * r.price)}</td>
       <td class="pr-4 pl-3 py-2">
         <button type="button" data-popi-rowdel="${i}" class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:text-danger hover:bg-dangerSoft" title="Remove">${STY_DELETE_ICON}</button>
       </td>
@@ -2836,14 +2839,14 @@ function popiTableSection(type) {
       <div class="flex flex-wrap items-center justify-between gap-3 p-4">
         <div class="flex items-center gap-2.5">
           <span class="text-side-accent shrink-0">${iconSvg('list', 'w-4 h-4')}</span>
-          <h3 class="text-[13px] font-semibold text-primary">Order Details</h3>
+          <h3 class="text-[14.5px] font-semibold text-primary">Order Details</h3>
         </div>
         <button type="button" data-popi-addrow class="${POPI_BTN_PRIMARY}">${STY_PLUS_ICON}Add Item</button>
       </div>
       <div class="overflow-x-auto border-t border-side-line">
         <table class="w-full min-w-[980px]">
           <thead><tr class="border-b border-side-line">
-            ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[12px] font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+            ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
           </tr></thead>
           <tbody data-popi-rows>${popiState[type].rows.map((r, i) => popiRowHtml(r, i)).join('')}</tbody>
         </table>
@@ -3125,7 +3128,7 @@ function coaHeaderCard() {
 function coaLineRow(l, i) {
   return `
     <tr data-line="${i}" class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
-      <td class="pl-4 pr-2 py-2 text-[13px] text-disabled tabular">${i + 1}</td>
+      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${i + 1}</td>
       <td class="px-3 py-2 min-w-[200px]">
         <select data-coaline="account" class="${COA_INPUT}">
           ${COA_ACCOUNTS.map(a => `<option value="${escapeHtml(a)}" ${a === l.account ? 'selected' : ''}>${escapeHtml(a)}</option>`).join('')}
@@ -3150,12 +3153,12 @@ function coaEntriesCard() {
       <div class="overflow-x-auto border-t border-side-line">
         <table class="w-full min-w-[860px]">
           <thead><tr class="border-b border-side-line">
-            <th class="pl-4 pr-2 py-2.5 text-[12px] font-semibold text-muted text-left whitespace-nowrap">#</th>
-            <th class="px-3 py-2.5 text-[12px] font-semibold text-muted text-left whitespace-nowrap">Account</th>
-            <th class="px-3 py-2.5 text-[12px] font-semibold text-muted text-right whitespace-nowrap">Debit (BDT)</th>
-            <th class="px-3 py-2.5 text-[12px] font-semibold text-muted text-right whitespace-nowrap">Credit (BDT)</th>
-            <th class="px-3 py-2.5 text-[12px] font-semibold text-muted text-left whitespace-nowrap">Narration</th>
-            <th class="pr-4 pl-3 py-2.5 text-[12px] font-semibold text-muted text-left whitespace-nowrap">Action</th>
+            <th class="pl-4 pr-2 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">#</th>
+            <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">Account</th>
+            <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-right whitespace-nowrap">Debit (BDT)</th>
+            <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-right whitespace-nowrap">Credit (BDT)</th>
+            <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">Narration</th>
+            <th class="pr-4 pl-3 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">Action</th>
           </tr></thead>
           <tbody id="coaLinesBody">${jeForm.lines.map(coaLineRow).join('')}</tbody>
         </table>
@@ -3197,16 +3200,16 @@ function coaRecentCard() {
       <div class="overflow-x-auto border-t border-side-line">
         <table class="w-full min-w-[760px]">
           <thead><tr class="border-b border-side-line">
-            ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[12px] font-semibold text-muted text-${idx >= 3 && idx <= 4 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+            ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${idx >= 3 && idx <= 4 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
           </tr></thead>
           <tbody>
             ${jeEntries.map(e => `
               <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
-                <td class="pl-4 pr-2 py-2 text-[13px] text-secondary whitespace-nowrap tabular">${escapeHtml(e.date)}</td>
-                <td class="px-3 py-2 text-[13px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(e.voucherNo)}</td>
-                <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap">${escapeHtml(e.description)}</td>
-                <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap tabular text-right">${coaMoney(e.debit)}</td>
-                <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap tabular text-right">${coaMoney(e.credit)}</td>
+                <td class="pl-4 pr-2 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(e.date)}</td>
+                <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(e.voucherNo)}</td>
+                <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(e.description)}</td>
+                <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${coaMoney(e.debit)}</td>
+                <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${coaMoney(e.credit)}</td>
                 <td class="px-3 py-2">${coaStatusPill(e.status)}</td>
                 <td class="pr-4 pl-3 py-2"><span class="w-7 h-7 rounded border border-side-border inline-flex items-center justify-center text-muted">${COA_ARROW_ICON}</span></td>
               </tr>`).join('')}
@@ -3417,13 +3420,13 @@ function coaAssetRow(a, n) {
   return `
     <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
       <td class="pl-4 pr-2 py-2"><input type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></td>
-      <td class="px-3 py-2 text-[13px] text-disabled tabular">${n}</td>
-      <td class="px-3 py-2 text-[13px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
-      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap">${escapeHtml(a.name)}</td>
-      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CATEGORY_ICON[a.category] || ''}</span>${escapeHtml(a.category)}</span></td>
-      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_PIN_ICON}</span>${escapeHtml(a.location)}</span></td>
-      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap tabular"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CAL_ICON}</span>${escapeHtml(a.date)}</span></td>
-      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap tabular text-right">${coaInt(a.cost)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-disabled tabular">${n}</td>
+      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(a.name)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CATEGORY_ICON[a.category] || ''}</span>${escapeHtml(a.category)}</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_PIN_ICON}</span>${escapeHtml(a.location)}</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CAL_ICON}</span>${escapeHtml(a.date)}</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${coaInt(a.cost)}</td>
       <td class="px-3 py-2">${coaAssetStatusPill(a.status)}</td>
       <td class="pr-4 pl-3 py-2">
         <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_KEBAB_ICON}</button>
@@ -3444,7 +3447,7 @@ function coaAssetsResultsHtml() {
       <table class="w-full min-w-[1020px]">
         <thead><tr class="border-b border-side-line">
           <th class="pl-4 pr-2 py-2.5"><input id="coaAssetSelectAll" type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></th>
-          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[12px] font-semibold text-muted text-${idx === 6 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${idx === 6 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
         </tr></thead>
         <tbody>${rows.length ? rows.map((a, i) => coaAssetRow(a, start + i + 1)).join('') : `<tr><td colspan="10" class="px-4 py-10 text-center"><p class="text-body text-muted">No assets match your filters.</p></td></tr>`}</tbody>
       </table>
@@ -3606,14 +3609,14 @@ function coaLiabilityRow(l, n) {
   return `
     <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
       <td class="pl-4 pr-2 py-2"><input type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></td>
-      <td class="px-3 py-2 text-[13px] text-disabled tabular">${n}</td>
-      <td class="px-3 py-2 text-[13px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(l.code)}</td>
-      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap">${escapeHtml(l.name)}</td>
-      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_LIABILITY_CATEGORY_ICON[l.category] || ''}</span>${escapeHtml(l.category)}</span></td>
-      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_PIN_ICON}</span>${escapeHtml(l.location)}</span></td>
-      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap tabular"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CAL_ICON}</span>${escapeHtml(l.date)}</span></td>
-      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap tabular">${escapeHtml(l.due)}</td>
-      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap tabular text-right">${coaInt(l.balance)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-disabled tabular">${n}</td>
+      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(l.code)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(l.name)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_LIABILITY_CATEGORY_ICON[l.category] || ''}</span>${escapeHtml(l.category)}</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_PIN_ICON}</span>${escapeHtml(l.location)}</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CAL_ICON}</span>${escapeHtml(l.date)}</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(l.due)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${coaInt(l.balance)}</td>
       <td class="px-3 py-2">${coaLiabilityStatusPill(l.status)}</td>
       <td class="pr-4 pl-3 py-2">
         <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_DOTS_H_ICON}</button>
@@ -3634,7 +3637,7 @@ function coaLiabilitiesResultsHtml() {
       <table class="w-full min-w-[1080px]">
         <thead><tr class="border-b border-side-line">
           <th class="pl-4 pr-2 py-2.5"><input id="coaLiabSelectAll" type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></th>
-          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[12px] font-semibold text-muted text-${idx === 7 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${idx === 7 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
         </tr></thead>
         <tbody>${rows.length ? rows.map((l, i) => coaLiabilityRow(l, start + i + 1)).join('') : `<tr><td colspan="11" class="px-4 py-10 text-center"><p class="text-body text-muted">No liabilities match your filters.</p></td></tr>`}</tbody>
       </table>
