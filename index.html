@@ -3086,6 +3086,7 @@ function renderChartOfAccounts(tabsEl, container) {
 
   if (state.tabIndex === 0) coaRenderJournalEntry(container);
   else if (state.tabIndex === 1) coaRenderAssets(container);
+  else if (state.tabIndex === 2) coaRenderLiabilities(container);
   else coaRenderComingSoon(container, COA_TABS[state.tabIndex]);
 }
 
@@ -3334,7 +3335,7 @@ const COA_ASSET_CATEGORIES = ['All Categories', 'Machinery & Equipment', 'Electr
 const COA_ASSET_LOCATIONS = ['All Locations', 'Main Factory', 'Factory Yard', 'Warehouse', 'Admin Office', 'Dispatch Yard'];
 const COA_ASSET_STATUSES = ['All Statuses', 'Active', 'Inactive', 'Under Maintenance', 'Disposed'];
 const COA_ASSET_PERIODS = ['All Periods', 'This Month', 'This Quarter', 'This Year', 'Last Year'];
-const COA_ASSET_PAGE_SIZE = 10;
+const COA_PAGE_SIZE = 10;
 
 const coaAssets = [
   { code: 'AST-0001', name: 'Cutting Machine', category: 'Machinery & Equipment', location: 'Main Factory', date: '12-Jan-2023', cost: 1250000, status: 'Active' },
@@ -3432,10 +3433,10 @@ function coaAssetRow(a, n) {
 
 function coaAssetsResultsHtml() {
   const all = coaFilteredAssets();
-  const totalPages = Math.max(1, Math.ceil(all.length / COA_ASSET_PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(all.length / COA_PAGE_SIZE));
   coaAssetFilter.page = Math.min(Math.max(1, coaAssetFilter.page), totalPages);
-  const start = (coaAssetFilter.page - 1) * COA_ASSET_PAGE_SIZE;
-  const rows = all.slice(start, start + COA_ASSET_PAGE_SIZE);
+  const start = (coaAssetFilter.page - 1) * COA_PAGE_SIZE;
+  const rows = all.slice(start, start + COA_PAGE_SIZE);
   const headers = ['#', 'Asset Code', 'Asset Name', 'Category', 'Location', 'Purchase Date', 'Cost (BDT)', 'Status', 'Actions'];
 
   return `
@@ -3449,7 +3450,7 @@ function coaAssetsResultsHtml() {
       </table>
     </div>
     <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
-      <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_ASSET_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
+      <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
       <div class="flex items-center gap-1.5">
         <button data-coapage="prev" ${coaAssetFilter.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
         ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coapage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaAssetFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
@@ -3501,7 +3502,7 @@ function coaAssetBindEvents(container) {
   container.querySelector('#coaAssetsResults').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-coapage]');
     if (!btn || btn.disabled) return;
-    const totalPages = Math.max(1, Math.ceil(coaFilteredAssets().length / COA_ASSET_PAGE_SIZE));
+    const totalPages = Math.max(1, Math.ceil(coaFilteredAssets().length / COA_PAGE_SIZE));
     if (btn.dataset.coapage === 'prev') coaAssetFilter.page = Math.max(1, coaAssetFilter.page - 1);
     else if (btn.dataset.coapage === 'next') coaAssetFilter.page = Math.min(totalPages, coaAssetFilter.page + 1);
     else coaAssetFilter.page = +btn.dataset.coapage;
@@ -3511,6 +3512,196 @@ function coaAssetBindEvents(container) {
   container.addEventListener('change', (e) => {
     if (e.target.id !== 'coaAssetSelectAll') return;
     container.querySelectorAll('#coaAssetsResults tbody input[type="checkbox"]').forEach(cb => { cb.checked = e.target.checked; });
+  });
+}
+
+/* ---------- Liabilities tab ---------- */
+const COA_BANK_ICON = '<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-6 9 6M4 10v9M20 10v9M8 10v9M16 10v9M2 21h20"/></svg>';
+const COA_CLOCK_ICON = '<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>';
+const COA_PERCENT_ICON = '<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5L5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>';
+const COA_LOAN_ICON = '<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="5"/><path d="M13 13.5A5 5 0 1018.5 19"/><path d="M8 5.5v5M5.5 8h5"/></svg>';
+const COA_LOCK_ICON = '<svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="1.5"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>';
+const COA_DOTS_H_ICON = '<svg viewBox="0 0 24 24" class="w-4 h-4" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>';
+
+const COA_LIABILITY_CATEGORY_ICON = {
+  'Trade Payables': COA_BANK_ICON,
+  'Accrued Expenses': COA_CLOCK_ICON,
+  'Tax Payables': COA_PERCENT_ICON,
+  'Bank Loans': COA_LOAN_ICON,
+};
+
+const COA_LIABILITY_CATEGORIES = ['All Categories', 'Trade Payables', 'Accrued Expenses', 'Tax Payables', 'Bank Loans'];
+const COA_LIABILITY_LOCATIONS = ['All Locations', 'Main Factory', 'Factory Yard', 'Warehouse', 'Office', 'Admin Office'];
+const COA_LIABILITY_STATUSES = ['All Statuses', 'Active', 'Settled', 'Overdue'];
+const COA_LIABILITY_PERIODS = ['Current Period', 'Last Month', 'Last Quarter', 'Last Year'];
+
+const coaLiabilities = [
+  { code: 'LIA-0001', name: 'Accounts Payable', category: 'Trade Payables', location: 'Main Factory', date: '12-Jan-2023', due: '12-Feb-2023', balance: 1250000, status: 'Active' },
+  { code: 'LIA-0002', name: 'LC Payable', category: 'Trade Payables', location: 'Factory Yard', date: '20-Jan-2023', due: '20-Feb-2023', balance: 850000, status: 'Active' },
+  { code: 'LIA-0003', name: 'Salaries & Wages Payable', category: 'Accrued Expenses', location: 'Main Factory', date: '05-Feb-2023', due: '05-Mar-2023', balance: 1100000, status: 'Active' },
+  { code: 'LIA-0004', name: 'Overtime Payable', category: 'Accrued Expenses', location: 'Warehouse', date: '10-Feb-2023', due: '10-Mar-2023', balance: 420000, status: 'Active' },
+  { code: 'LIA-0005', name: 'Advance from Buyers', category: 'Trade Payables', location: 'Main Factory', date: '15-Nov-2023', due: '15-Dec-2023', balance: 2300000, status: 'Active' },
+  { code: 'LIA-0006', name: 'Accrued Expenses', category: 'Accrued Expenses', location: 'Office', date: '28-Feb-2023', due: '28-Mar-2023', balance: 680000, status: 'Active' },
+  { code: 'LIA-0007', name: 'VAT Payable (Output VAT)', category: 'Tax Payables', location: 'Factory Yard', date: '01-Mar-2023', due: '15-Mar-2023', balance: 950000, status: 'Active' },
+  { code: 'LIA-0008', name: 'Income Tax Payable', category: 'Tax Payables', location: 'Admin Office', date: '20-Feb-2023', due: '20-Mar-2023', balance: 730000, status: 'Active' },
+  { code: 'LIA-0009', name: 'Bank Loan — Short Term', category: 'Bank Loans', location: 'Main Factory', date: '05-Dec-2023', due: '05-Dec-2024', balance: 5000000, status: 'Active' },
+  { code: 'LIA-0010', name: 'Bank Loan — Long Term', category: 'Bank Loans', location: 'Admin Office', date: '10-Dec-2023', due: '10-Dec-2025', balance: 8500000, status: 'Active' },
+  { code: 'LIA-0011', name: 'Advance from Buyers — PO 2245', category: 'Trade Payables', location: 'Warehouse', date: '02-Jan-2024', due: '02-Feb-2024', balance: 300000, status: 'Active' },
+];
+
+const coaLiabilityFilter = { q: '', category: 'All Categories', location: 'All Locations', status: 'Active', page: 1 };
+
+function coaLiabilityStatusPill(status) {
+  const map = {
+    Active: ['successSoft', 'success'], Settled: ['neutralSoft', 'neutral'], Overdue: ['dangerSoft', 'danger'],
+  };
+  const [bg, fg] = map[status] || map.Active;
+  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg}">${COA_LOCK_ICON}${escapeHtml(status)}</span>`;
+}
+
+function coaFilteredLiabilities() {
+  const f = coaLiabilityFilter;
+  const q = f.q.trim().toLowerCase();
+  return coaLiabilities.filter(l => {
+    if (q && !(l.name.toLowerCase().includes(q) || l.code.toLowerCase().includes(q))) return false;
+    if (f.category !== 'All Categories' && l.category !== f.category) return false;
+    if (f.location !== 'All Locations' && l.location !== f.location) return false;
+    if (f.status !== 'All Statuses' && l.status !== f.status) return false;
+    return true;
+  });
+}
+
+function coaLiabilityFilterBar() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+        <div class="lg:col-span-2">
+          <span class="block text-label font-medium text-secondary mb-1">Search</span>
+          <div class="relative">
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input id="coaLiabSearch" type="text" value="${escapeHtml(coaLiabilityFilter.q)}" placeholder="Search account name, code or tag..."
+              class="${COA_INPUT} pl-9" />
+          </div>
+        </div>
+        ${coaField('Liability Category', `<select id="coaLiabCategory" class="${COA_INPUT}">
+          ${COA_LIABILITY_CATEGORIES.map(c => `<option value="${escapeHtml(c)}" ${c === coaLiabilityFilter.category ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('')}
+        </select>`)}
+        ${coaField('Location', `<select id="coaLiabLocation" class="${COA_INPUT}">
+          ${COA_LIABILITY_LOCATIONS.map(l => `<option value="${escapeHtml(l)}" ${l === coaLiabilityFilter.location ? 'selected' : ''}>${escapeHtml(l)}</option>`).join('')}
+        </select>`)}
+        ${coaField('Status', `<select id="coaLiabStatus" class="${COA_INPUT}">
+          ${COA_LIABILITY_STATUSES.map(s => `<option value="${escapeHtml(s)}" ${s === coaLiabilityFilter.status ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}
+        </select>`)}
+        ${coaField('As on Date', `<div class="relative">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none">${COA_CAL_ICON}</span>
+          <select id="coaLiabPeriod" class="${COA_INPUT} pl-9">
+            ${COA_LIABILITY_PERIODS.map(p => `<option value="${escapeHtml(p)}" ${p === 'Current Period' ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('')}
+          </select>
+        </div>`)}
+      </div>
+    </section>`;
+}
+
+function coaLiabilityRow(l, n) {
+  return `
+    <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
+      <td class="pl-4 pr-2 py-2"><input type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></td>
+      <td class="px-3 py-2 text-[13px] text-disabled tabular">${n}</td>
+      <td class="px-3 py-2 text-[13px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(l.code)}</td>
+      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap">${escapeHtml(l.name)}</td>
+      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_LIABILITY_CATEGORY_ICON[l.category] || ''}</span>${escapeHtml(l.category)}</span></td>
+      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_PIN_ICON}</span>${escapeHtml(l.location)}</span></td>
+      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap tabular"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CAL_ICON}</span>${escapeHtml(l.date)}</span></td>
+      <td class="px-3 py-2 text-[13px] text-secondary whitespace-nowrap tabular">${escapeHtml(l.due)}</td>
+      <td class="px-3 py-2 text-[13px] text-primary whitespace-nowrap tabular text-right">${coaInt(l.balance)}</td>
+      <td class="px-3 py-2">${coaLiabilityStatusPill(l.status)}</td>
+      <td class="pr-4 pl-3 py-2">
+        <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_DOTS_H_ICON}</button>
+      </td>
+    </tr>`;
+}
+
+function coaLiabilitiesResultsHtml() {
+  const all = coaFilteredLiabilities();
+  const totalPages = Math.max(1, Math.ceil(all.length / COA_PAGE_SIZE));
+  coaLiabilityFilter.page = Math.min(Math.max(1, coaLiabilityFilter.page), totalPages);
+  const start = (coaLiabilityFilter.page - 1) * COA_PAGE_SIZE;
+  const rows = all.slice(start, start + COA_PAGE_SIZE);
+  const headers = ['#', 'Account Code', 'Account Name', 'Category', 'Location', 'Purchase Date', 'Due Date', 'Balance (BDT)', 'Status', 'Actions'];
+
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[1080px]">
+        <thead><tr class="border-b border-side-line">
+          <th class="pl-4 pr-2 py-2.5"><input id="coaLiabSelectAll" type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></th>
+          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[12px] font-semibold text-muted text-${idx === 7 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows.length ? rows.map((l, i) => coaLiabilityRow(l, start + i + 1)).join('') : `<tr><td colspan="11" class="px-4 py-10 text-center"><p class="text-body text-muted">No liabilities match your filters.</p></td></tr>`}</tbody>
+      </table>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
+      <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
+      <div class="flex items-center gap-1.5">
+        <button data-coapage="prev" ${coaLiabilityFilter.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coapage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaLiabilityFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        <button data-coapage="next" ${coaLiabilityFilter.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
+      </div>
+    </div>`;
+}
+
+function coaLiabilityListCard() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex items-center justify-between gap-3 p-4">
+        <h3 class="text-section-title text-primary">Liabilities List</h3>
+        <button type="button" id="coaNewLiability" class="${COA_BTN_PRIMARY}">${COA_PLUS_ICON}New Liability</button>
+      </div>
+      <div id="coaLiabResults">${coaLiabilitiesResultsHtml()}</div>
+    </section>`;
+}
+
+function coaRenderLiabilities(container) {
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      ${coaLiabilityFilterBar()}
+      ${coaLiabilityListCard()}
+    </div>`;
+  coaLiabilityBindEvents(container);
+}
+
+function coaLiabilityRefreshResults() {
+  const el = document.getElementById('coaLiabResults');
+  if (el) el.innerHTML = coaLiabilitiesResultsHtml();
+}
+
+function coaLiabilityBindEvents(container) {
+  container.querySelector('#coaLiabSearch').addEventListener('input', (e) => {
+    coaLiabilityFilter.q = e.target.value;
+    coaLiabilityFilter.page = 1;
+    coaLiabilityRefreshResults();
+  });
+  ['coaLiabCategory', 'coaLiabLocation', 'coaLiabStatus'].forEach(id => {
+    container.querySelector(`#${id}`).addEventListener('change', (e) => {
+      const key = id === 'coaLiabCategory' ? 'category' : id === 'coaLiabLocation' ? 'location' : 'status';
+      coaLiabilityFilter[key] = e.target.value;
+      coaLiabilityFilter.page = 1;
+      coaLiabilityRefreshResults();
+    });
+  });
+
+  container.querySelector('#coaLiabResults').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-coapage]');
+    if (!btn || btn.disabled) return;
+    const totalPages = Math.max(1, Math.ceil(coaFilteredLiabilities().length / COA_PAGE_SIZE));
+    if (btn.dataset.coapage === 'prev') coaLiabilityFilter.page = Math.max(1, coaLiabilityFilter.page - 1);
+    else if (btn.dataset.coapage === 'next') coaLiabilityFilter.page = Math.min(totalPages, coaLiabilityFilter.page + 1);
+    else coaLiabilityFilter.page = +btn.dataset.coapage;
+    coaLiabilityRefreshResults();
+  });
+
+  container.addEventListener('change', (e) => {
+    if (e.target.id !== 'coaLiabSelectAll') return;
+    container.querySelectorAll('#coaLiabResults tbody input[type="checkbox"]').forEach(cb => { cb.checked = e.target.checked; });
   });
 }
 
