@@ -274,29 +274,29 @@
 <div class="flex h-screen w-full overflow-hidden">
 
   <!-- Sidebar -->
-  <aside class="w-72 shrink-0 h-full bg-side-bg border-r border-side-panel flex flex-col premium-shadow relative z-10">
+  <aside id="sidebar" class="w-72 shrink-0 h-full bg-side-bg border-r border-side-panel flex flex-col premium-shadow relative z-10 transition-[width] duration-200">
 
     <!-- Brand -->
     <div class="h-14 flex items-center justify-between gap-3 px-5 border-b border-side-line shrink-0">
-      <div class="flex items-center gap-2.5">
+      <div class="flex items-center gap-2.5 min-w-0">
         <div class="w-9 h-9 rounded-md bg-side-accent flex items-center justify-center shrink-0">
           <svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><path d="M4 21V9l8-6 8 6v12"/><path d="M9 21v-6h6v6"/></svg>
         </div>
-        <p class="text-[15px] leading-tight tracking-tight">
+        <p id="brandText" class="text-[15px] leading-tight tracking-tight whitespace-nowrap overflow-hidden">
           <span class="font-bold text-primary">Garments</span><span class="font-bold text-side-accent">ERP</span>
         </p>
       </div>
-      <button class="w-7 h-7 rounded flex items-center justify-center text-side-text hover:bg-side-hover hover:text-side-textbright shrink-0" title="Collapse sidebar" aria-label="Collapse sidebar">
+      <button id="sidebarToggle" class="w-7 h-7 rounded flex items-center justify-center text-side-text hover:bg-side-hover hover:text-side-textbright shrink-0" title="Collapse sidebar" aria-label="Collapse sidebar">
         <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="M15 10l-2 2 2 2"/></svg>
       </button>
     </div>
 
     <!-- Nav -->
-    <nav id="nav" class="flex-1 overflow-y-auto px-2.5 py-3 space-y-0.5" aria-label="Main navigation"></nav>
+    <nav id="nav" class="flex-1 overflow-y-auto overflow-x-hidden px-2.5 py-3 space-y-0.5" aria-label="Main navigation"></nav>
 
     <!-- Footer -->
     <div class="border-t border-side-line px-4 py-2.5 shrink-0">
-      <p class="text-micro text-disabled">GarmentsERP · v3.0</p>
+      <p id="sidebarFooterText" class="text-micro text-disabled whitespace-nowrap overflow-hidden">GarmentsERP · v3.0</p>
     </div>
   </aside>
 
@@ -305,9 +305,14 @@
 
     <!-- Topbar -->
     <header class="h-14 shrink-0 bg-side-bg border-b border-side-panel flex items-center justify-between px-5 premium-shadow">
-      <nav id="crumb" class="text-body text-secondary" aria-label="Breadcrumb">
-        <span class="text-primary font-semibold">Dashboard</span>
-      </nav>
+      <div class="flex items-center gap-3 min-w-0">
+        <button id="sidebarExpandBtn" class="hidden w-7 h-7 rounded flex items-center justify-center text-secondary hover:bg-side-hover hover:text-primary shrink-0" title="Expand sidebar" aria-label="Expand sidebar">
+          <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <nav id="crumb" class="text-body text-secondary min-w-0" aria-label="Breadcrumb">
+          <span class="text-primary font-semibold">Dashboard</span>
+        </nav>
+      </div>
 
       <div class="flex items-center gap-1.5">
         <!-- Command palette trigger -->
@@ -451,8 +456,28 @@ const modules = [
 ];
 
 let state = { moduleKey: 'dashboard', subIndex: 0, tabIndex: 0, openKey: null };
+let sidebarCollapsed = false;
 
 const nav = document.getElementById('nav');
+const sidebarEl = document.getElementById('sidebar');
+const sidebarToggle = document.getElementById('sidebarToggle');
+const brandText = document.getElementById('brandText');
+const sidebarFooterText = document.getElementById('sidebarFooterText');
+const sidebarExpandBtn = document.getElementById('sidebarExpandBtn');
+
+function setSidebarCollapsed(collapsed) {
+  sidebarCollapsed = collapsed;
+  sidebarEl.classList.toggle('w-72', !collapsed);
+  sidebarEl.classList.toggle('w-[68px]', collapsed);
+  brandText.classList.toggle('hidden', collapsed);
+  sidebarFooterText.classList.toggle('hidden', collapsed);
+  sidebarToggle.classList.toggle('hidden', collapsed);
+  sidebarExpandBtn.classList.toggle('hidden', !collapsed);
+  renderNav();
+}
+
+sidebarToggle.addEventListener('click', () => setSidebarCollapsed(!sidebarCollapsed));
+sidebarExpandBtn.addEventListener('click', () => setSidebarCollapsed(false));
 
 function iconSvg(name, extraClass) {
   return `<svg viewBox="0 0 24 24" class="${extraClass}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${icons[name]}"/></svg>`;
@@ -500,29 +525,34 @@ function renderNav() {
 
     if (mod.submodules.length === 1) {
       const flatBtn = document.createElement('button');
-      flatBtn.className = `w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-label ${isActive ? NAV_ACTIVE_CLASS : NAV_IDLE_CLASS}`;
-      flatBtn.innerHTML = `${iconSvg(mod.icon, 'w-4 h-4 shrink-0')}<span class="flex-1 text-left">${escapeHtml(mod.name)}</span>`;
+      flatBtn.className = `w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-label ${sidebarCollapsed ? 'justify-center' : ''} ${isActive ? NAV_ACTIVE_CLASS : NAV_IDLE_CLASS}`;
+      if (sidebarCollapsed) flatBtn.title = mod.name;
+      flatBtn.innerHTML = `${iconSvg(mod.icon, 'w-4 h-4 shrink-0')}${sidebarCollapsed ? '' : `<span class="flex-1 text-left">${escapeHtml(mod.name)}</span>`}`;
       flatBtn.addEventListener('click', () => goTo(mod.key, 0));
       nav.appendChild(flatBtn);
       return;
     }
 
-    const isExpanded = state.openKey === mod.key;
+    const isExpanded = !sidebarCollapsed && state.openKey === mod.key;
 
     const wrap = document.createElement('div');
 
     const btn = document.createElement('button');
-    btn.className = `w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-label ${isActive ? NAV_ACTIVE_CLASS : NAV_IDLE_CLASS}`;
+    btn.className = `w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-label ${sidebarCollapsed ? 'justify-center' : ''} ${isActive ? NAV_ACTIVE_CLASS : NAV_IDLE_CLASS}`;
     btn.setAttribute('aria-expanded', String(isExpanded));
-    btn.innerHTML = `
+    if (sidebarCollapsed) btn.title = mod.name;
+    btn.innerHTML = sidebarCollapsed ? iconSvg(mod.icon, 'w-4 h-4 shrink-0') : `
       ${iconSvg(mod.icon, 'w-4 h-4 shrink-0')}
       <span class="flex-1 text-left">${escapeHtml(mod.name)}</span>
       <svg class="chev ${isExpanded ? 'open' : ''} w-3 h-3 shrink-0 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
     `;
     btn.addEventListener('click', () => {
+      if (sidebarCollapsed) { state.openKey = mod.key; setSidebarCollapsed(false); return; }
       state.openKey = isExpanded ? null : mod.key;
       renderNav();
     });
+
+    if (sidebarCollapsed) { wrap.appendChild(btn); nav.appendChild(wrap); return; }
 
     const sub = document.createElement('div');
     sub.className = `submenu ${isExpanded ? 'open' : ''}`;
@@ -533,7 +563,7 @@ function renderNav() {
     mod.submodules.forEach((sm, i) => {
       const active = isActive && state.subIndex === i;
       const item = document.createElement('button');
-      item.className = `flex items-center gap-2 text-left px-2.5 py-1.5 text-[13.5px] rounded ${active ? 'bg-side-navSubActiveBg text-side-navSubActiveText font-semibold shadow-[inset_2px_0_0_0_var(--nav-sub-active-bar)]' : 'text-side-navSubText hover:bg-side-navHoverBg hover:text-side-navHoverText'}`;
+      item.className = `flex items-center gap-2 text-left px-2.5 py-1.5 text-[13px] rounded ${active ? 'bg-side-navSubActiveBg text-side-navSubActiveText font-semibold shadow-[inset_2px_0_0_0_var(--nav-sub-active-bar)]' : 'text-side-navSubText hover:bg-side-navHoverBg hover:text-side-navHoverText'}`;
       item.setAttribute('aria-current', active ? 'page' : 'false');
       item.innerHTML = `<span class="w-1 h-1 rounded-full shrink-0 ${active ? 'bg-side-navSubActiveDot' : 'bg-side-navDot'}"></span><span>${escapeHtml(sm.name)}</span>`;
       item.addEventListener('click', (e) => { e.stopPropagation(); goTo(mod.key, i); });
