@@ -3120,6 +3120,8 @@ function renderChartOfAccounts(tabsEl, container) {
   if (state.tabIndex === 0) coaRenderJournalEntry(container);
   else if (state.tabIndex === 1) coaRenderAssets(container);
   else if (state.tabIndex === 2) coaRenderLiabilities(container);
+  else if (state.tabIndex === 3) coaRenderEquity(container);
+  else if (state.tabIndex === 4) coaRenderRevenue(container);
   else coaRenderComingSoon(container, COA_TABS[state.tabIndex]);
 }
 
@@ -4431,6 +4433,971 @@ function coaLiabilityBindEvents(container) {
   });
 
   container.querySelector('#coaNewLiability').addEventListener('click', () => coaOpenNewLiabilityModal());
+}
+
+/* ---------- Equity tab ---------- */
+const COA_EQ_CONTROL_TYPE_LABEL = { investor: 'Investor' };
+
+const coaChartEquityAccounts = [
+  { code: '3000', name: "Owner's Capital", controlType: 'investor' },
+  { code: '3100', name: 'Retained Earnings', controlType: null },
+  { code: '3200', name: 'Drawings', controlType: null },
+];
+
+const COA_EQ_CHART_TYPES = ['All Types', 'Posting', 'Group'];
+const COA_EQ_CHART_CONTROL_TYPES = ['All Control Types', 'General', 'Investor'];
+
+const coaEqChartState = { q: '', type: 'All Types', controlType: 'All Control Types', page: 1 };
+
+function coaEqChartFilteredAccounts() {
+  const q = coaEqChartState.q.trim().toLowerCase();
+  return coaChartEquityAccounts.filter(a => {
+    if (q && !(a.code.toLowerCase().includes(q) || a.name.toLowerCase().includes(q))) return false;
+    if (coaEqChartState.type !== 'All Types' && coaEqChartState.type !== 'Posting') return false;
+    if (coaEqChartState.controlType !== 'All Control Types') {
+      const label = a.controlType ? COA_EQ_CONTROL_TYPE_LABEL[a.controlType] : 'General';
+      if (label !== coaEqChartState.controlType) return false;
+    }
+    return true;
+  });
+}
+
+function coaEqChartFilterBar() {
+  const optionsHtml = (list, selected) => list.map(v => `<option value="${escapeHtml(v)}" ${v === selected ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="lg:col-span-2">
+          <span class="block text-label font-medium text-secondary mb-1">Search</span>
+          <div class="relative">
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input id="coaEqChartSearch" type="text" value="${escapeHtml(coaEqChartState.q)}" placeholder="Search by code or name..." class="${COA_INPUT} pl-9" />
+          </div>
+        </div>
+        ${coaField('Type', `<select id="coaEqChartType" class="${COA_INPUT}">${optionsHtml(COA_EQ_CHART_TYPES, coaEqChartState.type)}</select>`)}
+        ${coaField('Control Type', `<select id="coaEqChartControlType" class="${COA_INPUT}">${optionsHtml(COA_EQ_CHART_CONTROL_TYPES, coaEqChartState.controlType)}</select>`)}
+      </div>
+    </section>`;
+}
+
+function coaEqChartParentLabel(a) {
+  if (!a.parent) return 'Root';
+  const p = coaChartEquityAccounts.find(x => x.code === a.parent);
+  return p ? `${p.code} — ${p.name}` : 'Root';
+}
+
+function coaEqChartAccountRow(a, n) {
+  return `
+    <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
+      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n}</td>
+      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">
+        <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#b07df0"></span>${escapeHtml(a.name)}</span>
+      </td>
+      <td class="px-3 py-2 whitespace-nowrap"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-side-active text-side-accent whitespace-nowrap">Posting</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">Credit</td>
+      <td class="px-3 py-2 whitespace-nowrap">${a.controlType ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-side-active text-side-accent whitespace-nowrap">${escapeHtml(COA_EQ_CONTROL_TYPE_LABEL[a.controlType])}</span>` : '<span class="text-[13.5px] text-muted">—</span>'}</td>
+      <td class="px-3 py-2 text-[13.5px] text-muted whitespace-nowrap">${escapeHtml(coaEqChartParentLabel(a))}</td>
+      <td class="pr-4 pl-3 py-2">
+        <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_KEBAB_ICON}</button>
+      </td>
+    </tr>`;
+}
+
+function coaEqChartAccountsResultsHtml() {
+  const all = coaEqChartFilteredAccounts();
+  const totalPages = Math.max(1, Math.ceil(all.length / COA_PAGE_SIZE));
+  coaEqChartState.page = Math.min(Math.max(1, coaEqChartState.page), totalPages);
+  const start = (coaEqChartState.page - 1) * COA_PAGE_SIZE;
+  const rows = all.slice(start, start + COA_PAGE_SIZE);
+  const headers = ['SL', 'Code', 'Account Name', 'Type', 'Normal Balance', 'Control Type', 'Parent', 'Actions'];
+
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[940px]">
+        <thead><tr class="border-b border-side-line">
+          ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows.length ? rows.map((a, i) => coaEqChartAccountRow(a, start + i + 1)).join('') : `<tr><td colspan="8" class="px-4 py-10 text-center"><p class="text-body text-muted">No accounts match your search.</p></td></tr>`}</tbody>
+      </table>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
+      <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
+      <div class="flex items-center gap-1.5">
+        <button data-coaeqchartpage="prev" ${coaEqChartState.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coaeqchartpage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaEqChartState.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        <button data-coaeqchartpage="next" ${coaEqChartState.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
+      </div>
+    </div>`;
+}
+
+function coaEqChartAccountsCard() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex flex-wrap items-start justify-between gap-3 p-4">
+        <div>
+          <h3 class="text-section-title text-primary">Equity — Chart of Accounts</h3>
+          <p id="coaEqChartCounter" class="text-helper text-muted mt-0.5">${coaEqChartFilteredAccounts().length} of ${coaChartEquityAccounts.length} GL accounts · normal balance: credit</p>
+        </div>
+        <button type="button" id="coaEqChartAddAccount" class="${COA_BTN_PRIMARY}">${COA_PLUS_ICON}New Account</button>
+      </div>
+      <div id="coaEqChartAccountsResults">${coaEqChartAccountsResultsHtml()}</div>
+    </section>`;
+}
+
+function coaEqChartAccountsRefreshResults() {
+  const results = document.getElementById('coaEqChartAccountsResults');
+  if (results) results.innerHTML = coaEqChartAccountsResultsHtml();
+  const counter = document.getElementById('coaEqChartCounter');
+  if (counter) counter.textContent = `${coaEqChartFilteredAccounts().length} of ${coaChartEquityAccounts.length} GL accounts · normal balance: credit`;
+}
+
+function coaEqChartAccountsBindEvents(container) {
+  const input = container.querySelector('#coaEqChartSearch');
+  if (!input) return;
+  input.addEventListener('input', (e) => {
+    coaEqChartState.q = e.target.value;
+    coaEqChartState.page = 1;
+    coaEqChartAccountsRefreshResults();
+  });
+
+  container.querySelector('#coaEqChartType').addEventListener('change', (e) => {
+    coaEqChartState.type = e.target.value;
+    coaEqChartState.page = 1;
+    coaEqChartAccountsRefreshResults();
+  });
+
+  container.querySelector('#coaEqChartControlType').addEventListener('change', (e) => {
+    coaEqChartState.controlType = e.target.value;
+    coaEqChartState.page = 1;
+    coaEqChartAccountsRefreshResults();
+  });
+
+  container.querySelector('#coaEqChartAddAccount').addEventListener('click', () => coaOpenNewEquityAccountModal());
+
+  container.querySelector('#coaEqChartAccountsResults').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-coaeqchartpage]');
+    if (!btn || btn.disabled) return;
+    const totalPages = Math.max(1, Math.ceil(coaEqChartFilteredAccounts().length / COA_PAGE_SIZE));
+    if (btn.dataset.coaeqchartpage === 'prev') coaEqChartState.page = Math.max(1, coaEqChartState.page - 1);
+    else if (btn.dataset.coaeqchartpage === 'next') coaEqChartState.page = Math.min(totalPages, coaEqChartState.page + 1);
+    else coaEqChartState.page = +btn.dataset.coaeqchartpage;
+    coaEqChartAccountsRefreshResults();
+  });
+}
+
+function coaEqChartNextCode() {
+  const max = coaChartEquityAccounts.reduce((m, a) => Math.max(m, parseInt(a.code, 10) || 0), 0);
+  return String(max + 10);
+}
+
+function coaOpenNewEquityAccountModal() {
+  if (document.getElementById('coaEqAccountModal')) return;
+  const close = '<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  const nextCode = coaEqChartNextCode();
+
+  const wrap = document.createElement('div');
+  wrap.id = 'coaEqAccountModal';
+  wrap.className = 'fixed inset-0 z-50';
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
+  wrap.setAttribute('aria-label', 'Add new account');
+  wrap.innerHTML = `
+    <div data-close class="absolute inset-0" style="background: var(--overlay)"></div>
+    <div class="relative mx-auto mt-[8vh] w-full max-w-[560px] px-4">
+      <form id="coaEqAccountForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
+        <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
+          <span class="text-side-accent shrink-0">${iconSvg('wallet', 'w-4 h-4')}</span>
+          <h3 class="text-[14.5px] font-semibold text-primary">New Account</h3>
+          <button type="button" data-close aria-label="Close"
+            class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
+        </div>
+
+        <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5 max-h-[62vh] overflow-y-auto">
+          <label class="block min-w-0 sm:col-span-2">${biLabel('Parent Account')}
+            <select name="parent" class="${COA_INPUT}">
+              <option value="">— None / Root (top-level Equity head) —</option>
+              ${coaChartEquityAccounts.map(a => `<option value="${escapeHtml(a.code)}">${escapeHtml(a.code)} — ${escapeHtml(a.name)}</option>`).join('')}
+            </select></label>
+          <label class="block min-w-0">${biLabel('Account Code', { req: true })}
+            <input name="code" type="text" autocomplete="off" value="${escapeHtml(nextCode)}" class="${COA_INPUT} tabular" /></label>
+          <label class="block min-w-0">${biLabel('Account Name', { req: true })}
+            <input name="name" type="text" autocomplete="off" placeholder="e.g. Share Premium" class="${COA_INPUT}" /></label>
+          <label class="block min-w-0 sm:col-span-2">${biLabel('Control Type')}
+            <select name="controlType" class="${COA_INPUT}">
+              ${COA_EQ_CHART_CONTROL_TYPES.slice(1).map(v => `<option value="${escapeHtml(v)}" ${v === 'General' ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('')}
+            </select></label>
+          <p id="coaEqAccountModalMsg" class="sm:col-span-2 text-helper text-danger min-h-[17px]"></p>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-side-line">
+          <button type="button" data-close class="${COA_BTN}">Cancel</button>
+          <button type="submit" class="${COA_BTN_PRIMARY}">Save Account</button>
+        </div>
+      </form>
+    </div>`;
+
+  document.body.appendChild(wrap);
+  const form = wrap.querySelector('#coaEqAccountForm');
+  const done = () => { document.removeEventListener('keydown', onKey); wrap.remove(); };
+  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); done(); } };
+
+  wrap.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) done(); });
+  document.addEventListener('keydown', onKey);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = (n) => (form.elements[n].value || '').trim();
+    const msg = form.querySelector('#coaEqAccountModalMsg');
+    if (!val('code') || !val('name')) {
+      msg.textContent = 'Account Code and Account Name are required.';
+      return;
+    }
+    if (coaChartEquityAccounts.some(a => a.code === val('code'))) {
+      msg.textContent = 'An account with this code already exists.';
+      return;
+    }
+    const controlType = val('controlType') === 'Investor' ? 'investor' : null;
+    coaChartEquityAccounts.push({ code: val('code'), name: val('name'), controlType, parent: val('parent') || null });
+    coaChartEquityAccounts.sort((a, b) => a.code.localeCompare(b.code));
+    done();
+    coaEqChartAccountsRefreshResults();
+  });
+
+  const first = form.querySelector('input[name="code"]');
+  if (first) first.focus();
+}
+
+const COA_EQUITY_CATEGORIES = ['All Categories', 'Owner Capital', 'Retained Earnings', 'Drawings', 'Share Capital'];
+const COA_EQUITY_PARTIES = ['All Holders', 'Mr. Karim Rahman', 'Company'];
+const COA_EQUITY_STATUSES = ['All Statuses', 'Active', 'Closed'];
+const COA_EQUITY_PERIODS = ['Current Period', 'Last Month', 'Last Quarter', 'Last Year'];
+
+const coaEquityItems = [
+  { code: 'EQT-0001', name: 'Owner Capital Contribution', category: 'Owner Capital', party: 'Mr. Karim Rahman', date: '01-Jan-2022', amount: 10000000, status: 'Active' },
+  { code: 'EQT-0002', name: 'Retained Earnings FY23', category: 'Retained Earnings', party: 'Company', date: '31-Dec-2023', amount: 3200000, status: 'Active' },
+  { code: 'EQT-0003', name: 'Owner Drawings — Q2', category: 'Drawings', party: 'Mr. Karim Rahman', date: '15-Jun-2023', amount: 250000, status: 'Closed' },
+];
+
+const coaEquityFilter = { q: '', category: 'All Categories', party: 'All Holders', status: 'All Statuses', page: 1 };
+
+function coaEquityStatusPill(status) {
+  const map = { Active: ['successSoft', 'success'], Closed: ['neutralSoft', 'neutral'] };
+  const [bg, fg] = map[status] || map.Active;
+  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg}"><span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>${escapeHtml(status)}</span>`;
+}
+
+function coaFilteredEquity() {
+  const f = coaEquityFilter;
+  const q = f.q.trim().toLowerCase();
+  return coaEquityItems.filter(it => {
+    if (q && !(it.name.toLowerCase().includes(q) || it.code.toLowerCase().includes(q))) return false;
+    if (f.category !== 'All Categories' && it.category !== f.category) return false;
+    if (f.party !== 'All Holders' && it.party !== f.party) return false;
+    if (f.status !== 'All Statuses' && it.status !== f.status) return false;
+    return true;
+  });
+}
+
+function coaEquityFilterBar() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+        <div class="lg:col-span-2">
+          <span class="block text-label font-medium text-secondary mb-1">Search</span>
+          <div class="relative">
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input id="coaEquitySearch" type="text" value="${escapeHtml(coaEquityFilter.q)}" placeholder="Search equity item name, code or tag..."
+              class="${COA_INPUT} pl-9" />
+          </div>
+        </div>
+        ${coaField('Equity Type', `<select id="coaEquityCategory" class="${COA_INPUT}">
+          ${COA_EQUITY_CATEGORIES.map(c => `<option value="${escapeHtml(c)}" ${c === coaEquityFilter.category ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('')}
+        </select>`)}
+        ${coaField('Holder / Partner', `<select id="coaEquityParty" class="${COA_INPUT}">
+          ${COA_EQUITY_PARTIES.map(p => `<option value="${escapeHtml(p)}" ${p === coaEquityFilter.party ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('')}
+        </select>`)}
+        ${coaField('Status', `<select id="coaEquityStatus" class="${COA_INPUT}">
+          ${COA_EQUITY_STATUSES.map(s => `<option value="${escapeHtml(s)}" ${s === coaEquityFilter.status ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}
+        </select>`)}
+        ${coaField('Date', `<select id="coaEquityPeriod" class="${COA_INPUT}">
+          ${COA_EQUITY_PERIODS.map(p => `<option value="${escapeHtml(p)}" ${p === 'Current Period' ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('')}
+        </select>`)}
+      </div>
+    </section>`;
+}
+
+function coaEquityRow(it, n) {
+  return `
+    <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
+      <td class="pl-4 pr-2 py-2"><input type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></td>
+      <td class="px-3 py-2 text-[13.5px] text-disabled tabular">${n}</td>
+      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(it.code)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(it.name)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(it.category)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${iconSvg('user', 'w-3.5 h-3.5')}</span>${escapeHtml(it.party)}</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CAL_ICON}</span>${escapeHtml(it.date)}</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${coaInt(it.amount)}</td>
+      <td class="px-3 py-2">${coaEquityStatusPill(it.status)}</td>
+      <td class="pr-4 pl-3 py-2">
+        <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_KEBAB_ICON}</button>
+      </td>
+    </tr>`;
+}
+
+function coaEquityResultsHtml() {
+  const all = coaFilteredEquity();
+  const totalPages = Math.max(1, Math.ceil(all.length / COA_PAGE_SIZE));
+  coaEquityFilter.page = Math.min(Math.max(1, coaEquityFilter.page), totalPages);
+  const start = (coaEquityFilter.page - 1) * COA_PAGE_SIZE;
+  const rows = all.slice(start, start + COA_PAGE_SIZE);
+  const headers = ['SL', 'Code', 'Name', 'Equity Type', 'Holder / Partner', 'Date', 'Amount (BDT)', 'Status', 'Actions'];
+
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[980px]">
+        <thead><tr class="border-b border-side-line">
+          <th class="pl-4 pr-2 py-2.5"><input id="coaEquitySelectAll" type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></th>
+          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${idx === 6 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows.length ? rows.map((it, i) => coaEquityRow(it, start + i + 1)).join('') : `<tr><td colspan="10" class="px-4 py-10 text-center"><p class="text-body text-muted">No equity items match your filters.</p></td></tr>`}</tbody>
+      </table>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
+      <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
+      <div class="flex items-center gap-1.5">
+        <button data-coapage="prev" ${coaEquityFilter.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coapage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaEquityFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        <button data-coapage="next" ${coaEquityFilter.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
+      </div>
+    </div>`;
+}
+
+function coaEquityListCard() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex items-center justify-between gap-3 p-4">
+        <h3 class="text-section-title text-primary">Equity List</h3>
+        <button type="button" id="coaNewEquity" class="${COA_BTN_PRIMARY}">${COA_PLUS_ICON}New Equity Item</button>
+      </div>
+      <div id="coaEquityResults">${coaEquityResultsHtml()}</div>
+    </section>`;
+}
+
+function coaRenderEquity(container) {
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      ${coaEqChartFilterBar()}
+      ${coaEqChartAccountsCard()}
+      ${coaEquityFilterBar()}
+      ${coaEquityListCard()}
+    </div>`;
+  coaEqChartAccountsBindEvents(container);
+  coaEquityBindEvents(container);
+}
+
+function coaEquityRefreshResults() {
+  const el = document.getElementById('coaEquityResults');
+  if (el) el.innerHTML = coaEquityResultsHtml();
+}
+
+function coaEquityBindEvents(container) {
+  container.querySelector('#coaEquitySearch').addEventListener('input', (e) => {
+    coaEquityFilter.q = e.target.value;
+    coaEquityFilter.page = 1;
+    coaEquityRefreshResults();
+  });
+  ['coaEquityCategory', 'coaEquityParty', 'coaEquityStatus'].forEach(id => {
+    container.querySelector(`#${id}`).addEventListener('change', (e) => {
+      const key = id === 'coaEquityCategory' ? 'category' : id === 'coaEquityParty' ? 'party' : 'status';
+      coaEquityFilter[key] = e.target.value;
+      coaEquityFilter.page = 1;
+      coaEquityRefreshResults();
+    });
+  });
+
+  container.querySelector('#coaEquityResults').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-coapage]');
+    if (!btn || btn.disabled) return;
+    const totalPages = Math.max(1, Math.ceil(coaFilteredEquity().length / COA_PAGE_SIZE));
+    if (btn.dataset.coapage === 'prev') coaEquityFilter.page = Math.max(1, coaEquityFilter.page - 1);
+    else if (btn.dataset.coapage === 'next') coaEquityFilter.page = Math.min(totalPages, coaEquityFilter.page + 1);
+    else coaEquityFilter.page = +btn.dataset.coapage;
+    coaEquityRefreshResults();
+  });
+
+  container.addEventListener('change', (e) => {
+    if (e.target.id !== 'coaEquitySelectAll') return;
+    container.querySelectorAll('#coaEquityResults tbody input[type="checkbox"]').forEach(cb => { cb.checked = e.target.checked; });
+  });
+
+  container.querySelector('#coaNewEquity').addEventListener('click', () => coaOpenNewEquityModal());
+}
+
+function coaEquityNextCode() {
+  const max = coaEquityItems.reduce((m, it) => Math.max(m, parseInt((it.code.split('-')[1] || '0'), 10) || 0), 0);
+  return `EQT-${String(max + 1).padStart(4, '0')}`;
+}
+
+function coaOpenNewEquityModal() {
+  if (document.getElementById('coaEquityModal')) return;
+  const close = '<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  const nextCode = coaEquityNextCode();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const wrap = document.createElement('div');
+  wrap.id = 'coaEquityModal';
+  wrap.className = 'fixed inset-0 z-50';
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
+  wrap.setAttribute('aria-label', 'Add new equity item');
+  wrap.innerHTML = `
+    <div data-close class="absolute inset-0" style="background: var(--overlay)"></div>
+    <div class="relative mx-auto mt-[8vh] w-full max-w-[620px] px-4">
+      <form id="coaEquityForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
+        <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
+          <span class="text-side-accent shrink-0">${iconSvg('users', 'w-4 h-4')}</span>
+          <h3 class="text-[14.5px] font-semibold text-primary">New Equity Item</h3>
+          <button type="button" data-close aria-label="Close"
+            class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
+        </div>
+
+        <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5 max-h-[62vh] overflow-y-auto">
+          <label class="block min-w-0">${biLabel('Code')}
+            <input name="code" type="text" value="${escapeHtml(nextCode)}" readonly class="${COA_INPUT} tabular bg-side-bg/60 text-muted" /></label>
+          <label class="block min-w-0">${biLabel('Name', { req: true })}
+            <input name="name" type="text" autocomplete="off" placeholder="e.g. Owner Capital Contribution" class="${COA_INPUT}" /></label>
+          <label class="block min-w-0">${biLabel('Equity Type')}
+            <select name="category" class="${COA_INPUT}">${COA_EQUITY_CATEGORIES.slice(1).map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}</select></label>
+          <label class="block min-w-0">${biLabel('Holder / Partner')}
+            <select name="party" class="${COA_INPUT}">${COA_EQUITY_PARTIES.slice(1).map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('')}</select></label>
+          <label class="block min-w-0">${biLabel('Date')}
+            <input name="date" type="date" value="${today}" class="${COA_INPUT} tabular" /></label>
+          <label class="block min-w-0">${biLabel('Amount (BDT)', { req: true })}
+            <input name="amount" type="number" min="0" step="1" placeholder="0" class="${COA_INPUT} tabular" /></label>
+          <label class="block min-w-0 sm:col-span-2">${biLabel('Status')}
+            <select name="status" class="${COA_INPUT}">${COA_EQUITY_STATUSES.slice(1).map(s => `<option value="${escapeHtml(s)}" ${s === 'Active' ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}</select></label>
+          <p id="coaEquityModalMsg" class="sm:col-span-2 text-helper text-danger min-h-[17px]"></p>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-side-line">
+          <button type="button" data-close class="${COA_BTN}">Cancel</button>
+          <button type="submit" class="${COA_BTN_PRIMARY}">Save Equity Item</button>
+        </div>
+      </form>
+    </div>`;
+
+  document.body.appendChild(wrap);
+  const form = wrap.querySelector('#coaEquityForm');
+  const done = () => { document.removeEventListener('keydown', onKey); wrap.remove(); };
+  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); done(); } };
+
+  wrap.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) done(); });
+  document.addEventListener('keydown', onKey);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = (n) => (form.elements[n].value || '').trim();
+    const msg = form.querySelector('#coaEquityModalMsg');
+    if (!val('name') || !val('amount')) {
+      msg.textContent = 'Name and Amount are required.';
+      return;
+    }
+    coaEquityItems.push({
+      code: val('code'),
+      name: val('name'),
+      category: val('category'),
+      party: val('party'),
+      date: coaFormatDateDisplay(val('date')),
+      amount: Number(val('amount')) || 0,
+      status: val('status'),
+    });
+    done();
+    coaEquityFilter.page = 1;
+    coaEquityRefreshResults();
+  });
+
+  const first = form.querySelector('input[name="name"]');
+  if (first) first.focus();
+}
+
+/* ---------- Revenue tab ---------- */
+const coaChartRevenueAccounts = [
+  { code: '4000', name: 'Export Sales Revenue', controlType: null },
+  { code: '4100', name: 'Local Sales Revenue', controlType: null },
+  { code: '4200', name: 'Sample & Other Income', controlType: null },
+  { code: '4900', name: 'Sales Returns & Allowances', controlType: null },
+];
+
+const COA_REV_CHART_TYPES = ['All Types', 'Posting', 'Group'];
+const COA_REV_CHART_CONTROL_TYPES = ['All Control Types', 'General'];
+
+const coaRevChartState = { q: '', type: 'All Types', controlType: 'All Control Types', page: 1 };
+
+function coaRevChartFilteredAccounts() {
+  const q = coaRevChartState.q.trim().toLowerCase();
+  return coaChartRevenueAccounts.filter(a => {
+    if (q && !(a.code.toLowerCase().includes(q) || a.name.toLowerCase().includes(q))) return false;
+    if (coaRevChartState.type !== 'All Types' && coaRevChartState.type !== 'Posting') return false;
+    if (coaRevChartState.controlType !== 'All Control Types' && coaRevChartState.controlType !== 'General') return false;
+    return true;
+  });
+}
+
+function coaRevChartFilterBar() {
+  const optionsHtml = (list, selected) => list.map(v => `<option value="${escapeHtml(v)}" ${v === selected ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="lg:col-span-2">
+          <span class="block text-label font-medium text-secondary mb-1">Search</span>
+          <div class="relative">
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input id="coaRevChartSearch" type="text" value="${escapeHtml(coaRevChartState.q)}" placeholder="Search by code or name..." class="${COA_INPUT} pl-9" />
+          </div>
+        </div>
+        ${coaField('Type', `<select id="coaRevChartType" class="${COA_INPUT}">${optionsHtml(COA_REV_CHART_TYPES, coaRevChartState.type)}</select>`)}
+        ${coaField('Control Type', `<select id="coaRevChartControlType" class="${COA_INPUT}">${optionsHtml(COA_REV_CHART_CONTROL_TYPES, coaRevChartState.controlType)}</select>`)}
+      </div>
+    </section>`;
+}
+
+function coaRevChartParentLabel(a) {
+  if (!a.parent) return 'Root';
+  const p = coaChartRevenueAccounts.find(x => x.code === a.parent);
+  return p ? `${p.code} — ${p.name}` : 'Root';
+}
+
+function coaRevChartAccountRow(a, n) {
+  return `
+    <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
+      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n}</td>
+      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">
+        <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#3ecf8e"></span>${escapeHtml(a.name)}</span>
+      </td>
+      <td class="px-3 py-2 whitespace-nowrap"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-side-active text-side-accent whitespace-nowrap">Posting</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">Credit</td>
+      <td class="px-3 py-2 whitespace-nowrap"><span class="text-[13.5px] text-muted">—</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-muted whitespace-nowrap">${escapeHtml(coaRevChartParentLabel(a))}</td>
+      <td class="pr-4 pl-3 py-2">
+        <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_KEBAB_ICON}</button>
+      </td>
+    </tr>`;
+}
+
+function coaRevChartAccountsResultsHtml() {
+  const all = coaRevChartFilteredAccounts();
+  const totalPages = Math.max(1, Math.ceil(all.length / COA_PAGE_SIZE));
+  coaRevChartState.page = Math.min(Math.max(1, coaRevChartState.page), totalPages);
+  const start = (coaRevChartState.page - 1) * COA_PAGE_SIZE;
+  const rows = all.slice(start, start + COA_PAGE_SIZE);
+  const headers = ['SL', 'Code', 'Account Name', 'Type', 'Normal Balance', 'Control Type', 'Parent', 'Actions'];
+
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[940px]">
+        <thead><tr class="border-b border-side-line">
+          ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows.length ? rows.map((a, i) => coaRevChartAccountRow(a, start + i + 1)).join('') : `<tr><td colspan="8" class="px-4 py-10 text-center"><p class="text-body text-muted">No accounts match your search.</p></td></tr>`}</tbody>
+      </table>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
+      <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
+      <div class="flex items-center gap-1.5">
+        <button data-coarevchartpage="prev" ${coaRevChartState.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coarevchartpage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaRevChartState.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        <button data-coarevchartpage="next" ${coaRevChartState.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
+      </div>
+    </div>`;
+}
+
+function coaRevChartAccountsCard() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex flex-wrap items-start justify-between gap-3 p-4">
+        <div>
+          <h3 class="text-section-title text-primary">Revenue — Chart of Accounts</h3>
+          <p id="coaRevChartCounter" class="text-helper text-muted mt-0.5">${coaRevChartFilteredAccounts().length} of ${coaChartRevenueAccounts.length} GL accounts · normal balance: credit</p>
+        </div>
+        <button type="button" id="coaRevChartAddAccount" class="${COA_BTN_PRIMARY}">${COA_PLUS_ICON}New Account</button>
+      </div>
+      <div id="coaRevChartAccountsResults">${coaRevChartAccountsResultsHtml()}</div>
+    </section>`;
+}
+
+function coaRevChartAccountsRefreshResults() {
+  const results = document.getElementById('coaRevChartAccountsResults');
+  if (results) results.innerHTML = coaRevChartAccountsResultsHtml();
+  const counter = document.getElementById('coaRevChartCounter');
+  if (counter) counter.textContent = `${coaRevChartFilteredAccounts().length} of ${coaChartRevenueAccounts.length} GL accounts · normal balance: credit`;
+}
+
+function coaRevChartAccountsBindEvents(container) {
+  const input = container.querySelector('#coaRevChartSearch');
+  if (!input) return;
+  input.addEventListener('input', (e) => {
+    coaRevChartState.q = e.target.value;
+    coaRevChartState.page = 1;
+    coaRevChartAccountsRefreshResults();
+  });
+
+  container.querySelector('#coaRevChartType').addEventListener('change', (e) => {
+    coaRevChartState.type = e.target.value;
+    coaRevChartState.page = 1;
+    coaRevChartAccountsRefreshResults();
+  });
+
+  container.querySelector('#coaRevChartControlType').addEventListener('change', (e) => {
+    coaRevChartState.controlType = e.target.value;
+    coaRevChartState.page = 1;
+    coaRevChartAccountsRefreshResults();
+  });
+
+  container.querySelector('#coaRevChartAddAccount').addEventListener('click', () => coaOpenNewRevenueAccountModal());
+
+  container.querySelector('#coaRevChartAccountsResults').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-coarevchartpage]');
+    if (!btn || btn.disabled) return;
+    const totalPages = Math.max(1, Math.ceil(coaRevChartFilteredAccounts().length / COA_PAGE_SIZE));
+    if (btn.dataset.coarevchartpage === 'prev') coaRevChartState.page = Math.max(1, coaRevChartState.page - 1);
+    else if (btn.dataset.coarevchartpage === 'next') coaRevChartState.page = Math.min(totalPages, coaRevChartState.page + 1);
+    else coaRevChartState.page = +btn.dataset.coarevchartpage;
+    coaRevChartAccountsRefreshResults();
+  });
+}
+
+function coaRevChartNextCode() {
+  const max = coaChartRevenueAccounts.reduce((m, a) => Math.max(m, parseInt(a.code, 10) || 0), 0);
+  return String(max + 10);
+}
+
+function coaOpenNewRevenueAccountModal() {
+  if (document.getElementById('coaRevAccountModal')) return;
+  const close = '<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  const nextCode = coaRevChartNextCode();
+
+  const wrap = document.createElement('div');
+  wrap.id = 'coaRevAccountModal';
+  wrap.className = 'fixed inset-0 z-50';
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
+  wrap.setAttribute('aria-label', 'Add new account');
+  wrap.innerHTML = `
+    <div data-close class="absolute inset-0" style="background: var(--overlay)"></div>
+    <div class="relative mx-auto mt-[8vh] w-full max-w-[560px] px-4">
+      <form id="coaRevAccountForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
+        <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
+          <span class="text-side-accent shrink-0">${iconSvg('wallet', 'w-4 h-4')}</span>
+          <h3 class="text-[14.5px] font-semibold text-primary">New Account</h3>
+          <button type="button" data-close aria-label="Close"
+            class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
+        </div>
+
+        <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5 max-h-[62vh] overflow-y-auto">
+          <label class="block min-w-0 sm:col-span-2">${biLabel('Parent Account')}
+            <select name="parent" class="${COA_INPUT}">
+              <option value="">— None / Root (top-level Revenue head) —</option>
+              ${coaChartRevenueAccounts.map(a => `<option value="${escapeHtml(a.code)}">${escapeHtml(a.code)} — ${escapeHtml(a.name)}</option>`).join('')}
+            </select></label>
+          <label class="block min-w-0">${biLabel('Account Code', { req: true })}
+            <input name="code" type="text" autocomplete="off" value="${escapeHtml(nextCode)}" class="${COA_INPUT} tabular" /></label>
+          <label class="block min-w-0">${biLabel('Account Name', { req: true })}
+            <input name="name" type="text" autocomplete="off" placeholder="e.g. Royalty Income" class="${COA_INPUT}" /></label>
+          <p id="coaRevAccountModalMsg" class="sm:col-span-2 text-helper text-danger min-h-[17px]"></p>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-side-line">
+          <button type="button" data-close class="${COA_BTN}">Cancel</button>
+          <button type="submit" class="${COA_BTN_PRIMARY}">Save Account</button>
+        </div>
+      </form>
+    </div>`;
+
+  document.body.appendChild(wrap);
+  const form = wrap.querySelector('#coaRevAccountForm');
+  const done = () => { document.removeEventListener('keydown', onKey); wrap.remove(); };
+  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); done(); } };
+
+  wrap.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) done(); });
+  document.addEventListener('keydown', onKey);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = (n) => (form.elements[n].value || '').trim();
+    const msg = form.querySelector('#coaRevAccountModalMsg');
+    if (!val('code') || !val('name')) {
+      msg.textContent = 'Account Code and Account Name are required.';
+      return;
+    }
+    if (coaChartRevenueAccounts.some(a => a.code === val('code'))) {
+      msg.textContent = 'An account with this code already exists.';
+      return;
+    }
+    coaChartRevenueAccounts.push({ code: val('code'), name: val('name'), controlType: null, parent: val('parent') || null });
+    coaChartRevenueAccounts.sort((a, b) => a.code.localeCompare(b.code));
+    done();
+    coaRevChartAccountsRefreshResults();
+  });
+
+  const first = form.querySelector('input[name="code"]');
+  if (first) first.focus();
+}
+
+const COA_REVENUE_CATEGORIES = ['All Categories', 'Export Sales', 'Local Sales', 'Sample Income', 'Other Income'];
+const COA_REVENUE_PARTIES = ['All Buyers', 'Everest Apparels Ltd.', 'Metro Fashion House', 'Northline Buying House'];
+const COA_REVENUE_STATUSES = ['All Statuses', 'Recognized', 'Pending', 'Cancelled'];
+const COA_REVENUE_PERIODS = ['Current Period', 'Last Month', 'Last Quarter', 'Last Year'];
+
+const coaRevenueItems = [
+  { code: 'REV-0001', name: 'Export Shipment — SHP-2201', category: 'Export Sales', party: 'Everest Apparels Ltd.', date: '18-May-2023', amount: 4500000, status: 'Recognized' },
+  { code: 'REV-0002', name: 'Local Sale — Invoice 118', category: 'Local Sales', party: 'Metro Fashion House', date: '02-Jun-2023', amount: 620000, status: 'Recognized' },
+  { code: 'REV-0003', name: 'Sample Order Income', category: 'Sample Income', party: 'Northline Buying House', date: '20-Jun-2023', amount: 85000, status: 'Pending' },
+];
+
+const coaRevenueFilter = { q: '', category: 'All Categories', party: 'All Buyers', status: 'All Statuses', page: 1 };
+
+function coaRevenueStatusPill(status) {
+  const map = {
+    Recognized: ['successSoft', 'success'], Pending: ['warningSoft', 'warning'], Cancelled: ['dangerSoft', 'danger'],
+  };
+  const [bg, fg] = map[status] || map.Recognized;
+  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg}"><span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>${escapeHtml(status)}</span>`;
+}
+
+function coaFilteredRevenue() {
+  const f = coaRevenueFilter;
+  const q = f.q.trim().toLowerCase();
+  return coaRevenueItems.filter(it => {
+    if (q && !(it.name.toLowerCase().includes(q) || it.code.toLowerCase().includes(q))) return false;
+    if (f.category !== 'All Categories' && it.category !== f.category) return false;
+    if (f.party !== 'All Buyers' && it.party !== f.party) return false;
+    if (f.status !== 'All Statuses' && it.status !== f.status) return false;
+    return true;
+  });
+}
+
+function coaRevenueFilterBar() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+        <div class="lg:col-span-2">
+          <span class="block text-label font-medium text-secondary mb-1">Search</span>
+          <div class="relative">
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input id="coaRevenueSearch" type="text" value="${escapeHtml(coaRevenueFilter.q)}" placeholder="Search revenue entry name, code or tag..."
+              class="${COA_INPUT} pl-9" />
+          </div>
+        </div>
+        ${coaField('Revenue Category', `<select id="coaRevenueCategory" class="${COA_INPUT}">
+          ${COA_REVENUE_CATEGORIES.map(c => `<option value="${escapeHtml(c)}" ${c === coaRevenueFilter.category ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('')}
+        </select>`)}
+        ${coaField('Customer / Buyer', `<select id="coaRevenueParty" class="${COA_INPUT}">
+          ${COA_REVENUE_PARTIES.map(p => `<option value="${escapeHtml(p)}" ${p === coaRevenueFilter.party ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('')}
+        </select>`)}
+        ${coaField('Status', `<select id="coaRevenueStatus" class="${COA_INPUT}">
+          ${COA_REVENUE_STATUSES.map(s => `<option value="${escapeHtml(s)}" ${s === coaRevenueFilter.status ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}
+        </select>`)}
+        ${coaField('Date', `<select id="coaRevenuePeriod" class="${COA_INPUT}">
+          ${COA_REVENUE_PERIODS.map(p => `<option value="${escapeHtml(p)}" ${p === 'Current Period' ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('')}
+        </select>`)}
+      </div>
+    </section>`;
+}
+
+function coaRevenueRow(it, n) {
+  return `
+    <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
+      <td class="pl-4 pr-2 py-2"><input type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></td>
+      <td class="px-3 py-2 text-[13.5px] text-disabled tabular">${n}</td>
+      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(it.code)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(it.name)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(it.category)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${iconSvg('user', 'w-3.5 h-3.5')}</span>${escapeHtml(it.party)}</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CAL_ICON}</span>${escapeHtml(it.date)}</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${coaInt(it.amount)}</td>
+      <td class="px-3 py-2">${coaRevenueStatusPill(it.status)}</td>
+      <td class="pr-4 pl-3 py-2">
+        <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_KEBAB_ICON}</button>
+      </td>
+    </tr>`;
+}
+
+function coaRevenueResultsHtml() {
+  const all = coaFilteredRevenue();
+  const totalPages = Math.max(1, Math.ceil(all.length / COA_PAGE_SIZE));
+  coaRevenueFilter.page = Math.min(Math.max(1, coaRevenueFilter.page), totalPages);
+  const start = (coaRevenueFilter.page - 1) * COA_PAGE_SIZE;
+  const rows = all.slice(start, start + COA_PAGE_SIZE);
+  const headers = ['SL', 'Code', 'Name', 'Revenue Category', 'Customer / Buyer', 'Date', 'Amount (BDT)', 'Status', 'Actions'];
+
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[1000px]">
+        <thead><tr class="border-b border-side-line">
+          <th class="pl-4 pr-2 py-2.5"><input id="coaRevenueSelectAll" type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></th>
+          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${idx === 6 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows.length ? rows.map((it, i) => coaRevenueRow(it, start + i + 1)).join('') : `<tr><td colspan="10" class="px-4 py-10 text-center"><p class="text-body text-muted">No revenue entries match your filters.</p></td></tr>`}</tbody>
+      </table>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
+      <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
+      <div class="flex items-center gap-1.5">
+        <button data-coapage="prev" ${coaRevenueFilter.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coapage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaRevenueFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        <button data-coapage="next" ${coaRevenueFilter.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
+      </div>
+    </div>`;
+}
+
+function coaRevenueListCard() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex items-center justify-between gap-3 p-4">
+        <h3 class="text-section-title text-primary">Revenue List</h3>
+        <button type="button" id="coaNewRevenue" class="${COA_BTN_PRIMARY}">${COA_PLUS_ICON}New Revenue Entry</button>
+      </div>
+      <div id="coaRevenueResults">${coaRevenueResultsHtml()}</div>
+    </section>`;
+}
+
+function coaRenderRevenue(container) {
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      ${coaRevChartFilterBar()}
+      ${coaRevChartAccountsCard()}
+      ${coaRevenueFilterBar()}
+      ${coaRevenueListCard()}
+    </div>`;
+  coaRevChartAccountsBindEvents(container);
+  coaRevenueBindEvents(container);
+}
+
+function coaRevenueRefreshResults() {
+  const el = document.getElementById('coaRevenueResults');
+  if (el) el.innerHTML = coaRevenueResultsHtml();
+}
+
+function coaRevenueBindEvents(container) {
+  container.querySelector('#coaRevenueSearch').addEventListener('input', (e) => {
+    coaRevenueFilter.q = e.target.value;
+    coaRevenueFilter.page = 1;
+    coaRevenueRefreshResults();
+  });
+  ['coaRevenueCategory', 'coaRevenueParty', 'coaRevenueStatus'].forEach(id => {
+    container.querySelector(`#${id}`).addEventListener('change', (e) => {
+      const key = id === 'coaRevenueCategory' ? 'category' : id === 'coaRevenueParty' ? 'party' : 'status';
+      coaRevenueFilter[key] = e.target.value;
+      coaRevenueFilter.page = 1;
+      coaRevenueRefreshResults();
+    });
+  });
+
+  container.querySelector('#coaRevenueResults').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-coapage]');
+    if (!btn || btn.disabled) return;
+    const totalPages = Math.max(1, Math.ceil(coaFilteredRevenue().length / COA_PAGE_SIZE));
+    if (btn.dataset.coapage === 'prev') coaRevenueFilter.page = Math.max(1, coaRevenueFilter.page - 1);
+    else if (btn.dataset.coapage === 'next') coaRevenueFilter.page = Math.min(totalPages, coaRevenueFilter.page + 1);
+    else coaRevenueFilter.page = +btn.dataset.coapage;
+    coaRevenueRefreshResults();
+  });
+
+  container.addEventListener('change', (e) => {
+    if (e.target.id !== 'coaRevenueSelectAll') return;
+    container.querySelectorAll('#coaRevenueResults tbody input[type="checkbox"]').forEach(cb => { cb.checked = e.target.checked; });
+  });
+
+  container.querySelector('#coaNewRevenue').addEventListener('click', () => coaOpenNewRevenueModal());
+}
+
+function coaRevenueNextCode() {
+  const max = coaRevenueItems.reduce((m, it) => Math.max(m, parseInt((it.code.split('-')[1] || '0'), 10) || 0), 0);
+  return `REV-${String(max + 1).padStart(4, '0')}`;
+}
+
+function coaOpenNewRevenueModal() {
+  if (document.getElementById('coaRevenueModal')) return;
+  const close = '<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  const nextCode = coaRevenueNextCode();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const wrap = document.createElement('div');
+  wrap.id = 'coaRevenueModal';
+  wrap.className = 'fixed inset-0 z-50';
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
+  wrap.setAttribute('aria-label', 'Add new revenue entry');
+  wrap.innerHTML = `
+    <div data-close class="absolute inset-0" style="background: var(--overlay)"></div>
+    <div class="relative mx-auto mt-[8vh] w-full max-w-[620px] px-4">
+      <form id="coaRevenueForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
+        <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
+          <span class="text-side-accent shrink-0">${iconSvg('chartbar', 'w-4 h-4')}</span>
+          <h3 class="text-[14.5px] font-semibold text-primary">New Revenue Entry</h3>
+          <button type="button" data-close aria-label="Close"
+            class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
+        </div>
+
+        <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5 max-h-[62vh] overflow-y-auto">
+          <label class="block min-w-0">${biLabel('Code')}
+            <input name="code" type="text" value="${escapeHtml(nextCode)}" readonly class="${COA_INPUT} tabular bg-side-bg/60 text-muted" /></label>
+          <label class="block min-w-0">${biLabel('Name', { req: true })}
+            <input name="name" type="text" autocomplete="off" placeholder="e.g. Export Shipment — SHP-2301" class="${COA_INPUT}" /></label>
+          <label class="block min-w-0">${biLabel('Revenue Category')}
+            <select name="category" class="${COA_INPUT}">${COA_REVENUE_CATEGORIES.slice(1).map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}</select></label>
+          <label class="block min-w-0">${biLabel('Customer / Buyer')}
+            <select name="party" class="${COA_INPUT}">${COA_REVENUE_PARTIES.slice(1).map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('')}</select></label>
+          <label class="block min-w-0">${biLabel('Date')}
+            <input name="date" type="date" value="${today}" class="${COA_INPUT} tabular" /></label>
+          <label class="block min-w-0">${biLabel('Amount (BDT)', { req: true })}
+            <input name="amount" type="number" min="0" step="1" placeholder="0" class="${COA_INPUT} tabular" /></label>
+          <label class="block min-w-0 sm:col-span-2">${biLabel('Status')}
+            <select name="status" class="${COA_INPUT}">${COA_REVENUE_STATUSES.slice(1).map(s => `<option value="${escapeHtml(s)}" ${s === 'Recognized' ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}</select></label>
+          <p id="coaRevenueModalMsg" class="sm:col-span-2 text-helper text-danger min-h-[17px]"></p>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-side-line">
+          <button type="button" data-close class="${COA_BTN}">Cancel</button>
+          <button type="submit" class="${COA_BTN_PRIMARY}">Save Revenue Entry</button>
+        </div>
+      </form>
+    </div>`;
+
+  document.body.appendChild(wrap);
+  const form = wrap.querySelector('#coaRevenueForm');
+  const done = () => { document.removeEventListener('keydown', onKey); wrap.remove(); };
+  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); done(); } };
+
+  wrap.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) done(); });
+  document.addEventListener('keydown', onKey);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = (n) => (form.elements[n].value || '').trim();
+    const msg = form.querySelector('#coaRevenueModalMsg');
+    if (!val('name') || !val('amount')) {
+      msg.textContent = 'Name and Amount are required.';
+      return;
+    }
+    coaRevenueItems.push({
+      code: val('code'),
+      name: val('name'),
+      category: val('category'),
+      party: val('party'),
+      date: coaFormatDateDisplay(val('date')),
+      amount: Number(val('amount')) || 0,
+      status: val('status'),
+    });
+    done();
+    coaRevenueFilter.page = 1;
+    coaRevenueRefreshResults();
+  });
+
+  const first = form.querySelector('input[name="name"]');
+  if (first) first.focus();
 }
 
 // ---------- Command palette ----------
