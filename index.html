@@ -3043,7 +3043,7 @@ function renderPOPI(container, type) {
 }
 
 // ---------- Chart of Accounts ----------
-const COA_TABS = ['Journal Entry', 'Assets', 'Liabilities', 'Equity', 'Revenue'];
+const COA_TABS = ['Journal Entry', 'Assets', 'Liabilities', 'Equity', 'Revenue', 'Expenses', 'Cash & Bank'];
 const COA_INPUT = BI_INPUT;
 const COA_AUTO = BI_AUTO;
 const COA_BTN = BI_BTN;
@@ -3122,6 +3122,8 @@ function renderChartOfAccounts(tabsEl, container) {
   else if (state.tabIndex === 2) coaRenderLiabilities(container);
   else if (state.tabIndex === 3) coaRenderEquity(container);
   else if (state.tabIndex === 4) coaRenderRevenue(container);
+  else if (state.tabIndex === 5) coaRenderExpenses(container);
+  else if (state.tabIndex === 6) coaRenderCashBank(container);
   else coaRenderComingSoon(container, COA_TABS[state.tabIndex]);
 }
 
@@ -5394,6 +5396,809 @@ function coaOpenNewRevenueModal() {
     done();
     coaRevenueFilter.page = 1;
     coaRevenueRefreshResults();
+  });
+
+  const first = form.querySelector('input[name="name"]');
+  if (first) first.focus();
+}
+
+/* ---------- Expenses tab ---------- */
+const coaChartExpenseAccounts = [
+  { code: '5000', name: 'Cost of Goods Sold (COGS)', controlType: null },
+  { code: '5010', name: 'Raw Material Consumption', controlType: null },
+  { code: '5020', name: 'Direct Factory Labor', controlType: null },
+  { code: '5030', name: 'Factory Overhead', controlType: null },
+  { code: '5100', name: 'Admin Salaries', controlType: null },
+  { code: '5120', name: 'Rent Expense', controlType: null },
+  { code: '5130', name: 'Utilities', controlType: null },
+  { code: '5140', name: 'Office Supplies', controlType: null },
+  { code: '5200', name: 'Bank Interest & Charges', controlType: null },
+  { code: '5210', name: 'LC & Export Financing Charges', controlType: null },
+  { code: '5300', name: 'Tax Expenses', controlType: null },
+  { code: '5400', name: 'Freight & Shipping (Export)', controlType: null },
+  { code: '5500', name: 'Commission Expense', controlType: null },
+];
+
+const COA_EXP_CHART_TYPES = ['All Types', 'Posting', 'Group'];
+const COA_EXP_CHART_CONTROL_TYPES = ['All Control Types', 'General'];
+
+const coaExpChartState = { q: '', type: 'All Types', controlType: 'All Control Types', page: 1 };
+
+function coaExpChartFilteredAccounts() {
+  const q = coaExpChartState.q.trim().toLowerCase();
+  return coaChartExpenseAccounts.filter(a => {
+    if (q && !(a.code.toLowerCase().includes(q) || a.name.toLowerCase().includes(q))) return false;
+    if (coaExpChartState.type !== 'All Types' && coaExpChartState.type !== 'Posting') return false;
+    if (coaExpChartState.controlType !== 'All Control Types' && coaExpChartState.controlType !== 'General') return false;
+    return true;
+  });
+}
+
+function coaExpChartFilterBar() {
+  const optionsHtml = (list, selected) => list.map(v => `<option value="${escapeHtml(v)}" ${v === selected ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="lg:col-span-2">
+          <span class="block text-label font-medium text-secondary mb-1">Search</span>
+          <div class="relative">
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input id="coaExpChartSearch" type="text" value="${escapeHtml(coaExpChartState.q)}" placeholder="Search by code or name..." class="${COA_INPUT} pl-9" />
+          </div>
+        </div>
+        ${coaField('Type', `<select id="coaExpChartType" class="${COA_INPUT}">${optionsHtml(COA_EXP_CHART_TYPES, coaExpChartState.type)}</select>`)}
+        ${coaField('Control Type', `<select id="coaExpChartControlType" class="${COA_INPUT}">${optionsHtml(COA_EXP_CHART_CONTROL_TYPES, coaExpChartState.controlType)}</select>`)}
+      </div>
+    </section>`;
+}
+
+function coaExpChartParentLabel(a) {
+  if (!a.parent) return 'Root';
+  const p = coaChartExpenseAccounts.find(x => x.code === a.parent);
+  return p ? `${p.code} — ${p.name}` : 'Root';
+}
+
+function coaExpChartAccountRow(a, n) {
+  return `
+    <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
+      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n}</td>
+      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">
+        <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#f5b84f"></span>${escapeHtml(a.name)}</span>
+      </td>
+      <td class="px-3 py-2 whitespace-nowrap"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-side-active text-side-accent whitespace-nowrap">Posting</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">Debit</td>
+      <td class="px-3 py-2 whitespace-nowrap"><span class="text-[13.5px] text-muted">—</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-muted whitespace-nowrap">${escapeHtml(coaExpChartParentLabel(a))}</td>
+      <td class="pr-4 pl-3 py-2">
+        <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_KEBAB_ICON}</button>
+      </td>
+    </tr>`;
+}
+
+function coaExpChartAccountsResultsHtml() {
+  const all = coaExpChartFilteredAccounts();
+  const totalPages = Math.max(1, Math.ceil(all.length / COA_PAGE_SIZE));
+  coaExpChartState.page = Math.min(Math.max(1, coaExpChartState.page), totalPages);
+  const start = (coaExpChartState.page - 1) * COA_PAGE_SIZE;
+  const rows = all.slice(start, start + COA_PAGE_SIZE);
+  const headers = ['SL', 'Code', 'Account Name', 'Type', 'Normal Balance', 'Control Type', 'Parent', 'Actions'];
+
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[940px]">
+        <thead><tr class="border-b border-side-line">
+          ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows.length ? rows.map((a, i) => coaExpChartAccountRow(a, start + i + 1)).join('') : `<tr><td colspan="8" class="px-4 py-10 text-center"><p class="text-body text-muted">No accounts match your search.</p></td></tr>`}</tbody>
+      </table>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
+      <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
+      <div class="flex items-center gap-1.5">
+        <button data-coaexpchartpage="prev" ${coaExpChartState.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coaexpchartpage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaExpChartState.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        <button data-coaexpchartpage="next" ${coaExpChartState.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
+      </div>
+    </div>`;
+}
+
+function coaExpChartAccountsCard() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex flex-wrap items-start justify-between gap-3 p-4">
+        <div>
+          <h3 class="text-section-title text-primary">Expenses — Chart of Accounts</h3>
+          <p id="coaExpChartCounter" class="text-helper text-muted mt-0.5">${coaExpChartFilteredAccounts().length} of ${coaChartExpenseAccounts.length} GL accounts · normal balance: debit</p>
+        </div>
+        <button type="button" id="coaExpChartAddAccount" class="${COA_BTN_PRIMARY}">${COA_PLUS_ICON}New Account</button>
+      </div>
+      <div id="coaExpChartAccountsResults">${coaExpChartAccountsResultsHtml()}</div>
+    </section>`;
+}
+
+function coaExpChartAccountsRefreshResults() {
+  const results = document.getElementById('coaExpChartAccountsResults');
+  if (results) results.innerHTML = coaExpChartAccountsResultsHtml();
+  const counter = document.getElementById('coaExpChartCounter');
+  if (counter) counter.textContent = `${coaExpChartFilteredAccounts().length} of ${coaChartExpenseAccounts.length} GL accounts · normal balance: debit`;
+}
+
+function coaExpChartAccountsBindEvents(container) {
+  const input = container.querySelector('#coaExpChartSearch');
+  if (!input) return;
+  input.addEventListener('input', (e) => {
+    coaExpChartState.q = e.target.value;
+    coaExpChartState.page = 1;
+    coaExpChartAccountsRefreshResults();
+  });
+
+  container.querySelector('#coaExpChartType').addEventListener('change', (e) => {
+    coaExpChartState.type = e.target.value;
+    coaExpChartState.page = 1;
+    coaExpChartAccountsRefreshResults();
+  });
+
+  container.querySelector('#coaExpChartControlType').addEventListener('change', (e) => {
+    coaExpChartState.controlType = e.target.value;
+    coaExpChartState.page = 1;
+    coaExpChartAccountsRefreshResults();
+  });
+
+  container.querySelector('#coaExpChartAddAccount').addEventListener('click', () => coaOpenNewExpenseAccountModal());
+
+  container.querySelector('#coaExpChartAccountsResults').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-coaexpchartpage]');
+    if (!btn || btn.disabled) return;
+    const totalPages = Math.max(1, Math.ceil(coaExpChartFilteredAccounts().length / COA_PAGE_SIZE));
+    if (btn.dataset.coaexpchartpage === 'prev') coaExpChartState.page = Math.max(1, coaExpChartState.page - 1);
+    else if (btn.dataset.coaexpchartpage === 'next') coaExpChartState.page = Math.min(totalPages, coaExpChartState.page + 1);
+    else coaExpChartState.page = +btn.dataset.coaexpchartpage;
+    coaExpChartAccountsRefreshResults();
+  });
+}
+
+function coaExpChartNextCode() {
+  const max = coaChartExpenseAccounts.reduce((m, a) => Math.max(m, parseInt(a.code, 10) || 0), 0);
+  return String(max + 10);
+}
+
+function coaOpenNewExpenseAccountModal() {
+  if (document.getElementById('coaExpAccountModal')) return;
+  const close = '<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  const nextCode = coaExpChartNextCode();
+
+  const wrap = document.createElement('div');
+  wrap.id = 'coaExpAccountModal';
+  wrap.className = 'fixed inset-0 z-50';
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
+  wrap.setAttribute('aria-label', 'Add new account');
+  wrap.innerHTML = `
+    <div data-close class="absolute inset-0" style="background: var(--overlay)"></div>
+    <div class="relative mx-auto mt-[8vh] w-full max-w-[560px] px-4">
+      <form id="coaExpAccountForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
+        <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
+          <span class="text-side-accent shrink-0">${iconSvg('wallet', 'w-4 h-4')}</span>
+          <h3 class="text-[14.5px] font-semibold text-primary">New Account</h3>
+          <button type="button" data-close aria-label="Close"
+            class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
+        </div>
+
+        <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5 max-h-[62vh] overflow-y-auto">
+          <label class="block min-w-0 sm:col-span-2">${biLabel('Parent Account')}
+            <select name="parent" class="${COA_INPUT}">
+              <option value="">— None / Root (top-level Expenses head) —</option>
+              ${coaChartExpenseAccounts.map(a => `<option value="${escapeHtml(a.code)}">${escapeHtml(a.code)} — ${escapeHtml(a.name)}</option>`).join('')}
+            </select></label>
+          <label class="block min-w-0">${biLabel('Account Code', { req: true })}
+            <input name="code" type="text" autocomplete="off" value="${escapeHtml(nextCode)}" class="${COA_INPUT} tabular" /></label>
+          <label class="block min-w-0">${biLabel('Account Name', { req: true })}
+            <input name="name" type="text" autocomplete="off" placeholder="e.g. Travel Expense" class="${COA_INPUT}" /></label>
+          <p id="coaExpAccountModalMsg" class="sm:col-span-2 text-helper text-danger min-h-[17px]"></p>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-side-line">
+          <button type="button" data-close class="${COA_BTN}">Cancel</button>
+          <button type="submit" class="${COA_BTN_PRIMARY}">Save Account</button>
+        </div>
+      </form>
+    </div>`;
+
+  document.body.appendChild(wrap);
+  const form = wrap.querySelector('#coaExpAccountForm');
+  const done = () => { document.removeEventListener('keydown', onKey); wrap.remove(); };
+  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); done(); } };
+
+  wrap.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) done(); });
+  document.addEventListener('keydown', onKey);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = (n) => (form.elements[n].value || '').trim();
+    const msg = form.querySelector('#coaExpAccountModalMsg');
+    if (!val('code') || !val('name')) {
+      msg.textContent = 'Account Code and Account Name are required.';
+      return;
+    }
+    if (coaChartExpenseAccounts.some(a => a.code === val('code'))) {
+      msg.textContent = 'An account with this code already exists.';
+      return;
+    }
+    coaChartExpenseAccounts.push({ code: val('code'), name: val('name'), controlType: null, parent: val('parent') || null });
+    coaChartExpenseAccounts.sort((a, b) => a.code.localeCompare(b.code));
+    done();
+    coaExpChartAccountsRefreshResults();
+  });
+
+  const first = form.querySelector('input[name="code"]');
+  if (first) first.focus();
+}
+
+const COA_EXPENSE_CATEGORIES = ['All Categories', 'COGS', 'Admin Expense', 'Factory Overhead', 'Financial Charges', 'Tax'];
+const COA_EXPENSE_PARTIES = ['All Vendors', 'Production', 'Head Office', 'Main Factory'];
+const COA_EXPENSE_STATUSES = ['All Statuses', 'Paid', 'Pending', 'Approved'];
+const COA_EXPENSE_PERIODS = ['Current Period', 'Last Month', 'Last Quarter', 'Last Year'];
+
+const coaExpenseItems = [
+  { code: 'EXP-0001', name: 'Raw Material Consumption — May', category: 'COGS', party: 'Production', date: '31-May-2023', amount: 2100000, status: 'Paid' },
+  { code: 'EXP-0002', name: 'Office Rent — June', category: 'Admin Expense', party: 'Head Office', date: '01-Jun-2023', amount: 180000, status: 'Paid' },
+  { code: 'EXP-0003', name: 'Factory Utilities — June', category: 'Factory Overhead', party: 'Main Factory', date: '30-Jun-2023', amount: 95000, status: 'Pending' },
+];
+
+const coaExpenseFilter = { q: '', category: 'All Categories', party: 'All Vendors', status: 'All Statuses', page: 1 };
+
+function coaExpenseStatusPill(status) {
+  const map = { Paid: ['successSoft', 'success'], Pending: ['warningSoft', 'warning'], Approved: ['infoSoft', 'info'] };
+  const [bg, fg] = map[status] || map.Paid;
+  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg}"><span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>${escapeHtml(status)}</span>`;
+}
+
+function coaFilteredExpenses() {
+  const f = coaExpenseFilter;
+  const q = f.q.trim().toLowerCase();
+  return coaExpenseItems.filter(it => {
+    if (q && !(it.name.toLowerCase().includes(q) || it.code.toLowerCase().includes(q))) return false;
+    if (f.category !== 'All Categories' && it.category !== f.category) return false;
+    if (f.party !== 'All Vendors' && it.party !== f.party) return false;
+    if (f.status !== 'All Statuses' && it.status !== f.status) return false;
+    return true;
+  });
+}
+
+function coaExpenseFilterBar() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+        <div class="lg:col-span-2">
+          <span class="block text-label font-medium text-secondary mb-1">Search</span>
+          <div class="relative">
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input id="coaExpenseSearch" type="text" value="${escapeHtml(coaExpenseFilter.q)}" placeholder="Search expense entry name, code or tag..."
+              class="${COA_INPUT} pl-9" />
+          </div>
+        </div>
+        ${coaField('Expense Category', `<select id="coaExpenseCategory" class="${COA_INPUT}">
+          ${COA_EXPENSE_CATEGORIES.map(c => `<option value="${escapeHtml(c)}" ${c === coaExpenseFilter.category ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('')}
+        </select>`)}
+        ${coaField('Vendor / Department', `<select id="coaExpenseParty" class="${COA_INPUT}">
+          ${COA_EXPENSE_PARTIES.map(p => `<option value="${escapeHtml(p)}" ${p === coaExpenseFilter.party ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('')}
+        </select>`)}
+        ${coaField('Status', `<select id="coaExpenseStatus" class="${COA_INPUT}">
+          ${COA_EXPENSE_STATUSES.map(s => `<option value="${escapeHtml(s)}" ${s === coaExpenseFilter.status ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}
+        </select>`)}
+        ${coaField('Date', `<select id="coaExpensePeriod" class="${COA_INPUT}">
+          ${COA_EXPENSE_PERIODS.map(p => `<option value="${escapeHtml(p)}" ${p === 'Current Period' ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('')}
+        </select>`)}
+      </div>
+    </section>`;
+}
+
+function coaExpenseRow(it, n) {
+  return `
+    <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
+      <td class="pl-4 pr-2 py-2"><input type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></td>
+      <td class="px-3 py-2 text-[13.5px] text-disabled tabular">${n}</td>
+      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(it.code)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(it.name)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(it.category)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${iconSvg('user', 'w-3.5 h-3.5')}</span>${escapeHtml(it.party)}</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CAL_ICON}</span>${escapeHtml(it.date)}</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${coaInt(it.amount)}</td>
+      <td class="px-3 py-2">${coaExpenseStatusPill(it.status)}</td>
+      <td class="pr-4 pl-3 py-2">
+        <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_KEBAB_ICON}</button>
+      </td>
+    </tr>`;
+}
+
+function coaExpenseResultsHtml() {
+  const all = coaFilteredExpenses();
+  const totalPages = Math.max(1, Math.ceil(all.length / COA_PAGE_SIZE));
+  coaExpenseFilter.page = Math.min(Math.max(1, coaExpenseFilter.page), totalPages);
+  const start = (coaExpenseFilter.page - 1) * COA_PAGE_SIZE;
+  const rows = all.slice(start, start + COA_PAGE_SIZE);
+  const headers = ['SL', 'Code', 'Name', 'Expense Category', 'Vendor / Department', 'Date', 'Amount (BDT)', 'Status', 'Actions'];
+
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[1000px]">
+        <thead><tr class="border-b border-side-line">
+          <th class="pl-4 pr-2 py-2.5"><input id="coaExpenseSelectAll" type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></th>
+          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${idx === 6 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows.length ? rows.map((it, i) => coaExpenseRow(it, start + i + 1)).join('') : `<tr><td colspan="10" class="px-4 py-10 text-center"><p class="text-body text-muted">No expense entries match your filters.</p></td></tr>`}</tbody>
+      </table>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
+      <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
+      <div class="flex items-center gap-1.5">
+        <button data-coapage="prev" ${coaExpenseFilter.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coapage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaExpenseFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        <button data-coapage="next" ${coaExpenseFilter.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
+      </div>
+    </div>`;
+}
+
+function coaExpenseListCard() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex items-center justify-between gap-3 p-4">
+        <h3 class="text-section-title text-primary">Expenses List</h3>
+        <button type="button" id="coaNewExpense" class="${COA_BTN_PRIMARY}">${COA_PLUS_ICON}New Expense Entry</button>
+      </div>
+      <div id="coaExpenseResults">${coaExpenseResultsHtml()}</div>
+    </section>`;
+}
+
+function coaRenderExpenses(container) {
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      ${coaExpChartFilterBar()}
+      ${coaExpChartAccountsCard()}
+      ${coaExpenseFilterBar()}
+      ${coaExpenseListCard()}
+    </div>`;
+  coaExpChartAccountsBindEvents(container);
+  coaExpenseBindEvents(container);
+}
+
+function coaExpenseRefreshResults() {
+  const el = document.getElementById('coaExpenseResults');
+  if (el) el.innerHTML = coaExpenseResultsHtml();
+}
+
+function coaExpenseBindEvents(container) {
+  container.querySelector('#coaExpenseSearch').addEventListener('input', (e) => {
+    coaExpenseFilter.q = e.target.value;
+    coaExpenseFilter.page = 1;
+    coaExpenseRefreshResults();
+  });
+  ['coaExpenseCategory', 'coaExpenseParty', 'coaExpenseStatus'].forEach(id => {
+    container.querySelector(`#${id}`).addEventListener('change', (e) => {
+      const key = id === 'coaExpenseCategory' ? 'category' : id === 'coaExpenseParty' ? 'party' : 'status';
+      coaExpenseFilter[key] = e.target.value;
+      coaExpenseFilter.page = 1;
+      coaExpenseRefreshResults();
+    });
+  });
+
+  container.querySelector('#coaExpenseResults').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-coapage]');
+    if (!btn || btn.disabled) return;
+    const totalPages = Math.max(1, Math.ceil(coaFilteredExpenses().length / COA_PAGE_SIZE));
+    if (btn.dataset.coapage === 'prev') coaExpenseFilter.page = Math.max(1, coaExpenseFilter.page - 1);
+    else if (btn.dataset.coapage === 'next') coaExpenseFilter.page = Math.min(totalPages, coaExpenseFilter.page + 1);
+    else coaExpenseFilter.page = +btn.dataset.coapage;
+    coaExpenseRefreshResults();
+  });
+
+  container.addEventListener('change', (e) => {
+    if (e.target.id !== 'coaExpenseSelectAll') return;
+    container.querySelectorAll('#coaExpenseResults tbody input[type="checkbox"]').forEach(cb => { cb.checked = e.target.checked; });
+  });
+
+  container.querySelector('#coaNewExpense').addEventListener('click', () => coaOpenNewExpenseModal());
+}
+
+function coaExpenseNextCode() {
+  const max = coaExpenseItems.reduce((m, it) => Math.max(m, parseInt((it.code.split('-')[1] || '0'), 10) || 0), 0);
+  return `EXP-${String(max + 1).padStart(4, '0')}`;
+}
+
+function coaOpenNewExpenseModal() {
+  if (document.getElementById('coaExpenseModal')) return;
+  const close = '<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  const nextCode = coaExpenseNextCode();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const wrap = document.createElement('div');
+  wrap.id = 'coaExpenseModal';
+  wrap.className = 'fixed inset-0 z-50';
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
+  wrap.setAttribute('aria-label', 'Add new expense entry');
+  wrap.innerHTML = `
+    <div data-close class="absolute inset-0" style="background: var(--overlay)"></div>
+    <div class="relative mx-auto mt-[8vh] w-full max-w-[620px] px-4">
+      <form id="coaExpenseForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
+        <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
+          <span class="text-side-accent shrink-0">${iconSvg('wallet', 'w-4 h-4')}</span>
+          <h3 class="text-[14.5px] font-semibold text-primary">New Expense Entry</h3>
+          <button type="button" data-close aria-label="Close"
+            class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
+        </div>
+
+        <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5 max-h-[62vh] overflow-y-auto">
+          <label class="block min-w-0">${biLabel('Code')}
+            <input name="code" type="text" value="${escapeHtml(nextCode)}" readonly class="${COA_INPUT} tabular bg-side-bg/60 text-muted" /></label>
+          <label class="block min-w-0">${biLabel('Name', { req: true })}
+            <input name="name" type="text" autocomplete="off" placeholder="e.g. Office Rent — July" class="${COA_INPUT}" /></label>
+          <label class="block min-w-0">${biLabel('Expense Category')}
+            <select name="category" class="${COA_INPUT}">${COA_EXPENSE_CATEGORIES.slice(1).map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}</select></label>
+          <label class="block min-w-0">${biLabel('Vendor / Department')}
+            <select name="party" class="${COA_INPUT}">${COA_EXPENSE_PARTIES.slice(1).map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('')}</select></label>
+          <label class="block min-w-0">${biLabel('Date')}
+            <input name="date" type="date" value="${today}" class="${COA_INPUT} tabular" /></label>
+          <label class="block min-w-0">${biLabel('Amount (BDT)', { req: true })}
+            <input name="amount" type="number" min="0" step="1" placeholder="0" class="${COA_INPUT} tabular" /></label>
+          <label class="block min-w-0 sm:col-span-2">${biLabel('Status')}
+            <select name="status" class="${COA_INPUT}">${COA_EXPENSE_STATUSES.slice(1).map(s => `<option value="${escapeHtml(s)}" ${s === 'Pending' ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}</select></label>
+          <p id="coaExpenseModalMsg" class="sm:col-span-2 text-helper text-danger min-h-[17px]"></p>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-side-line">
+          <button type="button" data-close class="${COA_BTN}">Cancel</button>
+          <button type="submit" class="${COA_BTN_PRIMARY}">Save Expense Entry</button>
+        </div>
+      </form>
+    </div>`;
+
+  document.body.appendChild(wrap);
+  const form = wrap.querySelector('#coaExpenseForm');
+  const done = () => { document.removeEventListener('keydown', onKey); wrap.remove(); };
+  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); done(); } };
+
+  wrap.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) done(); });
+  document.addEventListener('keydown', onKey);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = (n) => (form.elements[n].value || '').trim();
+    const msg = form.querySelector('#coaExpenseModalMsg');
+    if (!val('name') || !val('amount')) {
+      msg.textContent = 'Name and Amount are required.';
+      return;
+    }
+    coaExpenseItems.push({
+      code: val('code'),
+      name: val('name'),
+      category: val('category'),
+      party: val('party'),
+      date: coaFormatDateDisplay(val('date')),
+      amount: Number(val('amount')) || 0,
+      status: val('status'),
+    });
+    done();
+    coaExpenseFilter.page = 1;
+    coaExpenseRefreshResults();
+  });
+
+  const first = form.querySelector('input[name="name"]');
+  if (first) first.focus();
+}
+
+/* ---------- Cash & Bank tab (Chart of Accounts) ---------- */
+const coaCashBankAccounts = [
+  { code: 'CB-0001', name: 'Petty Cash - Head Office', type: 'Cash', bankName: '', branch: '', accountNo: '', routingNo: '', currency: 'BDT', openingBalance: 50000, currentBalance: 42500, openedDate: '01-Jan-2023', status: 'Active' },
+  { code: 'CB-0002', name: 'City Bank - Current A/C', type: 'Bank', bankName: 'City Bank PLC', branch: 'Gulshan Branch', accountNo: '1012345678901', routingNo: '225270123', currency: 'BDT', openingBalance: 2000000, currentBalance: 3125400, openedDate: '15-Mar-2022', status: 'Active' },
+  { code: 'CB-0003', name: 'HSBC - Export A/C (USD)', type: 'Bank', bankName: 'HSBC Bangladesh', branch: 'Motijheel Branch', accountNo: '002-987654-001', routingNo: '090270456', currency: 'USD', openingBalance: 15000, currentBalance: 48200, openedDate: '01-Nov-2021', status: 'Active' },
+  { code: 'CB-0004', name: 'Dutch-Bangla Bank - Payroll A/C', type: 'Bank', bankName: 'Dutch-Bangla Bank Ltd.', branch: 'Banani Branch', accountNo: '1451200098765', routingNo: '090261789', currency: 'BDT', openingBalance: 500000, currentBalance: 118000, openedDate: '20-Jun-2023', status: 'Active' },
+  { code: 'CB-0005', name: 'Factory Floor Petty Cash', type: 'Cash', bankName: '', branch: '', accountNo: '', routingNo: '', currency: 'BDT', openingBalance: 20000, currentBalance: 0, openedDate: '01-Aug-2022', status: 'Inactive' },
+];
+
+const COA_CASHBANK_TYPES = ['All Types', 'Cash', 'Bank'];
+const COA_CASHBANK_CURRENCIES = ['All Currencies', 'BDT', 'USD', 'EUR', 'GBP'];
+const COA_CASHBANK_STATUSES = ['All Statuses', 'Active', 'Inactive'];
+
+const coaCashBankFilter = { q: '', type: 'All Types', currency: 'All Currencies', status: 'All Statuses', page: 1 };
+
+function coaCashBankNextCode() {
+  const max = coaCashBankAccounts.reduce((m, a) => Math.max(m, parseInt((a.code.split('-')[1] || '0'), 10) || 0), 0);
+  return `CB-${String(max + 1).padStart(4, '0')}`;
+}
+
+function coaFilteredCashBank() {
+  const f = coaCashBankFilter;
+  const q = f.q.trim().toLowerCase();
+  return coaCashBankAccounts.filter(a => {
+    if (q && !(a.name.toLowerCase().includes(q) || a.code.toLowerCase().includes(q) || (a.bankName || '').toLowerCase().includes(q) || (a.accountNo || '').toLowerCase().includes(q))) return false;
+    if (f.type !== 'All Types' && a.type !== f.type) return false;
+    if (f.currency !== 'All Currencies' && a.currency !== f.currency) return false;
+    if (f.status !== 'All Statuses' && a.status !== f.status) return false;
+    return true;
+  });
+}
+
+function coaCashBankStatusPill(status) {
+  const map = { Active: ['successSoft', 'success'], Inactive: ['neutralSoft', 'neutral'] };
+  const [bg, fg] = map[status] || map.Active;
+  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg}"><span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>${escapeHtml(status)}</span>`;
+}
+
+function coaCashBankTypeBadge(type) {
+  const map = { Cash: ['warningSoft', 'warning'], Bank: ['infoSoft', 'info'] };
+  const [bg, fg] = map[type] || map.Cash;
+  return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg} whitespace-nowrap">${escapeHtml(type)}</span>`;
+}
+
+const COA_CASHBANK_STAT_CASH_ICON = '<svg viewBox="0 0 24 24" class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M16 13h.01M3 10h18"/></svg>';
+const COA_CASHBANK_STAT_TOTAL_ICON = '<svg viewBox="0 0 24 24" class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>';
+const COA_CASHBANK_STAT_ACTIVE_ICON = '<svg viewBox="0 0 24 24" class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>';
+
+function coaCashBankStatCard(iconHtml, value, label) {
+  return `
+    <div class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4 flex items-start justify-between gap-3">
+      <div>
+        <p class="text-2xl font-bold text-primary tabular leading-tight">${value}</p>
+        <p class="text-body text-secondary mt-1">${label}</p>
+      </div>
+      <div class="w-10 h-10 rounded-lg bg-side-active flex items-center justify-center shrink-0 text-side-accent">
+        ${iconHtml}
+      </div>
+    </div>`;
+}
+
+function coaCashBankSummaryCards() {
+  let cashTotal = 0, bankTotal = 0, activeCount = 0;
+  coaCashBankAccounts.forEach(a => {
+    if (a.type === 'Cash') cashTotal += (a.currentBalance || 0);
+    else bankTotal += (a.currentBalance || 0);
+    if (a.status === 'Active') activeCount += 1;
+  });
+  return `
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_CASH_ICON, coaInt(cashTotal), 'Total Cash-in-Hand')}
+      ${coaCashBankStatCard(COA_BANK_ICON, coaInt(bankTotal), 'Total Bank Balance')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, String(activeCount), 'Active Accounts')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, String(coaCashBankAccounts.length), 'Total Accounts')}
+    </div>`;
+}
+
+function coaCashBankFilterBar() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div>
+          <span class="block text-label font-medium text-secondary mb-1">Search</span>
+          <div class="relative">
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input id="coaCashBankSearch" type="text" value="${escapeHtml(coaCashBankFilter.q)}" placeholder="Search account name, bank or A/C no..."
+              class="${COA_INPUT} pl-9" />
+          </div>
+        </div>
+        ${coaField('Type', `<select id="coaCashBankType" class="${COA_INPUT}">
+          ${COA_CASHBANK_TYPES.map(t => `<option value="${escapeHtml(t)}" ${t === coaCashBankFilter.type ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('')}
+        </select>`)}
+        ${coaField('Currency', `<select id="coaCashBankCurrency" class="${COA_INPUT}">
+          ${COA_CASHBANK_CURRENCIES.map(c => `<option value="${escapeHtml(c)}" ${c === coaCashBankFilter.currency ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('')}
+        </select>`)}
+        ${coaField('Status', `<select id="coaCashBankStatus" class="${COA_INPUT}">
+          ${COA_CASHBANK_STATUSES.map(s => `<option value="${escapeHtml(s)}" ${s === coaCashBankFilter.status ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}
+        </select>`)}
+      </div>
+    </section>`;
+}
+
+function coaCashBankRow(a, n) {
+  return `
+    <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
+      <td class="pl-4 pr-2 py-2"><input type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></td>
+      <td class="px-3 py-2 text-[13.5px] text-disabled tabular">${n}</td>
+      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(a.name)}</td>
+      <td class="px-3 py-2 whitespace-nowrap">${coaCashBankTypeBadge(a.type)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${a.type === 'Bank' ? escapeHtml(`${a.bankName}${a.branch ? ' — ' + a.branch : ''}`) : '—'}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${a.type === 'Bank' ? escapeHtml(a.accountNo || '—') : '—'}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(a.currency)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular text-right">${coaInt(a.openingBalance)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary font-semibold whitespace-nowrap tabular text-right">${coaInt(a.currentBalance)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(a.openedDate)}</td>
+      <td class="px-3 py-2">${coaCashBankStatusPill(a.status)}</td>
+      <td class="pr-4 pl-3 py-2">
+        <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_KEBAB_ICON}</button>
+      </td>
+    </tr>`;
+}
+
+function coaCashBankResultsHtml() {
+  const all = coaFilteredCashBank();
+  const totalPages = Math.max(1, Math.ceil(all.length / COA_PAGE_SIZE));
+  coaCashBankFilter.page = Math.min(Math.max(1, coaCashBankFilter.page), totalPages);
+  const start = (coaCashBankFilter.page - 1) * COA_PAGE_SIZE;
+  const rows = all.slice(start, start + COA_PAGE_SIZE);
+  const headers = ['SL', 'Code', 'Account Name', 'Type', 'Bank / Branch', 'A/C No.', 'Currency', 'Opening Bal.', 'Current Bal.', 'Opened', 'Status', 'Actions'];
+
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[1280px]">
+        <thead><tr class="border-b border-side-line">
+          <th class="pl-4 pr-2 py-2.5"><input id="coaCashBankSelectAll" type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></th>
+          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${idx === 6 || idx === 7 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows.length ? rows.map((a, i) => coaCashBankRow(a, start + i + 1)).join('') : `<tr><td colspan="13" class="px-4 py-10 text-center"><p class="text-body text-muted">No accounts match your filters.</p></td></tr>`}</tbody>
+      </table>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
+      <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
+      <div class="flex items-center gap-1.5">
+        <button data-coapage="prev" ${coaCashBankFilter.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coapage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaCashBankFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        <button data-coapage="next" ${coaCashBankFilter.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
+      </div>
+    </div>`;
+}
+
+function coaCashBankListCard() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex items-center justify-between gap-3 p-4">
+        <h3 class="text-section-title text-primary">Cash &amp; Bank Accounts</h3>
+        <button type="button" id="coaNewCashBank" class="${COA_BTN_PRIMARY}">${COA_PLUS_ICON}New Account</button>
+      </div>
+      <div id="coaCashBankResults">${coaCashBankResultsHtml()}</div>
+    </section>`;
+}
+
+function coaRenderCashBank(container) {
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      ${coaCashBankSummaryCards()}
+      ${coaCashBankFilterBar()}
+      ${coaCashBankListCard()}
+    </div>`;
+  coaCashBankBindEvents(container);
+}
+
+function coaCashBankRefreshResults() {
+  const el = document.getElementById('coaCashBankResults');
+  if (el) el.innerHTML = coaCashBankResultsHtml();
+}
+
+function coaCashBankBindEvents(container) {
+  container.querySelector('#coaCashBankSearch').addEventListener('input', (e) => {
+    coaCashBankFilter.q = e.target.value;
+    coaCashBankFilter.page = 1;
+    coaCashBankRefreshResults();
+  });
+  ['coaCashBankType', 'coaCashBankCurrency', 'coaCashBankStatus'].forEach(id => {
+    container.querySelector(`#${id}`).addEventListener('change', (e) => {
+      const key = id === 'coaCashBankType' ? 'type' : id === 'coaCashBankCurrency' ? 'currency' : 'status';
+      coaCashBankFilter[key] = e.target.value;
+      coaCashBankFilter.page = 1;
+      coaCashBankRefreshResults();
+    });
+  });
+
+  container.querySelector('#coaCashBankResults').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-coapage]');
+    if (!btn || btn.disabled) return;
+    const totalPages = Math.max(1, Math.ceil(coaFilteredCashBank().length / COA_PAGE_SIZE));
+    if (btn.dataset.coapage === 'prev') coaCashBankFilter.page = Math.max(1, coaCashBankFilter.page - 1);
+    else if (btn.dataset.coapage === 'next') coaCashBankFilter.page = Math.min(totalPages, coaCashBankFilter.page + 1);
+    else coaCashBankFilter.page = +btn.dataset.coapage;
+    coaCashBankRefreshResults();
+  });
+
+  container.addEventListener('change', (e) => {
+    if (e.target.id !== 'coaCashBankSelectAll') return;
+    container.querySelectorAll('#coaCashBankResults tbody input[type="checkbox"]').forEach(cb => { cb.checked = e.target.checked; });
+  });
+
+  container.querySelector('#coaNewCashBank').addEventListener('click', () => coaOpenNewCashBankModal());
+}
+
+function coaOpenNewCashBankModal() {
+  if (document.getElementById('coaCashBankModal')) return;
+  const close = '<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  const nextCode = coaCashBankNextCode();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const wrap = document.createElement('div');
+  wrap.id = 'coaCashBankModal';
+  wrap.className = 'fixed inset-0 z-50';
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
+  wrap.setAttribute('aria-label', 'Add new cash or bank account');
+  wrap.innerHTML = `
+    <div data-close class="absolute inset-0" style="background: var(--overlay)"></div>
+    <div class="relative mx-auto mt-[8vh] w-full max-w-[640px] px-4">
+      <form id="coaCashBankForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
+        <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
+          <span class="text-side-accent shrink-0">${iconSvg('wallet', 'w-4 h-4')}</span>
+          <h3 class="text-[14.5px] font-semibold text-primary">New Cash / Bank Account</h3>
+          <button type="button" data-close aria-label="Close"
+            class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
+        </div>
+
+        <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5 max-h-[62vh] overflow-y-auto">
+          <label class="block min-w-0">${biLabel('Account Code')}
+            <input name="code" type="text" value="${escapeHtml(nextCode)}" readonly class="${COA_INPUT} tabular bg-side-bg/60 text-muted" /></label>
+          <label class="block min-w-0">${biLabel('Account Name', { req: true })}
+            <input name="name" type="text" autocomplete="off" placeholder="e.g. City Bank - Current A/C" class="${COA_INPUT}" /></label>
+          <label class="block min-w-0 sm:col-span-2">${biLabel('Account Type')}
+            <select name="type" id="coaCashBankFormType" class="${COA_INPUT}">
+              <option value="Cash">Cash</option>
+              <option value="Bank">Bank</option>
+            </select></label>
+          <div id="coaCashBankBankFields" class="hidden sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5">
+            <label class="block min-w-0">${biLabel('Bank Name')}
+              <input name="bankName" type="text" autocomplete="off" placeholder="e.g. City Bank PLC" class="${COA_INPUT}" /></label>
+            <label class="block min-w-0">${biLabel('Branch')}
+              <input name="branch" type="text" autocomplete="off" placeholder="e.g. Gulshan Branch" class="${COA_INPUT}" /></label>
+            <label class="block min-w-0">${biLabel('Account Number')}
+              <input name="accountNo" type="text" autocomplete="off" placeholder="e.g. 1012345678901" class="${COA_INPUT}" /></label>
+            <label class="block min-w-0">${biLabel('Routing / Swift No.')}
+              <input name="routingNo" type="text" autocomplete="off" placeholder="e.g. 225270123" class="${COA_INPUT}" /></label>
+          </div>
+          <label class="block min-w-0">${biLabel('Currency')}
+            <select name="currency" class="${COA_INPUT}">${COA_CASHBANK_CURRENCIES.slice(1).map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}</select></label>
+          <label class="block min-w-0">${biLabel('Opening Balance', { req: true })}
+            <input name="openingBalance" type="number" min="0" step="1" placeholder="0" class="${COA_INPUT} tabular" /></label>
+          <label class="block min-w-0">${biLabel('Opening Date')}
+            <input name="openedDate" type="date" value="${today}" class="${COA_INPUT} tabular" /></label>
+          <label class="block min-w-0">${biLabel('Status')}
+            <select name="status" class="${COA_INPUT}">${COA_CASHBANK_STATUSES.slice(1).map(s => `<option value="${escapeHtml(s)}" ${s === 'Active' ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}</select></label>
+          <p id="coaCashBankModalMsg" class="sm:col-span-2 text-helper text-danger min-h-[17px]"></p>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-side-line">
+          <button type="button" data-close class="${COA_BTN}">Cancel</button>
+          <button type="submit" class="${COA_BTN_PRIMARY}">Save Account</button>
+        </div>
+      </form>
+    </div>`;
+
+  document.body.appendChild(wrap);
+  const form = wrap.querySelector('#coaCashBankForm');
+  const bankFields = wrap.querySelector('#coaCashBankBankFields');
+  const done = () => { document.removeEventListener('keydown', onKey); wrap.remove(); };
+  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); done(); } };
+
+  wrap.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) done(); });
+  document.addEventListener('keydown', onKey);
+
+  wrap.querySelector('#coaCashBankFormType').addEventListener('change', (e) => {
+    bankFields.classList.toggle('hidden', e.target.value !== 'Bank');
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = (n) => (form.elements[n].value || '').trim();
+    const msg = form.querySelector('#coaCashBankModalMsg');
+    if (!val('name') || !val('openingBalance')) {
+      msg.textContent = 'Account Name and Opening Balance are required.';
+      return;
+    }
+    const isBank = val('type') === 'Bank';
+    const opening = Number(val('openingBalance')) || 0;
+    coaCashBankAccounts.push({
+      code: val('code'),
+      name: val('name'),
+      type: val('type'),
+      bankName: isBank ? val('bankName') : '',
+      branch: isBank ? val('branch') : '',
+      accountNo: isBank ? val('accountNo') : '',
+      routingNo: isBank ? val('routingNo') : '',
+      currency: val('currency'),
+      openingBalance: opening,
+      currentBalance: opening,
+      openedDate: coaFormatDateDisplay(val('openedDate')),
+      status: val('status'),
+    });
+    done();
+    coaCashBankFilter.page = 1;
+    coaCashBankRefreshResults();
   });
 
   const first = form.querySelector('input[name="name"]');
