@@ -3922,6 +3922,342 @@ const COA_LIABILITY_LOCATIONS = ['All Locations', 'Main Factory', 'Factory Yard'
 const COA_LIABILITY_STATUSES = ['All Statuses', 'Active', 'Settled', 'Overdue'];
 const COA_LIABILITY_PERIODS = ['Current Period', 'Last Month', 'Last Quarter', 'Last Year'];
 
+/* ---------- Liabilities tab: Chart of Accounts (GL accounts) table ---------- */
+const COA_LIAB_CONTROL_TYPE_LABEL = {
+  payable: 'Accounts Payable',
+  loan_payable: 'Loan Payable',
+};
+
+const coaChartLiabilityAccounts = [
+  { code: '2000', name: 'Accounts Payable', controlType: 'payable' },
+  { code: '2050', name: 'LC Payable', controlType: null },
+  { code: '2100', name: 'Salaries & Wages Payable', controlType: null },
+  { code: '2150', name: 'Overtime Payable', controlType: null },
+  { code: '2200', name: 'Advance from Buyers', controlType: null },
+  { code: '2300', name: 'Accrued Expenses', controlType: null },
+  { code: '2310', name: 'VAT Payable (Output VAT)', controlType: null },
+  { code: '2320', name: 'Income Tax Payable', controlType: null },
+  { code: '2400', name: 'Bank Loan — Short Term', controlType: 'loan_payable' },
+  { code: '2500', name: 'Bank Loan — Long Term', controlType: 'loan_payable' },
+];
+
+const COA_LIAB_CHART_TYPES = ['All Types', 'Posting', 'Group'];
+const COA_LIAB_CHART_CONTROL_TYPES = ['All Control Types', 'General', 'Accounts Payable', 'Loan Payable'];
+
+const coaLiabChartState = { q: '', type: 'All Types', controlType: 'All Control Types', page: 1 };
+
+function coaLiabChartFilteredAccounts() {
+  const q = coaLiabChartState.q.trim().toLowerCase();
+  return coaChartLiabilityAccounts.filter(a => {
+    if (q && !(a.code.toLowerCase().includes(q) || a.name.toLowerCase().includes(q))) return false;
+    if (coaLiabChartState.type !== 'All Types' && coaLiabChartState.type !== 'Posting') return false;
+    if (coaLiabChartState.controlType !== 'All Control Types') {
+      const label = a.controlType ? COA_LIAB_CONTROL_TYPE_LABEL[a.controlType] : 'General';
+      if (label !== coaLiabChartState.controlType) return false;
+    }
+    return true;
+  });
+}
+
+function coaLiabChartFilterBar() {
+  const optionsHtml = (list, selected) => list.map(v => `<option value="${escapeHtml(v)}" ${v === selected ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="lg:col-span-2">
+          <span class="block text-label font-medium text-secondary mb-1">Search</span>
+          <div class="relative">
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input id="coaLiabChartSearch" type="text" value="${escapeHtml(coaLiabChartState.q)}" placeholder="Search by code or name..." class="${COA_INPUT} pl-9" />
+          </div>
+        </div>
+        ${coaField('Type', `<select id="coaLiabChartType" class="${COA_INPUT}">${optionsHtml(COA_LIAB_CHART_TYPES, coaLiabChartState.type)}</select>`)}
+        ${coaField('Control Type', `<select id="coaLiabChartControlType" class="${COA_INPUT}">${optionsHtml(COA_LIAB_CHART_CONTROL_TYPES, coaLiabChartState.controlType)}</select>`)}
+      </div>
+    </section>`;
+}
+
+function coaLiabChartParentLabel(a) {
+  if (!a.parent) return 'Root';
+  const p = coaChartLiabilityAccounts.find(x => x.code === a.parent);
+  return p ? `${p.code} — ${p.name}` : 'Root';
+}
+
+function coaLiabChartAccountRow(a, n) {
+  return `
+    <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
+      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n}</td>
+      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">
+        <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#f97a4d"></span>${escapeHtml(a.name)}</span>
+      </td>
+      <td class="px-3 py-2 whitespace-nowrap"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-side-active text-side-accent whitespace-nowrap">Posting</span></td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">Credit</td>
+      <td class="px-3 py-2 whitespace-nowrap">${a.controlType ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-side-active text-side-accent whitespace-nowrap">${escapeHtml(COA_LIAB_CONTROL_TYPE_LABEL[a.controlType])}</span>` : '<span class="text-[13.5px] text-muted">—</span>'}</td>
+      <td class="px-3 py-2 text-[13.5px] text-muted whitespace-nowrap">${escapeHtml(coaLiabChartParentLabel(a))}</td>
+      <td class="pr-4 pl-3 py-2">
+        <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_KEBAB_ICON}</button>
+      </td>
+    </tr>`;
+}
+
+function coaLiabChartAccountsResultsHtml() {
+  const all = coaLiabChartFilteredAccounts();
+  const totalPages = Math.max(1, Math.ceil(all.length / COA_PAGE_SIZE));
+  coaLiabChartState.page = Math.min(Math.max(1, coaLiabChartState.page), totalPages);
+  const start = (coaLiabChartState.page - 1) * COA_PAGE_SIZE;
+  const rows = all.slice(start, start + COA_PAGE_SIZE);
+  const headers = ['SL', 'Code', 'Account Name', 'Type', 'Normal Balance', 'Control Type', 'Parent', 'Actions'];
+
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[940px]">
+        <thead><tr class="border-b border-side-line">
+          ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows.length ? rows.map((a, i) => coaLiabChartAccountRow(a, start + i + 1)).join('') : `<tr><td colspan="8" class="px-4 py-10 text-center"><p class="text-body text-muted">No accounts match your search.</p></td></tr>`}</tbody>
+      </table>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
+      <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
+      <div class="flex items-center gap-1.5">
+        <button data-coaliabchartpage="prev" ${coaLiabChartState.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coaliabchartpage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaLiabChartState.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        <button data-coaliabchartpage="next" ${coaLiabChartState.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
+      </div>
+    </div>`;
+}
+
+function coaLiabChartAccountsCard() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex flex-wrap items-start justify-between gap-3 p-4">
+        <div>
+          <h3 class="text-section-title text-primary">Liabilities — Chart of Accounts</h3>
+          <p id="coaLiabChartCounter" class="text-helper text-muted mt-0.5">${coaLiabChartFilteredAccounts().length} of ${coaChartLiabilityAccounts.length} GL accounts · normal balance: credit</p>
+        </div>
+        <button type="button" id="coaLiabChartAddAccount" class="${COA_BTN_PRIMARY}">${COA_PLUS_ICON}New Account</button>
+      </div>
+      <div id="coaLiabChartAccountsResults">${coaLiabChartAccountsResultsHtml()}</div>
+    </section>`;
+}
+
+function coaLiabChartAccountsRefreshResults() {
+  const results = document.getElementById('coaLiabChartAccountsResults');
+  if (results) results.innerHTML = coaLiabChartAccountsResultsHtml();
+  const counter = document.getElementById('coaLiabChartCounter');
+  if (counter) counter.textContent = `${coaLiabChartFilteredAccounts().length} of ${coaChartLiabilityAccounts.length} GL accounts · normal balance: credit`;
+}
+
+function coaLiabChartAccountsBindEvents(container) {
+  const input = container.querySelector('#coaLiabChartSearch');
+  if (!input) return;
+  input.addEventListener('input', (e) => {
+    coaLiabChartState.q = e.target.value;
+    coaLiabChartState.page = 1;
+    coaLiabChartAccountsRefreshResults();
+  });
+
+  container.querySelector('#coaLiabChartType').addEventListener('change', (e) => {
+    coaLiabChartState.type = e.target.value;
+    coaLiabChartState.page = 1;
+    coaLiabChartAccountsRefreshResults();
+  });
+
+  container.querySelector('#coaLiabChartControlType').addEventListener('change', (e) => {
+    coaLiabChartState.controlType = e.target.value;
+    coaLiabChartState.page = 1;
+    coaLiabChartAccountsRefreshResults();
+  });
+
+  container.querySelector('#coaLiabChartAddAccount').addEventListener('click', () => coaOpenNewLiabilityAccountModal());
+
+  container.querySelector('#coaLiabChartAccountsResults').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-coaliabchartpage]');
+    if (!btn || btn.disabled) return;
+    const totalPages = Math.max(1, Math.ceil(coaLiabChartFilteredAccounts().length / COA_PAGE_SIZE));
+    if (btn.dataset.coaliabchartpage === 'prev') coaLiabChartState.page = Math.max(1, coaLiabChartState.page - 1);
+    else if (btn.dataset.coaliabchartpage === 'next') coaLiabChartState.page = Math.min(totalPages, coaLiabChartState.page + 1);
+    else coaLiabChartState.page = +btn.dataset.coaliabchartpage;
+    coaLiabChartAccountsRefreshResults();
+  });
+}
+
+function coaLiabChartNextCode() {
+  const max = coaChartLiabilityAccounts.reduce((m, a) => Math.max(m, parseInt(a.code, 10) || 0), 0);
+  return String(max + 10);
+}
+
+function coaOpenNewLiabilityAccountModal() {
+  if (document.getElementById('coaLiabAccountModal')) return;
+  const close = '<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  const nextCode = coaLiabChartNextCode();
+
+  const wrap = document.createElement('div');
+  wrap.id = 'coaLiabAccountModal';
+  wrap.className = 'fixed inset-0 z-50';
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
+  wrap.setAttribute('aria-label', 'Add new account');
+  wrap.innerHTML = `
+    <div data-close class="absolute inset-0" style="background: var(--overlay)"></div>
+    <div class="relative mx-auto mt-[8vh] w-full max-w-[560px] px-4">
+      <form id="coaLiabAccountForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
+        <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
+          <span class="text-side-accent shrink-0">${iconSvg('wallet', 'w-4 h-4')}</span>
+          <h3 class="text-[14.5px] font-semibold text-primary">New Account</h3>
+          <button type="button" data-close aria-label="Close"
+            class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
+        </div>
+
+        <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5 max-h-[62vh] overflow-y-auto">
+          <label class="block min-w-0 sm:col-span-2">${biLabel('Parent Account')}
+            <select name="parent" class="${COA_INPUT}">
+              <option value="">— None / Root (top-level Liabilities head) —</option>
+              ${coaChartLiabilityAccounts.map(a => `<option value="${escapeHtml(a.code)}">${escapeHtml(a.code)} — ${escapeHtml(a.name)}</option>`).join('')}
+            </select></label>
+          <label class="block min-w-0">${biLabel('Account Code', { req: true })}
+            <input name="code" type="text" autocomplete="off" value="${escapeHtml(nextCode)}" class="${COA_INPUT} tabular" /></label>
+          <label class="block min-w-0">${biLabel('Account Name', { req: true })}
+            <input name="name" type="text" autocomplete="off" placeholder="e.g. Creditors — Import" class="${COA_INPUT}" /></label>
+          <label class="block min-w-0 sm:col-span-2">${biLabel('Control Type')}
+            <select name="controlType" class="${COA_INPUT}">
+              ${COA_LIAB_CHART_CONTROL_TYPES.slice(1).map(v => `<option value="${escapeHtml(v)}" ${v === 'General' ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('')}
+            </select></label>
+          <p id="coaLiabAccountModalMsg" class="sm:col-span-2 text-helper text-danger min-h-[17px]"></p>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-side-line">
+          <button type="button" data-close class="${COA_BTN}">Cancel</button>
+          <button type="submit" class="${COA_BTN_PRIMARY}">Save Account</button>
+        </div>
+      </form>
+    </div>`;
+
+  document.body.appendChild(wrap);
+  const form = wrap.querySelector('#coaLiabAccountForm');
+  const done = () => { document.removeEventListener('keydown', onKey); wrap.remove(); };
+  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); done(); } };
+
+  wrap.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) done(); });
+  document.addEventListener('keydown', onKey);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = (n) => (form.elements[n].value || '').trim();
+    const msg = form.querySelector('#coaLiabAccountModalMsg');
+    if (!val('code') || !val('name')) {
+      msg.textContent = 'Account Code and Account Name are required.';
+      return;
+    }
+    if (coaChartLiabilityAccounts.some(a => a.code === val('code'))) {
+      msg.textContent = 'An account with this code already exists.';
+      return;
+    }
+    const controlTypeLabel = val('controlType');
+    const controlType = controlTypeLabel === 'Accounts Payable' ? 'payable'
+      : controlTypeLabel === 'Loan Payable' ? 'loan_payable'
+      : null;
+    coaChartLiabilityAccounts.push({ code: val('code'), name: val('name'), controlType, parent: val('parent') || null });
+    coaChartLiabilityAccounts.sort((a, b) => a.code.localeCompare(b.code));
+    done();
+    coaLiabChartAccountsRefreshResults();
+  });
+
+  const first = form.querySelector('input[name="code"]');
+  if (first) first.focus();
+}
+
+function coaLiabilityNextCode() {
+  const max = coaLiabilities.reduce((m, l) => Math.max(m, parseInt((l.code.split('-')[1] || '0'), 10) || 0), 0);
+  return `LIA-${String(max + 1).padStart(4, '0')}`;
+}
+
+function coaOpenNewLiabilityModal() {
+  if (document.getElementById('coaLiabilityModal')) return;
+  const close = '<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  const nextCode = coaLiabilityNextCode();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const wrap = document.createElement('div');
+  wrap.id = 'coaLiabilityModal';
+  wrap.className = 'fixed inset-0 z-50';
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
+  wrap.setAttribute('aria-label', 'Add new liability');
+  wrap.innerHTML = `
+    <div data-close class="absolute inset-0" style="background: var(--overlay)"></div>
+    <div class="relative mx-auto mt-[8vh] w-full max-w-[620px] px-4">
+      <form id="coaLiabilityForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
+        <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
+          <span class="text-side-accent shrink-0">${COA_BANK_ICON}</span>
+          <h3 class="text-[14.5px] font-semibold text-primary">New Liability</h3>
+          <button type="button" data-close aria-label="Close"
+            class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
+        </div>
+
+        <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5 max-h-[62vh] overflow-y-auto">
+          <label class="block min-w-0">${biLabel('Account Code')}
+            <input name="code" type="text" value="${escapeHtml(nextCode)}" readonly class="${COA_INPUT} tabular bg-side-bg/60 text-muted" /></label>
+          <label class="block min-w-0">${biLabel('Account Name', { req: true })}
+            <input name="name" type="text" autocomplete="off" placeholder="e.g. Accounts Payable" class="${COA_INPUT}" /></label>
+          <label class="block min-w-0">${biLabel('Liability Category')}
+            <select name="category" class="${COA_INPUT}">${COA_LIABILITY_CATEGORIES.slice(1).map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}</select></label>
+          <label class="block min-w-0">${biLabel('Location')}
+            <select name="location" class="${COA_INPUT}">${COA_LIABILITY_LOCATIONS.slice(1).map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('')}</select></label>
+          <label class="block min-w-0">${biLabel('Incurred Date')}
+            <input name="date" type="date" value="${today}" class="${COA_INPUT} tabular" /></label>
+          <label class="block min-w-0">${biLabel('Due Date')}
+            <input name="due" type="date" value="${today}" class="${COA_INPUT} tabular" /></label>
+          <label class="block min-w-0 sm:col-span-2">${biLabel('Balance (BDT)', { req: true })}
+            <input name="balance" type="number" min="0" step="1" placeholder="0" class="${COA_INPUT} tabular" /></label>
+          <label class="block min-w-0 sm:col-span-2">${biLabel('Status')}
+            <select name="status" class="${COA_INPUT}">${COA_LIABILITY_STATUSES.slice(1).map(s => `<option value="${escapeHtml(s)}" ${s === 'Active' ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}</select></label>
+          <p id="coaLiabilityModalMsg" class="sm:col-span-2 text-helper text-danger min-h-[17px]"></p>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-side-line">
+          <button type="button" data-close class="${COA_BTN}">Cancel</button>
+          <button type="submit" class="${COA_BTN_PRIMARY}">Save Liability</button>
+        </div>
+      </form>
+    </div>`;
+
+  document.body.appendChild(wrap);
+  const form = wrap.querySelector('#coaLiabilityForm');
+  const done = () => { document.removeEventListener('keydown', onKey); wrap.remove(); };
+  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); done(); } };
+
+  wrap.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) done(); });
+  document.addEventListener('keydown', onKey);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = (n) => (form.elements[n].value || '').trim();
+    const msg = form.querySelector('#coaLiabilityModalMsg');
+    if (!val('name') || !val('balance')) {
+      msg.textContent = 'Account Name and Balance are required.';
+      return;
+    }
+    coaLiabilities.push({
+      code: val('code'),
+      name: val('name'),
+      category: val('category'),
+      location: val('location'),
+      date: coaFormatDateDisplay(val('date')),
+      due: coaFormatDateDisplay(val('due')),
+      balance: Number(val('balance')) || 0,
+      status: val('status'),
+    });
+    done();
+    coaLiabilityFilter.page = 1;
+    coaLiabilityRefreshResults();
+  });
+
+  const first = form.querySelector('input[name="name"]');
+  if (first) first.focus();
+}
+
 const coaLiabilities = [
   { code: 'LIA-0001', name: 'Accounts Payable', category: 'Trade Payables', location: 'Main Factory', date: '12-Jan-2023', due: '12-Feb-2023', balance: 1250000, status: 'Active' },
   { code: 'LIA-0002', name: 'LC Payable', category: 'Trade Payables', location: 'Factory Yard', date: '20-Jan-2023', due: '20-Feb-2023', balance: 850000, status: 'Active' },
@@ -4050,9 +4386,12 @@ function coaLiabilityListCard() {
 function coaRenderLiabilities(container) {
   container.innerHTML = `
     <div class="space-y-4 pb-8">
+      ${coaLiabChartFilterBar()}
+      ${coaLiabChartAccountsCard()}
       ${coaLiabilityFilterBar()}
       ${coaLiabilityListCard()}
     </div>`;
+  coaLiabChartAccountsBindEvents(container);
   coaLiabilityBindEvents(container);
 }
 
@@ -4090,6 +4429,8 @@ function coaLiabilityBindEvents(container) {
     if (e.target.id !== 'coaLiabSelectAll') return;
     container.querySelectorAll('#coaLiabResults tbody input[type="checkbox"]').forEach(cb => { cb.checked = e.target.checked; });
   });
+
+  container.querySelector('#coaNewLiability').addEventListener('click', () => coaOpenNewLiabilityModal());
 }
 
 // ---------- Command palette ----------
