@@ -587,6 +587,7 @@ const subtitles = {
   'Purchase Order (PO)': 'Complete purchase order information and details',
   'Proforma Invoice (PI)': 'Complete proforma invoice information and details',
   'Chart of Accounts': 'Record journal entries and manage account categories',
+  'Voucher Management': 'Create, post and track every accounting voucher from one place',
 };
 
 function renderContent() {
@@ -632,6 +633,7 @@ function renderContent() {
   else if (mod.key === 'merchandising' && sm.name === 'Purchase Order (PO)') renderPOPI(pageContent, 'po');
   else if (mod.key === 'merchandising' && sm.name === 'Proforma Invoice (PI)') renderPOPI(pageContent, 'pi');
   else if (mod.key === 'finance' && sm.name === 'Chart of Accounts') renderChartOfAccounts(tabsEl, pageContent);
+  else if (mod.key === 'finance' && sm.name === 'Voucher Management') renderVoucherManagement(tabsEl, pageContent);
   else renderNotBuilt(pageContent, mod, sm, single);
 }
 
@@ -6204,6 +6206,280 @@ function coaOpenNewCashBankModal() {
 
   const first = form.querySelector('input[name="name"]');
   if (first) first.focus();
+}
+
+// ---------- Voucher Management ----------
+// Content/fields ported from the Finance reference build's Voucher Management > Journal
+// voucher type. Only the Journal tab is wired up so far; the remaining voucher types
+// (Payment, Receipt, Petty Cash, Contra, Purchase, Sale, Debit Note, Credit Note) fall
+// back to the same "not built yet" panel Chart of Accounts uses for its own empty tabs.
+const VM_TABS = ['Journal', 'Payment', 'Receipt', 'Petty Cash', 'Contra', 'Purchase', 'Sale', 'Debit Note', 'Credit Note'];
+
+const vmJournalEntries = [
+  { date: '10-Sep-2026', voucherNo: 'JV-2026-0001', memo: 'Opening balance adjustment — Cash in Hand', amount: 25000, status: 'Posted' },
+  { date: '14-Sep-2026', voucherNo: 'JV-2026-0002', memo: 'Depreciation — Machinery & Equipment', amount: 18500, status: 'Posted' },
+];
+
+const vmJournalForm = {
+  date: new Date().toISOString().slice(0, 10),
+  memo: '',
+  lines: [
+    { account: '', debit: '0.00', credit: '0.00', description: '' },
+    { account: '', debit: '0.00', credit: '0.00', description: '' },
+  ],
+  msg: '', msgTone: 'muted',
+};
+
+function vmNextVoucherNo() {
+  return `JV-${new Date().getFullYear()}-${String(vmJournalEntries.length + 1).padStart(4, '0')}`;
+}
+
+function vmTotals() {
+  const debit = vmJournalForm.lines.reduce((s, l) => s + coaNum(l.debit), 0);
+  const credit = vmJournalForm.lines.reduce((s, l) => s + coaNum(l.credit), 0);
+  return { debit, credit, balanced: debit > 0 && Math.abs(debit - credit) < 0.005 };
+}
+
+function renderVoucherManagement(tabsEl, container) {
+  tabsEl.classList.remove('hidden');
+  tabsEl.innerHTML = `
+    <div class="flex items-center gap-1 -mb-px pb-px overflow-x-auto overflow-y-hidden">
+      ${VM_TABS.map((t, i) => `
+        <button type="button" data-vmtab="${i}" class="px-3.5 py-2.5 text-label font-semibold border-b-2 whitespace-nowrap -mb-px ${i === state.tabIndex ? 'border-side-accent text-side-accent' : 'border-transparent text-muted hover:text-secondary'}">${escapeHtml(t)}</button>
+      `).join('')}
+    </div>`;
+  tabsEl.querySelectorAll('[data-vmtab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.tabIndex = +btn.dataset.vmtab;
+      renderVoucherManagement(tabsEl, container);
+    });
+  });
+
+  document.getElementById('page-actions').innerHTML = '';
+
+  if (state.tabIndex === 0) vmRenderJournal(container);
+  else coaRenderComingSoon(container, VM_TABS[state.tabIndex]);
+}
+
+function vmField(label, inner) {
+  return `<label class="block min-w-0"><span class="block text-label font-medium text-secondary mb-1">${escapeHtml(label)}</span>${inner}</label>`;
+}
+
+function vmHeaderCard() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3.5">
+        ${vmField('Voucher No.', `<input id="vmF_voucherNo" type="text" value="${escapeHtml(vmNextVoucherNo())}" readonly class="${COA_AUTO} tabular" />`)}
+        ${vmField('Date', `<input id="vmF_date" data-vmf="date" type="date" value="${escapeHtml(vmJournalForm.date)}" class="${COA_INPUT} tabular" />`)}
+        <div class="sm:col-span-2">
+          ${vmField('Memo / Description', `<input id="vmF_memo" data-vmf="memo" type="text" autocomplete="off" value="${escapeHtml(vmJournalForm.memo)}" placeholder="Short description of this voucher (appears on ledger and reports)" class="${COA_INPUT}" />`)}
+        </div>
+      </div>
+    </section>`;
+}
+
+function vmLineRow(l, i) {
+  return `
+    <tr data-vline="${i}" class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
+      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${i + 1}</td>
+      <td class="px-3 py-2 min-w-[200px]">
+        <select data-vmline="account" class="${COA_INPUT}">
+          <option value="">Select account…</option>
+          ${COA_ACCOUNTS.map(a => `<option value="${escapeHtml(a)}" ${a === l.account ? 'selected' : ''}>${escapeHtml(a)}</option>`).join('')}
+        </select>
+      </td>
+      <td class="px-3 py-2 min-w-[130px]"><input data-vmline="debit" type="text" inputmode="decimal" value="${escapeHtml(l.debit)}" class="${COA_INPUT} tabular text-right" /></td>
+      <td class="px-3 py-2 min-w-[130px]"><input data-vmline="credit" type="text" inputmode="decimal" value="${escapeHtml(l.credit)}" class="${COA_INPUT} tabular text-right" /></td>
+      <td class="px-3 py-2 min-w-[220px]"><input data-vmline="description" type="text" autocomplete="off" value="${escapeHtml(l.description)}" placeholder="Line description (optional)" class="${COA_INPUT}" /></td>
+      <td class="pr-4 pl-3 py-2">
+        <button data-vmdel="${i}" class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:text-danger hover:bg-dangerSoft" title="Remove line">${COA_DELETE_ICON}</button>
+      </td>
+    </tr>`;
+}
+
+function vmTotalsInner() {
+  const t = vmTotals();
+  return `
+    <div class="flex items-center gap-1.5 min-w-0">
+      <span class="text-info shrink-0">${iconSvg('info', 'w-4 h-4')}</span>
+      <p class="text-label text-secondary">Debit and credit must be equal before this voucher can be posted.</p>
+    </div>
+    <div class="flex items-center gap-8 shrink-0">
+      <div class="text-right">
+        <p class="text-micro text-muted mb-0.5">Total Debit</p>
+        <p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(t.debit)}</p>
+      </div>
+      <div class="text-right">
+        <p class="text-micro text-muted mb-0.5">Total Credit</p>
+        <p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(t.credit)}</p>
+      </div>
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold ${t.balanced ? 'bg-successSoft text-success' : 'bg-warningSoft text-warning'}">
+        ${t.balanced ? COA_CHECK_ICON : ''}${t.balanced ? 'Balanced' : 'Unbalanced'}
+      </span>
+    </div>`;
+}
+
+function vmEntriesCard() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex items-center justify-between gap-3 p-4">
+        <h3 class="text-section-title text-primary">Account Entries</h3>
+        <button type="button" id="vmAddLine" class="${COA_BTN_PRIMARY}">${COA_PLUS_ICON}Add Line</button>
+      </div>
+      <div class="overflow-x-auto border-t border-side-line">
+        <table class="w-full min-w-[860px]">
+          <thead><tr class="border-b border-side-line">
+            <th class="pl-4 pr-2 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">SL</th>
+            <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">Account (Chart of Accounts)</th>
+            <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-right whitespace-nowrap">Debit (BDT)</th>
+            <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-right whitespace-nowrap">Credit (BDT)</th>
+            <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">Description</th>
+            <th class="pr-4 pl-3 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">Action</th>
+          </tr></thead>
+          <tbody id="vmLinesBody">${vmJournalForm.lines.map(vmLineRow).join('')}</tbody>
+        </table>
+      </div>
+      <div id="vmTotalsBar" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 border-t border-side-line">${vmTotalsInner()}</div>
+    </section>`;
+}
+
+function vmFooterButtons() {
+  return `
+    <div class="flex items-center justify-end gap-3">
+      <p id="vmFormMsg" class="${vmJournalForm.msg ? '' : 'hidden '}text-helper text-${vmJournalForm.msgTone} mr-auto">${escapeHtml(vmJournalForm.msg)}</p>
+      <button type="button" id="vmResetBtn" class="${COA_BTN}">Reset</button>
+      <button type="button" id="vmPostBtn" class="${COA_BTN_PRIMARY}">${BI_SAVE_ICON}Post Voucher</button>
+    </div>`;
+}
+
+function vmSetMsg(text, tone) {
+  vmJournalForm.msg = text || '';
+  vmJournalForm.msgTone = tone || 'muted';
+  const el = document.getElementById('vmFormMsg');
+  if (el) {
+    el.textContent = vmJournalForm.msg;
+    el.className = `${vmJournalForm.msg ? '' : 'hidden '}text-helper text-${vmJournalForm.msgTone} mr-auto`;
+  }
+}
+
+function vmRecentCard() {
+  const headers = ['Date', 'Voucher No.', 'Memo', 'Amount (BDT)', 'Status'];
+  const rows = vmJournalEntries.length
+    ? vmJournalEntries.slice().reverse().map(e => `
+      <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
+        <td class="pl-4 pr-2 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(e.date)}</td>
+        <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(e.voucherNo)}</td>
+        <td class="px-3 py-2 text-[13.5px] text-primary">${escapeHtml(e.memo)}</td>
+        <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${coaMoney(e.amount)}</td>
+        <td class="pr-4 pl-3 py-2">${coaStatusPill(e.status)}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="5" class="px-4 py-8 text-center text-[13.5px] text-muted">No journal vouchers posted yet.</td></tr>`;
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex items-center gap-2.5 p-4">
+        <span class="text-side-accent shrink-0">${COA_HISTORY_ICON}</span>
+        <h3 class="text-section-title text-primary">Recent Journal Vouchers</h3>
+      </div>
+      <div class="overflow-x-auto border-t border-side-line">
+        <table class="w-full min-w-[720px]">
+          <thead><tr class="border-b border-side-line">
+            ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${idx === 3 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </section>`;
+}
+
+function vmRenderJournal(container) {
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      ${vmHeaderCard()}
+      ${vmEntriesCard()}
+      ${vmFooterButtons()}
+      ${vmRecentCard()}
+    </div>`;
+  vmBindJournalEvents(container);
+}
+
+function vmBindJournalEvents(container) {
+  container.querySelectorAll('[data-vmf]').forEach(el => {
+    el.addEventListener('input', () => { vmJournalForm[el.dataset.vmf] = el.value; });
+    el.addEventListener('change', () => { vmJournalForm[el.dataset.vmf] = el.value; });
+  });
+
+  const body = container.querySelector('#vmLinesBody');
+
+  function refreshTotals() {
+    const bar = container.querySelector('#vmTotalsBar');
+    if (bar) bar.innerHTML = vmTotalsInner();
+  }
+
+  body.addEventListener('input', (e) => {
+    const row = e.target.closest('[data-vline]');
+    if (!row || !e.target.dataset.vmline) return;
+    vmJournalForm.lines[+row.dataset.vline][e.target.dataset.vmline] = e.target.value;
+    if (e.target.dataset.vmline === 'debit' || e.target.dataset.vmline === 'credit') refreshTotals();
+  });
+  body.addEventListener('change', (e) => {
+    const row = e.target.closest('[data-vline]');
+    if (!row || !e.target.dataset.vmline) return;
+    vmJournalForm.lines[+row.dataset.vline][e.target.dataset.vmline] = e.target.value;
+  });
+
+  body.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-vmdel]');
+    if (!btn) return;
+    if (vmJournalForm.lines.length <= 1) return;
+    vmJournalForm.lines.splice(+btn.dataset.vmdel, 1);
+    body.innerHTML = vmJournalForm.lines.map(vmLineRow).join('');
+    refreshTotals();
+  });
+
+  container.querySelector('#vmAddLine').addEventListener('click', () => {
+    vmJournalForm.lines.push({ account: '', debit: '0.00', credit: '0.00', description: '' });
+    body.innerHTML = vmJournalForm.lines.map(vmLineRow).join('');
+    refreshTotals();
+  });
+
+  container.querySelector('#vmResetBtn').addEventListener('click', () => {
+    vmJournalForm.date = new Date().toISOString().slice(0, 10);
+    vmJournalForm.memo = '';
+    vmJournalForm.lines = [
+      { account: '', debit: '0.00', credit: '0.00', description: '' },
+      { account: '', debit: '0.00', credit: '0.00', description: '' },
+    ];
+    vmRenderJournal(container);
+  });
+
+  container.querySelector('#vmPostBtn').addEventListener('click', () => {
+    const t = vmTotals();
+    const validLines = vmJournalForm.lines.filter(l => l.account && (coaNum(l.debit) > 0 || coaNum(l.credit) > 0));
+    if (validLines.length < 2) {
+      vmSetMsg('Add at least two lines, each with an account and an amount.', 'danger');
+      return;
+    }
+    if (!t.balanced) {
+      vmSetMsg('Total debit must equal total credit before posting.', 'danger');
+      return;
+    }
+    const voucherNo = vmNextVoucherNo();
+    vmJournalEntries.push({
+      date: biFromISO(vmJournalForm.date) || vmJournalForm.date,
+      voucherNo,
+      memo: vmJournalForm.memo || '(No description)',
+      amount: t.debit,
+      status: 'Posted',
+    });
+    vmJournalForm.date = new Date().toISOString().slice(0, 10);
+    vmJournalForm.memo = '';
+    vmJournalForm.lines = [
+      { account: '', debit: '0.00', credit: '0.00', description: '' },
+      { account: '', debit: '0.00', credit: '0.00', description: '' },
+    ];
+    vmRenderJournal(container);
+    vmSetMsg(`${voucherNo} posted successfully.`, 'success');
+  });
 }
 
 // ---------- Command palette ----------
