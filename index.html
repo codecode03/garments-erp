@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GarmentsERP — Dashboard (v4: refined tables)</title>
+<title>Obsidian ERP — Dashboard (v4: refined tables)</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -72,7 +72,7 @@
 </script>
 <style>
   /* ================================================================
-     Theme tokens — sourced from ERP_Color.html (GarmentsERP Color System)
+     Theme tokens — sourced from ERP_Color.html (Obsidian ERP Color System)
      ================================================================ */
   :root,
   html[data-theme="light"] {
@@ -283,7 +283,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><path d="M4 21V9l8-6 8 6v12"/><path d="M9 21v-6h6v6"/></svg>
         </div>
         <p id="brandText" class="text-[15px] leading-tight tracking-tight whitespace-nowrap overflow-hidden">
-          <span class="font-bold text-primary">Garments</span><span class="font-bold text-side-accent">ERP</span>
+          <span class="font-bold text-primary">Obsidian</span><span class="font-bold text-side-accent">ERP</span>
         </p>
       </div>
       <button id="sidebarToggle" class="w-7 h-7 rounded flex items-center justify-center text-side-text hover:bg-side-hover hover:text-side-textbright shrink-0" title="Collapse sidebar" aria-label="Collapse sidebar">
@@ -296,7 +296,7 @@
 
     <!-- Footer -->
     <div class="border-t border-side-line px-4 py-2.5 shrink-0">
-      <p id="sidebarFooterText" class="text-micro text-disabled whitespace-nowrap overflow-hidden">GarmentsERP · v3.0</p>
+      <p id="sidebarFooterText" class="text-micro text-disabled whitespace-nowrap overflow-hidden">Obsidian ERP · v3.0</p>
     </div>
   </aside>
 
@@ -5932,9 +5932,10 @@ function coaCashBankTypeBadge(type) {
   return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg} whitespace-nowrap">${escapeHtml(type)}</span>`;
 }
 
-const COA_CASHBANK_STAT_CASH_ICON = '<svg viewBox="0 0 24 24" class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M16 13h.01M3 10h18"/></svg>';
-const COA_CASHBANK_STAT_TOTAL_ICON = '<svg viewBox="0 0 24 24" class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>';
-const COA_CASHBANK_STAT_ACTIVE_ICON = '<svg viewBox="0 0 24 24" class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>';
+const COA_CASHBANK_STAT_CASH_ICON = '<svg viewBox="0 0 24 24" class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M16 13h.01M3 10h18"/></svg>';
+const COA_CASHBANK_STAT_BANK_ICON = '<svg viewBox="0 0 24 24" class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-6 9 6M4 10v9M20 10v9M8 10v9M16 10v9M2 21h20"/></svg>';
+const COA_CASHBANK_STAT_TOTAL_ICON = '<svg viewBox="0 0 24 24" class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 13h3"/></svg>';
+const COA_CASHBANK_STAT_ACTIVE_ICON = '<svg viewBox="0 0 24 24" class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8.5 12.5l2.2 2.2L15.5 9.5"/></svg>';
 
 function coaCashBankStatCard(iconHtml, value, label) {
   return `
@@ -5959,7 +5960,7 @@ function coaCashBankSummaryCards() {
   return `
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
       ${coaCashBankStatCard(COA_CASHBANK_STAT_CASH_ICON, coaInt(cashTotal), 'Total Cash-in-Hand')}
-      ${coaCashBankStatCard(COA_BANK_ICON, coaInt(bankTotal), 'Total Bank Balance')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_BANK_ICON, coaInt(bankTotal), 'Total Bank Balance')}
       ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, String(activeCount), 'Active Accounts')}
       ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, String(coaCashBankAccounts.length), 'Total Accounts')}
     </div>`;
