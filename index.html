@@ -416,9 +416,8 @@ const modules = [
     { name:'Sample Approval' }, { name:'Sample Tracking' }, { name:'Reports' },
   ]},
   { key:'finance', name:'Finance', icon:'wallet', submodules:[
-    { name:'Chart of Accounts' }, { name:'Voucher Management' }, { name:'Accounts Payable' },
-    { name:'Accounts Receivable' }, { name:'Cash & Bank' }, { name:'VAT & Tax' }, { name:'LC & Export Finance' },
-    { name:'Budget Management' }, { name:'Assets' }, { name:'General Ledger' }, { name:'Financial Statements' }, { name:'Reports' },
+    { name:'Chart of Accounts' }, { name:'Voucher Management' }, { name:'General Entry' }, { name:'VAT & Tax' },
+    { name:'LC & Export Finance' }, { name:'Budget Management' }, { name:'Financial Statements' }, { name:'Audit' },
   ]},
   { key:'procurement', name:'Procurement', icon:'truck', submodules:[
     { name:'Purchase Requisition' }, { name:'Supplier Selection/Management' }, { name:'Import Management' },
@@ -588,6 +587,12 @@ const subtitles = {
   'Proforma Invoice (PI)': 'Complete proforma invoice information and details',
   'Chart of Accounts': 'Record journal entries and manage account categories',
   'Voucher Management': 'Create, post and track every accounting voucher from one place',
+  'General Entry': 'Post daily cash and bank transactions directly against the Chart of Accounts',
+  'VAT & Tax': 'Issue and track Mushak 6.3 tax invoices and output VAT',
+  'Budget Management': 'Plan departmental budgets and track actual spend against them',
+  'LC & Export Finance': 'Track letters of credit, utilization and expiry across export and back-to-back LCs',
+  'Audit': 'Log audit findings and generate summaries from live Finance data',
+  'Financial Statements': 'Trial balance, ledger, profit & loss and balance sheet from posted entries',
 };
 
 function renderContent() {
@@ -634,6 +639,12 @@ function renderContent() {
   else if (mod.key === 'merchandising' && sm.name === 'Proforma Invoice (PI)') renderPOPI(pageContent, 'pi');
   else if (mod.key === 'finance' && sm.name === 'Chart of Accounts') renderChartOfAccounts(tabsEl, pageContent);
   else if (mod.key === 'finance' && sm.name === 'Voucher Management') renderVoucherManagement(tabsEl, pageContent);
+  else if (mod.key === 'finance' && sm.name === 'General Entry') renderGeneralEntry(pageContent);
+  else if (mod.key === 'finance' && sm.name === 'VAT & Tax') renderVatTax(pageContent);
+  else if (mod.key === 'finance' && sm.name === 'Budget Management') renderBudgetManagement(pageContent);
+  else if (mod.key === 'finance' && sm.name === 'LC & Export Finance') renderLcExportFinance(pageContent);
+  else if (mod.key === 'finance' && sm.name === 'Audit') renderFinanceAudit(pageContent);
+  else if (mod.key === 'finance' && sm.name === 'Financial Statements') renderFinancialStatements(tabsEl, pageContent);
   else renderNotBuilt(pageContent, mod, sm, single);
 }
 
@@ -708,9 +719,32 @@ const dashboardStats = [
     series: [86, 88, 87, 90, 89, 91, 90, 92, 91, 92.4] },
   { label: 'WIP Units', value: '148,200', delta: '+4.1%', note: 'across 8 lines', color: '--chart-3',
     series: [120, 128, 124, 133, 138, 135, 142, 140, 145, 148] },
-  { label: 'Pending Receivables', value: '$128,400', delta: '-6.2%', note: '3 invoices overdue', color: '--chart-4',
-    series: [162, 158, 149, 152, 144, 140, 137, 133, 130, 128] },
 ];
+
+// Pulled live from the Accounts Receivable register (apArItems.receivable) instead of a
+// hardcoded figure, so it reflects whatever is actually on the books when the Dashboard renders.
+function pendingReceivablesStat() {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let outstanding = 0, overdueCount = 0;
+  apArItems.receivable.forEach(it => {
+    const bal = apArBalance(it);
+    if (bal > 0) {
+      outstanding += bal;
+      if (new Date(it.dueDate + 'T00:00:00') < today) overdueCount += 1;
+    }
+  });
+  return {
+    label: 'Pending Receivables', value: `BDT ${coaInt(outstanding)}`,
+    delta: overdueCount > 0 ? `-${overdueCount}` : '+0',
+    note: overdueCount > 0 ? `${overdueCount} invoice${overdueCount === 1 ? '' : 's'} overdue` : 'All invoices current',
+    color: '--chart-4',
+    series: [162, 158, 149, 152, 144, 140, 137, 133, 130, Math.max(1, Math.round(outstanding / 1000))],
+  };
+}
+
+function getDashboardStats() {
+  return [...dashboardStats, pendingReceivablesStat()];
+}
 
 const dashboardNotifications = [
   { title: 'New Purchase Order received', desc: 'PO-2031 from Everest Apparels Ltd. is awaiting confirmation.', time: '10 min ago', unread: true },
@@ -736,7 +770,7 @@ function priorityBadge(priority) {
 }
 
 function renderDashboardPage(container) {
-  const stats = `<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">${dashboardStats.map(statCard).join('')}</div>`;
+  const stats = `<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">${getDashboardStats().map(statCard).join('')}</div>`;
 
   const notificationsList = `
     <div class="divide-y divide-side-line -mx-5">
@@ -3056,13 +3090,51 @@ const COA_CHECK_ICON = '<svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" str
 const COA_HISTORY_ICON = '<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 3"/></svg>';
 const COA_ARROW_ICON = '<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 
-const COA_ACCOUNTS = [
-  '1000 — Cash in Hand', '1010 — Bank — City Bank', '1200 — Accounts Receivable',
-  '1400 — Inventory — Raw Materials', '1500 — Prepaid Expenses', '2000 — Accounts Payable',
-  '2100 — VAT Payable', '2200 — Accrued Expenses', '3000 — Owner’s Equity',
-  '3100 — Retained Earnings', '4000 — Sales Revenue', '5000 — Cost of Goods Sold',
-  '5100 — Office Expenses', '5200 — Bank Charges',
-];
+/* Every account picker reads the real Chart of Accounts tabs (Assets … Expenses), so a code always
+   means the same account everywhere. Functions, not constants, because the chart arrays are
+   declared further down and can still be edited at runtime. */
+function coaCategoryDefs() {
+  return [
+    { key: 'asset', label: 'Assets', normal: 'debit', list: coaChartAssetAccounts },
+    { key: 'liability', label: 'Liabilities', normal: 'credit', list: coaChartLiabilityAccounts },
+    { key: 'equity', label: 'Equity', normal: 'credit', list: coaChartEquityAccounts },
+    { key: 'revenue', label: 'Revenue', normal: 'credit', list: coaChartRevenueAccounts },
+    { key: 'expense', label: 'Expenses', normal: 'debit', list: coaChartExpenseAccounts },
+  ];
+}
+function coaAllAccounts() {
+  return coaCategoryDefs().flatMap(c => c.list.map(a => ({ ...a, cat: c.key, catLabel: c.label, normal: c.normal, label: `${a.code} — ${a.name}` })));
+}
+function coaAccountList() { return coaAllAccounts().map(a => a.label); }
+function coaFindAccount(codeOrLabel) {
+  const code = String(codeOrLabel || '').split(' — ')[0].trim();
+  return coaAllAccounts().find(a => a.code === code) || null;
+}
+function coaAccountOptionsHtml(selected) {
+  return coaCategoryDefs().map(c => `<optgroup label="${escapeHtml(c.label)}">${c.list.map(a => {
+    const v = `${a.code} — ${a.name}`;
+    return `<option value="${escapeHtml(v)}" ${v === selected ? 'selected' : ''}>${escapeHtml(v)}</option>`;
+  }).join('')}</optgroup>`).join('');
+}
+
+/* The general ledger: one entry per posted Journal Entry / voucher, each carrying its account
+   lines. Trial Balance, General Ledger, Profit & Loss and Balance Sheet are all computed from it. */
+const coaJournalEntries = [];
+function coaPostToLedger(entry) {
+  const lines = entry.lines
+    .map(l => ({ account: (coaFindAccount(l.account) || {}).code, debit: coaNum(l.debit), credit: coaNum(l.credit) }))
+    .filter(l => l.account && (l.debit > 0 || l.credit > 0));
+  coaJournalEntries.push({ date: entry.date, ref: entry.ref, memo: entry.memo, lines });
+}
+// Sample ledger so the statements aren't empty before anything new is posted: an opening-balance
+// entry (so cash has something to pay out of), plus the three sample journal entries already
+// listed under Journal Entry with the account lines their descriptions imply.
+coaJournalEntries.push(
+  { date: '2026-07-01', ref: 'OB-0001', memo: 'Opening balances', lines: [{ account: '1000', debit: 100000, credit: 0 }, { account: '1010', debit: 2000000, credit: 0 }, { account: '3000', debit: 0, credit: 2100000 }] },
+  { date: '2026-09-02', ref: 'JV-0003', memo: 'Bank charges', lines: [{ account: '5200', debit: 2500, credit: 0 }, { account: '1010', debit: 0, credit: 2500 }] },
+  { date: '2026-09-05', ref: 'JV-0002', memo: 'Office expenses', lines: [{ account: '5140', debit: 10000, credit: 0 }, { account: '1000', debit: 0, credit: 10000 }] },
+  { date: '2026-09-08', ref: 'JV-0001', memo: 'Fabric purchase from ABC Textiles', lines: [{ account: '1210', debit: 50000, credit: 0 }, { account: '2000', debit: 0, credit: 50000 }] },
+);
 
 const COA_JOURNAL_TYPES = ['General Journal', 'Opening Entry', 'Adjusting Entry', 'Closing Entry'];
 
@@ -3070,8 +3142,8 @@ const jeForm = {
   date: '2026-09-08', voucherNo: 'JV-0001', journalType: 'General Journal',
   reference: '', memo: 'Fabric purchase from ABC Textiles',
   lines: [
-    { account: COA_ACCOUNTS[0], debit: '50000.00', credit: '0.00', narration: 'Cash paid for fabric purchase' },
-    { account: COA_ACCOUNTS[5], debit: '0.00', credit: '50000.00', narration: 'Payable to ABC Textiles' },
+    { account: '1210 — Raw Materials — Fabric', debit: '50000.00', credit: '0.00', narration: 'Fabric received from ABC Textiles' },
+    { account: '2000 — Accounts Payable', debit: '0.00', credit: '50000.00', narration: 'Payable to ABC Textiles' },
   ],
   msg: '', msgTone: 'muted',
 };
@@ -3086,6 +3158,8 @@ const jeEntries = [
   { date: '05-Sep-2026', voucherNo: 'JV-0002', description: 'Office expenses', debit: 10000, credit: 10000, status: 'Posted' },
   { date: '02-Sep-2026', voucherNo: 'JV-0003', description: 'Bank charges', debit: 2500, credit: 2500, status: 'Posted' },
 ];
+// The form is declared before the list above, so it can't number itself from it up front.
+jeForm.voucherNo = coaNextVoucherNo();
 
 function coaMoney(n) {
   return (n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -3167,7 +3241,7 @@ function coaLineRow(l, i) {
       <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${i + 1}</td>
       <td class="px-3 py-2 min-w-[200px]">
         <select data-coaline="account" class="${COA_INPUT}">
-          ${COA_ACCOUNTS.map(a => `<option value="${escapeHtml(a)}" ${a === l.account ? 'selected' : ''}>${escapeHtml(a)}</option>`).join('')}
+          ${coaAccountOptionsHtml(l.account)}
         </select>
       </td>
       <td class="px-3 py-2 min-w-[130px]"><input data-coaline="debit" type="text" inputmode="decimal" value="${escapeHtml(l.debit)}" class="${COA_INPUT} tabular text-right" /></td>
@@ -3319,7 +3393,7 @@ function coaBindEvents(container) {
   });
 
   container.querySelector('#coaAddLine').addEventListener('click', () => {
-    jeForm.lines.push({ account: COA_ACCOUNTS[0], debit: '0.00', credit: '0.00', narration: '' });
+    jeForm.lines.push({ account: coaAccountList()[0], debit: '0.00', credit: '0.00', narration: '' });
     body.innerHTML = jeForm.lines.map(coaLineRow).join('');
     refreshTotals();
   });
@@ -3332,6 +3406,7 @@ function coaBindEvents(container) {
         : 'Total debit and credit must be equal before saving.', 'danger');
       return;
     }
+    coaPostToLedger({ date: jeForm.date, ref: jeForm.voucherNo, memo: jeForm.memo || '(No description)', lines: jeForm.lines });
     jeEntries.unshift({
       date: biFromISO(jeForm.date) || jeForm.date,
       voucherNo: jeForm.voucherNo,
@@ -3341,7 +3416,7 @@ function coaBindEvents(container) {
     jeForm.voucherNo = coaNextVoucherNo();
     jeForm.reference = '';
     jeForm.memo = '';
-    jeForm.lines = [{ account: COA_ACCOUNTS[0], debit: '0.00', credit: '0.00', narration: '' }];
+    jeForm.lines = [{ account: coaAccountList()[0], debit: '0.00', credit: '0.00', narration: '' }];
     coaRenderJournalEntry(container);
     coaSetMsg(`Journal entry ${jeEntries[0].voucherNo} saved.`, 'success');
   });
@@ -6209,20 +6284,139 @@ function coaOpenNewCashBankModal() {
 }
 
 // ---------- Voucher Management ----------
-// Content/fields ported from the Finance reference build's Voucher Management > Journal
-// voucher type. Only the Journal tab is wired up so far; the remaining voucher types
-// (Payment, Receipt, Petty Cash, Contra, Purchase, Sale, Debit Note, Credit Note) fall
-// back to the same "not built yet" panel Chart of Accounts uses for its own empty tabs.
-const VM_TABS = ['Journal', 'Payment', 'Receipt', 'Petty Cash', 'Contra', 'Purchase', 'Sale', 'Debit Note', 'Credit Note'];
+// Content/fields ported from the Finance reference build's Voucher Management voucher
+// types (journal, payment, receipt, ...), rendered with one shared config-driven engine
+// instead of one copy-pasted screen per type. VM_TYPES only has entries for the voucher
+// types built so far — tabs without a config entry fall back to the same "not built yet"
+// panel Chart of Accounts uses for its own empty tabs.
+const VM_TABS = ['Journal', 'Payment', 'Receipt', 'Petty Cash', 'Contra', 'Purchase', 'Sale', 'Debit Note', 'Credit Note', 'Payable', 'Receivable'];
+const VM_ORDER = ['journal', 'payment', 'receipt', 'pettyCash', 'contra', 'purchase', 'sale', 'debitNote', 'creditNote', 'payable', 'receivable'];
 
-const vmJournalEntries = [
-  { date: '10-Sep-2026', voucherNo: 'JV-2026-0001', memo: 'Opening balance adjustment — Cash in Hand', amount: 25000, status: 'Posted' },
-  { date: '14-Sep-2026', voucherNo: 'JV-2026-0002', memo: 'Depreciation — Machinery & Equipment', amount: 18500, status: 'Posted' },
-];
+const VM_TYPES = {
+  journal: {
+    code: 'JV', title: 'Journal Entry',
+    partyField: null,
+    extraFields: [],
+    tip: 'Debit and credit must be equal before this voucher can be posted.',
+  },
+  payment: {
+    code: 'PV', title: 'Payment',
+    partyField: { label: 'Paid To', placeholder: 'Party or payee name' },
+    extraFields: [
+      { id: 'mode', label: 'Mode', type: 'select', options: ['Cash', 'Bank Transfer', 'Cheque', 'Mobile Banking'] },
+      { id: 'refNo', label: 'Cheque / Reference No.', placeholder: 'e.g. CHQ-00231', optional: true },
+    ],
+    tip: 'Debit the expense or payable account, credit the Cash or Bank account being paid from.',
+  },
+  receipt: {
+    code: 'RV', title: 'Receipt',
+    partyField: { label: 'Received From', placeholder: 'Party or payer name' },
+    extraFields: [
+      { id: 'mode', label: 'Mode', type: 'select', options: ['Cash', 'Bank Transfer', 'Cheque', 'Mobile Banking'] },
+      { id: 'refNo', label: 'Cheque / Reference No.', placeholder: 'e.g. CHQ-00231', optional: true },
+    ],
+    tip: 'Debit the Cash or Bank account receiving funds, credit the income or receivable account.',
+  },
+  pettyCash: {
+    code: 'PC', title: 'Petty Cash',
+    partyField: { label: 'Paid To', placeholder: 'Recipient or expense head' },
+    extraFields: [
+      { id: 'refNo', label: 'Bill / Slip No.', placeholder: 'e.g. SLIP-0231', optional: true },
+    ],
+    tip: 'Debit the relevant expense account (e.g. Office Supplies) and credit Cash in Hand.',
+  },
+  contra: {
+    code: 'CV', title: 'Contra',
+    partyField: null,
+    extraFields: [
+      { id: 'refNo', label: 'Transfer Reference', placeholder: 'e.g. TRF-0231', optional: true },
+    ],
+    tip: 'Transfers between the company’s own accounts — debit the receiving account and credit the sending account.',
+  },
+  purchase: {
+    code: 'PS', title: 'Purchase',
+    partyField: { label: 'Supplier Name', placeholder: 'Supplier name' },
+    extraFields: [
+      { id: 'invoiceNo', label: 'Bill No.', placeholder: 'e.g. BILL-00231' },
+      { id: 'dueDate', label: 'Due Date', type: 'date', optional: true },
+    ],
+    tip: 'Debit Raw Materials / COGS, credit Accounts Payable for the supplier.',
+  },
+  sale: {
+    code: 'SL', title: 'Sale',
+    partyField: { label: 'Buyer Name', placeholder: 'Buyer name' },
+    extraFields: [
+      { id: 'invoiceNo', label: 'Invoice No.', placeholder: 'e.g. INV-00231' },
+      { id: 'dueDate', label: 'Due Date', type: 'date', optional: true },
+    ],
+    tip: 'Debit Accounts Receivable for the buyer, credit Sales Revenue.',
+  },
+  debitNote: {
+    code: 'DN', title: 'Debit Note',
+    partyField: { label: 'Party Name', placeholder: 'Supplier / customer name' },
+    extraFields: [
+      { id: 'invoiceNo', label: 'Against Invoice / Bill No.', placeholder: 'e.g. INV-00231', optional: true },
+      { id: 'reason', label: 'Reason', placeholder: 'e.g. Damaged goods, price difference', optional: true },
+    ],
+    tip: 'A Debit Note increases what a supplier owes you, or reduces what you owe them.',
+  },
+  creditNote: {
+    code: 'CN', title: 'Credit Note',
+    partyField: { label: 'Party Name', placeholder: 'Supplier / customer name' },
+    extraFields: [
+      { id: 'invoiceNo', label: 'Against Invoice / Bill No.', placeholder: 'e.g. INV-00231', optional: true },
+      { id: 'reason', label: 'Reason', placeholder: 'e.g. Return, price difference', optional: true },
+    ],
+    tip: 'A Credit Note reduces what a customer owes you, or increases what you owe a supplier.',
+  },
+};
 
-const vmJournalForm = {
+const vmEntries = {
+  journal: [
+    { date: '10-Sep-2026', voucherNo: 'JV-2026-0001', memo: 'Opening balance adjustment — Cash in Hand', amount: 25000, status: 'Posted' },
+    { date: '14-Sep-2026', voucherNo: 'JV-2026-0002', memo: 'Depreciation — Machinery & Equipment', amount: 18500, status: 'Posted' },
+  ],
+  payment: [
+    { date: '08-Sep-2026', voucherNo: 'PV-2026-0001', party: 'ABC Textiles', memo: 'Payment — ABC Textiles', amount: 320000, status: 'Posted' },
+    { date: '13-Sep-2026', voucherNo: 'PV-2026-0002', party: 'Titas Gas & Utilities', memo: 'Payment — Titas Gas & Utilities', amount: 45000, status: 'Posted' },
+  ],
+  receipt: [
+    { date: '09-Sep-2026', voucherNo: 'RV-2026-0001', party: 'Zara International (Buyer)', memo: 'Receipt — Zara International (Buyer)', amount: 850000, status: 'Posted' },
+    { date: '15-Sep-2026', voucherNo: 'RV-2026-0002', party: 'H&M Sourcing Ltd.', memo: 'Receipt — H&M Sourcing Ltd.', amount: 620000, status: 'Posted' },
+  ],
+  pettyCash: [
+    { date: '07-Sep-2026', voucherNo: 'PC-2026-0001', party: 'Office Supplies', memo: 'Petty Cash — Office Supplies', amount: 3200, status: 'Posted' },
+    { date: '12-Sep-2026', voucherNo: 'PC-2026-0002', party: 'Courier & Postage', memo: 'Petty Cash — Courier & Postage', amount: 1500, status: 'Posted' },
+  ],
+  contra: [
+    { date: '05-Sep-2026', voucherNo: 'CV-2026-0001', memo: 'Contra — Cash in Hand to City Bank Current A/C', amount: 100000, status: 'Posted' },
+    { date: '11-Sep-2026', voucherNo: 'CV-2026-0002', memo: 'Contra — HSBC Export A/C to City Bank Current A/C', amount: 250000, status: 'Posted' },
+  ],
+  purchase: [
+    { date: '04-Sep-2026', voucherNo: 'PS-2026-0001', party: 'Prime Dyeing & Finishing', memo: 'Purchase — Prime Dyeing & Finishing', amount: 412500, status: 'Posted' },
+    { date: '11-Sep-2026', voucherNo: 'PS-2026-0002', party: 'ABC Textiles Ltd.', memo: 'Purchase — ABC Textiles Ltd.', amount: 875000, status: 'Posted' },
+  ],
+  sale: [
+    { date: '06-Sep-2026', voucherNo: 'SL-2026-0001', party: 'Everest Apparels Ltd.', memo: 'Sale — Everest Apparels Ltd.', amount: 4500000, status: 'Posted' },
+    { date: '16-Sep-2026', voucherNo: 'SL-2026-0002', party: 'Metro Fashion House', memo: 'Sale — Metro Fashion House', amount: 620000, status: 'Posted' },
+  ],
+  debitNote: [
+    { date: '09-Sep-2026', voucherNo: 'DN-2026-0001', party: 'Prime Dyeing & Finishing', memo: 'Debit Note — Prime Dyeing & Finishing', amount: 12000, status: 'Posted' },
+    { date: '14-Sep-2026', voucherNo: 'DN-2026-0002', party: 'ABC Textiles Ltd.', memo: 'Debit Note — ABC Textiles Ltd.', amount: 5000, status: 'Posted' },
+  ],
+  creditNote: [
+    { date: '10-Sep-2026', voucherNo: 'CN-2026-0001', party: 'Metro Fashion House', memo: 'Credit Note — Metro Fashion House', amount: 8500, status: 'Posted' },
+    { date: '15-Sep-2026', voucherNo: 'CN-2026-0002', party: 'Everest Apparels Ltd.', memo: 'Credit Note — Everest Apparels Ltd.', amount: 22000, status: 'Posted' },
+  ],
+};
+
+let vmActiveKey = null;
+
+const vmForm = {
   date: new Date().toISOString().slice(0, 10),
+  party: '',
   memo: '',
+  extra: {},
   lines: [
     { account: '', debit: '0.00', credit: '0.00', description: '' },
     { account: '', debit: '0.00', credit: '0.00', description: '' },
@@ -6230,13 +6424,25 @@ const vmJournalForm = {
   msg: '', msgTone: 'muted',
 };
 
-function vmNextVoucherNo() {
-  return `JV-${new Date().getFullYear()}-${String(vmJournalEntries.length + 1).padStart(4, '0')}`;
+function vmResetForm() {
+  vmForm.date = new Date().toISOString().slice(0, 10);
+  vmForm.party = '';
+  vmForm.memo = '';
+  vmForm.extra = {};
+  vmForm.lines = [
+    { account: '', debit: '0.00', credit: '0.00', description: '' },
+    { account: '', debit: '0.00', credit: '0.00', description: '' },
+  ];
+  vmForm.msg = ''; vmForm.msgTone = 'muted';
+}
+
+function vmNextVoucherNo(key, cfg) {
+  return `${cfg.code}-${new Date().getFullYear()}-${String((vmEntries[key] || []).length + 1).padStart(4, '0')}`;
 }
 
 function vmTotals() {
-  const debit = vmJournalForm.lines.reduce((s, l) => s + coaNum(l.debit), 0);
-  const credit = vmJournalForm.lines.reduce((s, l) => s + coaNum(l.credit), 0);
+  const debit = vmForm.lines.reduce((s, l) => s + coaNum(l.debit), 0);
+  const credit = vmForm.lines.reduce((s, l) => s + coaNum(l.credit), 0);
   return { debit, credit, balanced: debit > 0 && Math.abs(debit - credit) < 0.005 };
 }
 
@@ -6257,22 +6463,39 @@ function renderVoucherManagement(tabsEl, container) {
 
   document.getElementById('page-actions').innerHTML = '';
 
-  if (state.tabIndex === 0) vmRenderJournal(container);
-  else coaRenderComingSoon(container, VM_TABS[state.tabIndex]);
+  const key = VM_ORDER[state.tabIndex];
+  const cfg = VM_TYPES[key];
+  if (key === 'payable' || key === 'receivable') { vmActiveKey = null; vmRenderApAr(container, key); return; }
+  if (!cfg) { vmActiveKey = null; coaRenderComingSoon(container, VM_TABS[state.tabIndex]); return; }
+  if (key !== vmActiveKey) { vmResetForm(); vmActiveKey = key; }
+  vmRenderForm(container, key, cfg);
 }
 
 function vmField(label, inner) {
   return `<label class="block min-w-0"><span class="block text-label font-medium text-secondary mb-1">${escapeHtml(label)}</span>${inner}</label>`;
 }
 
-function vmHeaderCard() {
+function vmHeaderCard(key, cfg) {
+  const fields = [
+    vmField('Voucher No.', `<input type="text" value="${escapeHtml(vmNextVoucherNo(key, cfg))}" readonly class="${COA_AUTO} tabular" />`),
+    vmField('Date', `<input data-vmf="date" type="date" value="${escapeHtml(vmForm.date)}" class="${COA_INPUT} tabular" />`),
+  ];
+  if (cfg.partyField) {
+    fields.push(vmField(cfg.partyField.label, `<input data-vmf="party" type="text" autocomplete="off" value="${escapeHtml(vmForm.party)}" placeholder="${escapeHtml(cfg.partyField.placeholder || '')}" class="${COA_INPUT}" />`));
+  }
+  (cfg.extraFields || []).forEach(f => {
+    const val = vmForm.extra[f.id] || '';
+    const inner = f.type === 'select'
+      ? `<select data-vmfx="${f.id}" class="${COA_INPUT}"><option value="">Select…</option>${(f.options || []).map(o => `<option value="${escapeHtml(o)}" ${o === val ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('')}</select>`
+      : `<input data-vmfx="${f.id}" type="${f.type === 'date' ? 'date' : 'text'}" autocomplete="off" value="${escapeHtml(val)}" placeholder="${escapeHtml(f.placeholder || '')}" class="${COA_INPUT}" />`;
+    fields.push(vmField(f.label + (f.optional ? ' (optional)' : ''), inner));
+  });
   return `
     <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3.5">
-        ${vmField('Voucher No.', `<input id="vmF_voucherNo" type="text" value="${escapeHtml(vmNextVoucherNo())}" readonly class="${COA_AUTO} tabular" />`)}
-        ${vmField('Date', `<input id="vmF_date" data-vmf="date" type="date" value="${escapeHtml(vmJournalForm.date)}" class="${COA_INPUT} tabular" />`)}
-        <div class="sm:col-span-2">
-          ${vmField('Memo / Description', `<input id="vmF_memo" data-vmf="memo" type="text" autocomplete="off" value="${escapeHtml(vmJournalForm.memo)}" placeholder="Short description of this voucher (appears on ledger and reports)" class="${COA_INPUT}" />`)}
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-3.5">
+        ${fields.join('')}
+        <div class="sm:col-span-2 lg:col-span-3">
+          ${vmField('Memo / Description', `<input data-vmf="memo" type="text" autocomplete="off" value="${escapeHtml(vmForm.memo)}" placeholder="Short description of this voucher (appears on ledger and reports)" class="${COA_INPUT}" />`)}
         </div>
       </div>
     </section>`;
@@ -6285,7 +6508,7 @@ function vmLineRow(l, i) {
       <td class="px-3 py-2 min-w-[200px]">
         <select data-vmline="account" class="${COA_INPUT}">
           <option value="">Select account…</option>
-          ${COA_ACCOUNTS.map(a => `<option value="${escapeHtml(a)}" ${a === l.account ? 'selected' : ''}>${escapeHtml(a)}</option>`).join('')}
+          ${coaAccountOptionsHtml(l.account)}
         </select>
       </td>
       <td class="px-3 py-2 min-w-[130px]"><input data-vmline="debit" type="text" inputmode="decimal" value="${escapeHtml(l.debit)}" class="${COA_INPUT} tabular text-right" /></td>
@@ -6297,12 +6520,12 @@ function vmLineRow(l, i) {
     </tr>`;
 }
 
-function vmTotalsInner() {
+function vmTotalsInner(cfg) {
   const t = vmTotals();
   return `
     <div class="flex items-center gap-1.5 min-w-0">
       <span class="text-info shrink-0">${iconSvg('info', 'w-4 h-4')}</span>
-      <p class="text-label text-secondary">Debit and credit must be equal before this voucher can be posted.</p>
+      <p class="text-label text-secondary">${escapeHtml(cfg.tip)}</p>
     </div>
     <div class="flex items-center gap-8 shrink-0">
       <div class="text-right">
@@ -6319,7 +6542,7 @@ function vmTotalsInner() {
     </div>`;
 }
 
-function vmEntriesCard() {
+function vmEntriesCard(cfg) {
   return `
     <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
       <div class="flex items-center justify-between gap-3 p-4">
@@ -6336,49 +6559,50 @@ function vmEntriesCard() {
             <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">Description</th>
             <th class="pr-4 pl-3 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">Action</th>
           </tr></thead>
-          <tbody id="vmLinesBody">${vmJournalForm.lines.map(vmLineRow).join('')}</tbody>
+          <tbody id="vmLinesBody">${vmForm.lines.map(vmLineRow).join('')}</tbody>
         </table>
       </div>
-      <div id="vmTotalsBar" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 border-t border-side-line">${vmTotalsInner()}</div>
+      <div id="vmTotalsBar" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 border-t border-side-line">${vmTotalsInner(cfg)}</div>
     </section>`;
 }
 
 function vmFooterButtons() {
   return `
     <div class="flex items-center justify-end gap-3">
-      <p id="vmFormMsg" class="${vmJournalForm.msg ? '' : 'hidden '}text-helper text-${vmJournalForm.msgTone} mr-auto">${escapeHtml(vmJournalForm.msg)}</p>
+      <p id="vmFormMsg" class="${vmForm.msg ? '' : 'hidden '}text-helper text-${vmForm.msgTone} mr-auto">${escapeHtml(vmForm.msg)}</p>
       <button type="button" id="vmResetBtn" class="${COA_BTN}">Reset</button>
       <button type="button" id="vmPostBtn" class="${COA_BTN_PRIMARY}">${BI_SAVE_ICON}Post Voucher</button>
     </div>`;
 }
 
 function vmSetMsg(text, tone) {
-  vmJournalForm.msg = text || '';
-  vmJournalForm.msgTone = tone || 'muted';
+  vmForm.msg = text || '';
+  vmForm.msgTone = tone || 'muted';
   const el = document.getElementById('vmFormMsg');
   if (el) {
-    el.textContent = vmJournalForm.msg;
-    el.className = `${vmJournalForm.msg ? '' : 'hidden '}text-helper text-${vmJournalForm.msgTone} mr-auto`;
+    el.textContent = vmForm.msg;
+    el.className = `${vmForm.msg ? '' : 'hidden '}text-helper text-${vmForm.msgTone} mr-auto`;
   }
 }
 
-function vmRecentCard() {
-  const headers = ['Date', 'Voucher No.', 'Memo', 'Amount (BDT)', 'Status'];
-  const rows = vmJournalEntries.length
-    ? vmJournalEntries.slice().reverse().map(e => `
+function vmRecentCard(key, cfg) {
+  const headers = ['Date', 'Voucher No.', cfg.partyField ? 'Party / Memo' : 'Memo', 'Amount (BDT)', 'Status'];
+  const list = vmEntries[key] || [];
+  const rows = list.length
+    ? list.slice().reverse().map(e => `
       <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
         <td class="pl-4 pr-2 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(e.date)}</td>
         <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(e.voucherNo)}</td>
-        <td class="px-3 py-2 text-[13.5px] text-primary">${escapeHtml(e.memo)}</td>
+        <td class="px-3 py-2 text-[13.5px] text-primary">${escapeHtml(e.party || e.memo)}</td>
         <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${coaMoney(e.amount)}</td>
         <td class="pr-4 pl-3 py-2">${coaStatusPill(e.status)}</td>
       </tr>`).join('')
-    : `<tr><td colspan="5" class="px-4 py-8 text-center text-[13.5px] text-muted">No journal vouchers posted yet.</td></tr>`;
+    : `<tr><td colspan="5" class="px-4 py-8 text-center text-[13.5px] text-muted">No ${cfg.title.toLowerCase()} vouchers posted yet.</td></tr>`;
   return `
     <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
       <div class="flex items-center gap-2.5 p-4">
         <span class="text-side-accent shrink-0">${COA_HISTORY_ICON}</span>
-        <h3 class="text-section-title text-primary">Recent Journal Vouchers</h3>
+        <h3 class="text-section-title text-primary">Recent ${escapeHtml(cfg.title)} Vouchers</h3>
       </div>
       <div class="overflow-x-auto border-t border-side-line">
         <table class="w-full min-w-[720px]">
@@ -6391,70 +6615,75 @@ function vmRecentCard() {
     </section>`;
 }
 
-function vmRenderJournal(container) {
+function vmRenderForm(container, key, cfg) {
   container.innerHTML = `
     <div class="space-y-4 pb-8">
-      ${vmHeaderCard()}
-      ${vmEntriesCard()}
+      ${vmHeaderCard(key, cfg)}
+      ${vmEntriesCard(cfg)}
       ${vmFooterButtons()}
-      ${vmRecentCard()}
+      ${vmRecentCard(key, cfg)}
     </div>`;
-  vmBindJournalEvents(container);
+  vmBindFormEvents(container, key, cfg);
 }
 
-function vmBindJournalEvents(container) {
+function vmBindFormEvents(container, key, cfg) {
   container.querySelectorAll('[data-vmf]').forEach(el => {
-    el.addEventListener('input', () => { vmJournalForm[el.dataset.vmf] = el.value; });
-    el.addEventListener('change', () => { vmJournalForm[el.dataset.vmf] = el.value; });
+    el.addEventListener('input', () => { vmForm[el.dataset.vmf] = el.value; });
+    el.addEventListener('change', () => { vmForm[el.dataset.vmf] = el.value; });
+  });
+  container.querySelectorAll('[data-vmfx]').forEach(el => {
+    el.addEventListener('input', () => { vmForm.extra[el.dataset.vmfx] = el.value; });
+    el.addEventListener('change', () => { vmForm.extra[el.dataset.vmfx] = el.value; });
   });
 
   const body = container.querySelector('#vmLinesBody');
 
   function refreshTotals() {
     const bar = container.querySelector('#vmTotalsBar');
-    if (bar) bar.innerHTML = vmTotalsInner();
+    if (bar) bar.innerHTML = vmTotalsInner(cfg);
   }
 
   body.addEventListener('input', (e) => {
     const row = e.target.closest('[data-vline]');
     if (!row || !e.target.dataset.vmline) return;
-    vmJournalForm.lines[+row.dataset.vline][e.target.dataset.vmline] = e.target.value;
+    vmForm.lines[+row.dataset.vline][e.target.dataset.vmline] = e.target.value;
     if (e.target.dataset.vmline === 'debit' || e.target.dataset.vmline === 'credit') refreshTotals();
   });
   body.addEventListener('change', (e) => {
     const row = e.target.closest('[data-vline]');
     if (!row || !e.target.dataset.vmline) return;
-    vmJournalForm.lines[+row.dataset.vline][e.target.dataset.vmline] = e.target.value;
+    vmForm.lines[+row.dataset.vline][e.target.dataset.vmline] = e.target.value;
   });
 
   body.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-vmdel]');
     if (!btn) return;
-    if (vmJournalForm.lines.length <= 1) return;
-    vmJournalForm.lines.splice(+btn.dataset.vmdel, 1);
-    body.innerHTML = vmJournalForm.lines.map(vmLineRow).join('');
+    if (vmForm.lines.length <= 1) return;
+    vmForm.lines.splice(+btn.dataset.vmdel, 1);
+    body.innerHTML = vmForm.lines.map(vmLineRow).join('');
     refreshTotals();
   });
 
   container.querySelector('#vmAddLine').addEventListener('click', () => {
-    vmJournalForm.lines.push({ account: '', debit: '0.00', credit: '0.00', description: '' });
-    body.innerHTML = vmJournalForm.lines.map(vmLineRow).join('');
+    vmForm.lines.push({ account: '', debit: '0.00', credit: '0.00', description: '' });
+    body.innerHTML = vmForm.lines.map(vmLineRow).join('');
     refreshTotals();
   });
 
   container.querySelector('#vmResetBtn').addEventListener('click', () => {
-    vmJournalForm.date = new Date().toISOString().slice(0, 10);
-    vmJournalForm.memo = '';
-    vmJournalForm.lines = [
-      { account: '', debit: '0.00', credit: '0.00', description: '' },
-      { account: '', debit: '0.00', credit: '0.00', description: '' },
-    ];
-    vmRenderJournal(container);
+    vmResetForm();
+    vmRenderForm(container, key, cfg);
   });
 
   container.querySelector('#vmPostBtn').addEventListener('click', () => {
-    const t = vmTotals();
-    const validLines = vmJournalForm.lines.filter(l => l.account && (coaNum(l.debit) > 0 || coaNum(l.credit) > 0));
+    const validLines = vmForm.lines.filter(l => l.account && (coaNum(l.debit) > 0 || coaNum(l.credit) > 0));
+    // Balance is checked on the lines that will actually be posted, so a line with an amount but
+    // no account can't leave the ledger out of balance.
+    const t = {
+      debit: validLines.reduce((sum, l) => sum + coaNum(l.debit), 0),
+      credit: validLines.reduce((sum, l) => sum + coaNum(l.credit), 0),
+    };
+    t.balanced = t.debit > 0 && Math.abs(t.debit - t.credit) < 0.005;
     if (validLines.length < 2) {
       vmSetMsg('Add at least two lines, each with an account and an amount.', 'danger');
       return;
@@ -6463,23 +6692,2241 @@ function vmBindJournalEvents(container) {
       vmSetMsg('Total debit must equal total credit before posting.', 'danger');
       return;
     }
-    const voucherNo = vmNextVoucherNo();
-    vmJournalEntries.push({
-      date: biFromISO(vmJournalForm.date) || vmJournalForm.date,
+    const voucherNo = vmNextVoucherNo(key, cfg);
+    coaPostToLedger({ date: vmForm.date, ref: voucherNo, memo: vmForm.memo || (vmForm.party ? `${cfg.title} — ${vmForm.party}` : cfg.title), lines: validLines });
+    vmEntries[key].push({
+      date: biFromISO(vmForm.date) || vmForm.date,
       voucherNo,
-      memo: vmJournalForm.memo || '(No description)',
+      party: vmForm.party || '',
+      memo: vmForm.memo || (vmForm.party ? `${cfg.title} — ${vmForm.party}` : cfg.title),
       amount: t.debit,
       status: 'Posted',
     });
-    vmJournalForm.date = new Date().toISOString().slice(0, 10);
-    vmJournalForm.memo = '';
-    vmJournalForm.lines = [
-      { account: '', debit: '0.00', credit: '0.00', description: '' },
-      { account: '', debit: '0.00', credit: '0.00', description: '' },
-    ];
-    vmRenderJournal(container);
+    vmResetForm();
+    vmRenderForm(container, key, cfg);
     vmSetMsg(`${voucherNo} posted successfully.`, 'success');
   });
+}
+
+// ---------- Accounts Payable / Accounts Receivable ----------
+// Content ported from the Finance reference build's combined Payable/Receivable register
+// (the last two tabs of Voucher Management). Styled with the same summary-card / filter-bar /
+// paginated-table / modal conventions Chart of Accounts > Cash & Bank already established,
+// rather than the voucher-posting form used by the other Voucher Management tabs.
+const AP_AR_TYPES = {
+  payable: { noun: 'Bill', docLabel: 'Bill No.', dateLabel: 'Bill Date', partyLabel: 'Supplier / Vendor', prefix: 'BILL', actionLabel: 'Pay', actionVerb: 'Record Payment', paidLabel: 'Total Paid' },
+  receivable: { noun: 'Invoice', docLabel: 'Invoice No.', dateLabel: 'Invoice Date', partyLabel: 'Customer / Buyer', prefix: 'INV', actionLabel: 'Receive', actionVerb: 'Record Receipt', paidLabel: 'Total Received' },
+};
+
+const apArItems = {
+  payable: [
+    { code: 'BILL-0001', party: 'ABC Textiles Ltd.', docDate: '2026-08-02', dueDate: '2026-09-01', ref: 'PO-2031', amount: 875000, paid: 0, memo: 'Fabric supply — August shipment' },
+    { code: 'BILL-0002', party: 'Prime Dyeing & Finishing', docDate: '2026-08-10', dueDate: '2026-08-25', ref: 'PO-2044', amount: 412500, paid: 150000, memo: 'Dyeing charges — Style STY-118' },
+    { code: 'BILL-0003', party: 'City Bank PLC', docDate: '2026-07-15', dueDate: '2026-08-15', ref: 'LOAN-INT-08', amount: 65000, paid: 0, memo: 'Loan interest — August' },
+  ],
+  receivable: [
+    { code: 'INV-0001', party: 'Everest Apparels Ltd.', docDate: '2026-08-05', dueDate: '2026-09-04', ref: 'SC-4471', amount: 4500000, paid: 2000000, memo: 'Export shipment SHP-2201' },
+    { code: 'INV-0002', party: 'Metro Fashion House', docDate: '2026-08-20', dueDate: '2026-09-05', ref: 'SO-118', amount: 620000, paid: 620000, memo: 'Local sale — Invoice 118' },
+    { code: 'INV-0003', party: 'Northline Buying House', docDate: '2026-07-10', dueDate: '2026-07-25', ref: 'SMP-77', amount: 85000, paid: 0, memo: 'Sample order income' },
+  ],
+};
+
+const apArFilter = {
+  payable: { q: '', party: 'All Parties', status: 'All Statuses', period: 'All', page: 1 },
+  receivable: { q: '', party: 'All Parties', status: 'All Statuses', period: 'All', page: 1 },
+};
+
+const AP_AR_ICON_OUTSTANDING = '<svg viewBox="0 0 24 24" class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>';
+const AP_AR_ICON_OVERDUE = '<svg viewBox="0 0 24 24" class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v4M12 15h.01"/></svg>';
+const AP_AR_ICON_DUESOON = '<svg viewBox="0 0 24 24" class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>';
+
+function apArBalance(it) {
+  return Math.max(0, (it.amount || 0) - (it.paid || 0));
+}
+
+function apArStatus(it) {
+  const bal = apArBalance(it);
+  if (bal <= 0) return 'Paid';
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const due = new Date(it.dueDate + 'T00:00:00');
+  if (due < today) return 'Overdue';
+  if (it.paid > 0) return 'Partially Paid';
+  return 'Unpaid';
+}
+
+function apArStatusPill(status) {
+  const map = { Paid: ['successSoft', 'success'], 'Partially Paid': ['infoSoft', 'info'], Unpaid: ['warningSoft', 'warning'], Overdue: ['dangerSoft', 'danger'] };
+  const [bg, fg] = map[status] || map.Unpaid;
+  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg}"><span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>${escapeHtml(status)}</span>`;
+}
+
+function apArNextCode(key) {
+  const cfg = AP_AR_TYPES[key];
+  const max = apArItems[key].reduce((m, it) => Math.max(m, parseInt((it.code.split('-')[1] || '0'), 10) || 0), 0);
+  return `${cfg.prefix}-${String(max + 1).padStart(4, '0')}`;
+}
+
+function apArPartyOptions(key) {
+  return Array.from(new Set(apArItems[key].map(i => i.party))).sort();
+}
+
+function apArFiltered(key) {
+  const f = apArFilter[key];
+  const q = f.q.trim().toLowerCase();
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return apArItems[key].filter(it => {
+    const status = apArStatus(it);
+    if (q && !(it.code.toLowerCase().includes(q) || it.party.toLowerCase().includes(q) || (it.ref || '').toLowerCase().includes(q))) return false;
+    if (f.party !== 'All Parties' && it.party !== f.party) return false;
+    if (f.status !== 'All Statuses' && status !== f.status) return false;
+    if (f.period !== 'All') {
+      const due = new Date(it.dueDate + 'T00:00:00');
+      const diffDays = (due - today) / 86400000;
+      const bal = apArBalance(it);
+      if (f.period === 'Overdue' && !(diffDays < 0 && bal > 0)) return false;
+      if (f.period === 'Due in 7 Days' && !(diffDays >= 0 && diffDays <= 7 && bal > 0)) return false;
+      if (f.period === 'Due in 30 Days' && !(diffDays >= 0 && diffDays <= 30 && bal > 0)) return false;
+    }
+    return true;
+  });
+}
+
+function apArSummaryCards(key) {
+  const cfg = AP_AR_TYPES[key];
+  const items = apArItems[key];
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let outstanding = 0, overdue = 0, dueSoon = 0, paidTotal = 0;
+  items.forEach(it => {
+    const bal = apArBalance(it);
+    paidTotal += (it.paid || 0);
+    if (bal > 0) {
+      outstanding += bal;
+      const due = new Date(it.dueDate + 'T00:00:00');
+      const diffDays = (due - today) / 86400000;
+      if (diffDays < 0) overdue += bal;
+      else if (diffDays <= 7) dueSoon += bal;
+    }
+  });
+  const label = key === 'payable' ? 'Payable' : 'Receivable';
+  return `
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      ${coaCashBankStatCard(AP_AR_ICON_OUTSTANDING, coaInt(outstanding), `Total Outstanding ${label}`)}
+      ${coaCashBankStatCard(AP_AR_ICON_OVERDUE, coaInt(overdue), 'Overdue Amount')}
+      ${coaCashBankStatCard(AP_AR_ICON_DUESOON, coaInt(dueSoon), 'Due in Next 7 Days')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, coaInt(paidTotal), cfg.paidLabel)}
+    </div>`;
+}
+
+function apArFilterBar(key) {
+  const cfg = AP_AR_TYPES[key];
+  const f = apArFilter[key];
+  const parties = ['All Parties', ...apArPartyOptions(key)];
+  const statuses = ['All Statuses', 'Unpaid', 'Partially Paid', 'Paid', 'Overdue'];
+  const periods = ['All', 'Overdue', 'Due in 7 Days', 'Due in 30 Days'];
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div>
+          <span class="block text-label font-medium text-secondary mb-1">Search</span>
+          <div class="relative">
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input id="apArSearch" type="text" value="${escapeHtml(f.q)}" placeholder="Search ${cfg.noun.toLowerCase()} no., party or reference…" class="${COA_INPUT} pl-9" />
+          </div>
+        </div>
+        ${coaField(cfg.partyLabel, `<select id="apArParty" class="${COA_INPUT}">${parties.map(p => `<option value="${escapeHtml(p)}" ${p === f.party ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('')}</select>`)}
+        ${coaField('Status', `<select id="apArStatus" class="${COA_INPUT}">${statuses.map(s => `<option value="${escapeHtml(s)}" ${s === f.status ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}</select>`)}
+        ${coaField('Due', `<select id="apArPeriod" class="${COA_INPUT}">${periods.map(p => `<option value="${escapeHtml(p)}" ${p === f.period ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('')}</select>`)}
+      </div>
+    </section>`;
+}
+
+function apArRow(key, it, n) {
+  const cfg = AP_AR_TYPES[key];
+  const bal = apArBalance(it);
+  const status = apArStatus(it);
+  return `
+    <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
+      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n}</td>
+      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(it.code)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(it.party)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${coaFormatDateDisplay(it.docDate)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${coaFormatDateDisplay(it.dueDate)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(it.ref || '—')}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary font-semibold whitespace-nowrap tabular text-right">${coaInt(it.amount)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular text-right">${coaInt(it.paid)}</td>
+      <td class="px-3 py-2 text-[13.5px] font-semibold whitespace-nowrap tabular text-right ${bal > 0 ? 'text-danger' : 'text-success'}">${coaInt(bal)}</td>
+      <td class="px-3 py-2">${apArStatusPill(status)}</td>
+      <td class="pr-4 pl-3 py-2 text-right whitespace-nowrap">
+        ${bal > 0 ? `<button type="button" data-apar-pay="${escapeHtml(it.code)}" class="h-7 px-2.5 rounded border border-side-accent/40 text-side-accent text-[12px] font-semibold hover:bg-side-active mr-1.5">${escapeHtml(cfg.actionLabel)}</button>` : ''}
+        <button type="button" data-apar-remove="${escapeHtml(it.code)}" class="w-7 h-7 rounded border border-side-border inline-flex items-center justify-center text-muted hover:text-danger hover:bg-dangerSoft" title="Remove">${COA_DELETE_ICON}</button>
+      </td>
+    </tr>`;
+}
+
+function apArResultsHtml(key) {
+  const cfg = AP_AR_TYPES[key];
+  const f = apArFilter[key];
+  const all = apArFiltered(key);
+  const totalPages = Math.max(1, Math.ceil(all.length / COA_PAGE_SIZE));
+  f.page = Math.min(Math.max(1, f.page), totalPages);
+  const start = (f.page - 1) * COA_PAGE_SIZE;
+  const rows = all.slice(start, start + COA_PAGE_SIZE);
+  const headers = ['SL', cfg.docLabel, cfg.partyLabel, cfg.dateLabel, 'Due Date', 'Reference', 'Amount (BDT)', 'Paid (BDT)', 'Balance (BDT)', 'Status', 'Actions'];
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[1200px]">
+        <thead><tr class="border-b border-side-line">
+          ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${idx >= 6 && idx <= 8 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows.length ? rows.map((it, i) => apArRow(key, it, start + i + 1)).join('') : `<tr><td colspan="11" class="px-4 py-10 text-center"><p class="text-body text-muted">No ${cfg.noun.toLowerCase()}s match your filters.</p></td></tr>`}</tbody>
+      </table>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
+      <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
+      <div class="flex items-center gap-1.5">
+        <button data-aparpage="prev" ${f.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-aparpage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === f.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        <button data-aparpage="next" ${f.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
+      </div>
+    </div>`;
+}
+
+function apArListCard(key) {
+  const cfg = AP_AR_TYPES[key];
+  const all = apArFiltered(key);
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex flex-wrap items-start justify-between gap-3 p-4">
+        <div>
+          <h3 class="text-section-title text-primary">${key === 'payable' ? 'Bills — Accounts Payable' : 'Invoices — Accounts Receivable'}</h3>
+          <p id="apArCounter" class="text-helper text-muted mt-0.5">${all.length} of ${apArItems[key].length} ${cfg.noun.toLowerCase()}${apArItems[key].length === 1 ? '' : 's'}</p>
+        </div>
+        <button type="button" id="apArNew" class="${COA_BTN_PRIMARY}">${COA_PLUS_ICON}New ${escapeHtml(cfg.noun)}</button>
+      </div>
+      <div id="apArResults">${apArResultsHtml(key)}</div>
+    </section>`;
+}
+
+function vmRenderApAr(container, key) {
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      ${apArSummaryCards(key)}
+      ${apArFilterBar(key)}
+      ${apArListCard(key)}
+    </div>`;
+  apArBindEvents(container, key);
+}
+
+function apArRefresh(container, key) {
+  const results = container.querySelector('#apArResults');
+  if (results) results.innerHTML = apArResultsHtml(key);
+  const counter = container.querySelector('#apArCounter');
+  if (counter) {
+    const cfg = AP_AR_TYPES[key];
+    const all = apArFiltered(key);
+    counter.textContent = `${all.length} of ${apArItems[key].length} ${cfg.noun.toLowerCase()}${apArItems[key].length === 1 ? '' : 's'}`;
+  }
+}
+
+function apArBindEvents(container, key) {
+  const f = apArFilter[key];
+
+  container.querySelector('#apArSearch').addEventListener('input', (e) => {
+    f.q = e.target.value; f.page = 1; apArRefresh(container, key);
+  });
+  container.querySelector('#apArParty').addEventListener('change', (e) => {
+    f.party = e.target.value; f.page = 1; apArRefresh(container, key);
+  });
+  container.querySelector('#apArStatus').addEventListener('change', (e) => {
+    f.status = e.target.value; f.page = 1; apArRefresh(container, key);
+  });
+  container.querySelector('#apArPeriod').addEventListener('change', (e) => {
+    f.period = e.target.value; f.page = 1; apArRefresh(container, key);
+  });
+
+  container.querySelector('#apArResults').addEventListener('click', (e) => {
+    const pageBtn = e.target.closest('[data-aparpage]');
+    if (pageBtn && !pageBtn.disabled) {
+      const totalPages = Math.max(1, Math.ceil(apArFiltered(key).length / COA_PAGE_SIZE));
+      if (pageBtn.dataset.aparpage === 'prev') f.page = Math.max(1, f.page - 1);
+      else if (pageBtn.dataset.aparpage === 'next') f.page = Math.min(totalPages, f.page + 1);
+      else f.page = +pageBtn.dataset.aparpage;
+      apArRefresh(container, key);
+      return;
+    }
+    const payBtn = e.target.closest('[data-apar-pay]');
+    if (payBtn) { apArOpenPayModal(key, payBtn.dataset.aparPay, container); return; }
+    const removeBtn = e.target.closest('[data-apar-remove]');
+    if (removeBtn) {
+      apArItems[key] = apArItems[key].filter(it => it.code !== removeBtn.dataset.aparRemove);
+      apArRefresh(container, key);
+    }
+  });
+
+  container.querySelector('#apArNew').addEventListener('click', () => apArOpenNewModal(key, container));
+}
+
+function apArOpenNewModal(key, listContainer) {
+  if (document.getElementById('apArNewModal')) return;
+  const cfg = AP_AR_TYPES[key];
+  const nextCode = apArNextCode(key);
+  const today = new Date().toISOString().slice(0, 10);
+  const parties = apArPartyOptions(key);
+  const close = '<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+
+  const wrap = document.createElement('div');
+  wrap.id = 'apArNewModal';
+  wrap.className = 'fixed inset-0 z-50';
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
+  wrap.setAttribute('aria-label', `New ${cfg.noun}`);
+  wrap.innerHTML = `
+    <div data-close class="absolute inset-0" style="background: var(--overlay)"></div>
+    <div class="relative mx-auto mt-[8vh] w-full max-w-[640px] px-4">
+      <form id="apArNewForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
+        <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
+          <span class="text-side-accent shrink-0">${iconSvg('doc', 'w-4 h-4')}</span>
+          <h3 class="text-[14.5px] font-semibold text-primary">New ${escapeHtml(cfg.noun)}</h3>
+          <button type="button" data-close aria-label="Close" class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
+        </div>
+
+        <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5 max-h-[62vh] overflow-y-auto">
+          <label class="block min-w-0">${biLabel(cfg.docLabel)}
+            <input name="code" type="text" value="${escapeHtml(nextCode)}" readonly class="${COA_INPUT} tabular bg-side-bg/60 text-muted" /></label>
+          <label class="block min-w-0">${biLabel(cfg.partyLabel, { req: true })}
+            <input name="party" type="text" list="apArPartyList" autocomplete="off" placeholder="e.g. ${escapeHtml(parties[0] || 'Party name')}" class="${COA_INPUT}" />
+            <datalist id="apArPartyList">${parties.map(p => `<option value="${escapeHtml(p)}"></option>`).join('')}</datalist>
+          </label>
+          <label class="block min-w-0">${biLabel(cfg.dateLabel)}
+            <input name="docDate" type="date" value="${today}" class="${COA_INPUT} tabular" /></label>
+          <label class="block min-w-0">${biLabel('Due Date')}
+            <input name="dueDate" type="date" value="${today}" class="${COA_INPUT} tabular" /></label>
+          <label class="block min-w-0">${biLabel('Reference')}
+            <input name="ref" type="text" autocomplete="off" placeholder="e.g. PO-2031" class="${COA_INPUT}" /></label>
+          <label class="block min-w-0">${biLabel('Amount', { req: true })}
+            <input name="amount" type="number" min="0" step="0.01" placeholder="0.00" class="${COA_INPUT} tabular" /></label>
+          <label class="block min-w-0 sm:col-span-2">${biLabel('Memo / Description')}
+            <input name="memo" type="text" autocomplete="off" placeholder="Short description (optional)" class="${COA_INPUT}" /></label>
+          <p id="apArNewModalMsg" class="sm:col-span-2 text-helper text-danger min-h-[17px]"></p>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-side-line">
+          <button type="button" data-close class="${COA_BTN}">Cancel</button>
+          <button type="submit" class="${COA_BTN_PRIMARY}">Save ${escapeHtml(cfg.noun)}</button>
+        </div>
+      </form>
+    </div>`;
+
+  document.body.appendChild(wrap);
+  const form = wrap.querySelector('#apArNewForm');
+  const done = () => { document.removeEventListener('keydown', onKey); wrap.remove(); };
+  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); done(); } };
+  wrap.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) done(); });
+  document.addEventListener('keydown', onKey);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = (n) => (form.elements[n].value || '').trim();
+    const msg = form.querySelector('#apArNewModalMsg');
+    if (!val('party') || !val('amount')) {
+      msg.textContent = `${cfg.partyLabel} and Amount are required.`;
+      return;
+    }
+    apArItems[key].push({
+      code: val('code'),
+      party: val('party'),
+      docDate: val('docDate'),
+      dueDate: val('dueDate'),
+      ref: val('ref'),
+      amount: Number(val('amount')) || 0,
+      paid: 0,
+      memo: val('memo'),
+    });
+    done();
+    apArFilter[key].page = 1;
+    apArRefresh(listContainer, key);
+  });
+
+  const first = form.querySelector('input[name="party"]');
+  if (first) first.focus();
+}
+
+function apArOpenPayModal(key, code, listContainer) {
+  if (document.getElementById('apArPayModal')) return;
+  const cfg = AP_AR_TYPES[key];
+  const it = apArItems[key].find(x => x.code === code);
+  if (!it) return;
+  const bal = apArBalance(it);
+  const today = new Date().toISOString().slice(0, 10);
+  const close = '<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+
+  const wrap = document.createElement('div');
+  wrap.id = 'apArPayModal';
+  wrap.className = 'fixed inset-0 z-50';
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
+  wrap.setAttribute('aria-label', cfg.actionVerb);
+  wrap.innerHTML = `
+    <div data-close class="absolute inset-0" style="background: var(--overlay)"></div>
+    <div class="relative mx-auto mt-[14vh] w-full max-w-[440px] px-4">
+      <form id="apArPayForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
+        <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
+          <span class="text-side-accent shrink-0">${iconSvg('wallet', 'w-4 h-4')}</span>
+          <h3 class="text-[14.5px] font-semibold text-primary">${escapeHtml(cfg.actionVerb)} — ${escapeHtml(it.code)}</h3>
+          <button type="button" data-close aria-label="Close" class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
+        </div>
+        <div class="p-4 grid grid-cols-1 gap-3">
+          <p class="text-helper text-muted">${escapeHtml(it.party)} — outstanding balance <span class="text-primary font-semibold tabular">BDT ${coaMoney(bal)}</span></p>
+          <label class="block min-w-0">${biLabel(cfg.actionLabel + ' Amount', { req: true })}
+            <input name="amount" type="number" min="0" max="${bal}" step="0.01" value="${bal}" class="${COA_INPUT} tabular" /></label>
+          <label class="block min-w-0">${biLabel(cfg.actionLabel + ' Date')}
+            <input name="payDate" type="date" value="${today}" class="${COA_INPUT} tabular" /></label>
+          <p id="apArPayModalMsg" class="text-helper text-danger min-h-[17px]"></p>
+        </div>
+        <div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-side-line">
+          <button type="button" data-close class="${COA_BTN}">Cancel</button>
+          <button type="submit" class="${COA_BTN_PRIMARY}">${escapeHtml(cfg.actionVerb)}</button>
+        </div>
+      </form>
+    </div>`;
+
+  document.body.appendChild(wrap);
+  const form = wrap.querySelector('#apArPayForm');
+  const done = () => { document.removeEventListener('keydown', onKey); wrap.remove(); };
+  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); done(); } };
+  wrap.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) done(); });
+  document.addEventListener('keydown', onKey);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const amt = Number(form.elements.amount.value) || 0;
+    const msg = form.querySelector('#apArPayModalMsg');
+    if (amt <= 0 || amt > bal + 0.005) {
+      msg.textContent = `Enter an amount between 0 and BDT ${coaMoney(bal)}.`;
+      return;
+    }
+    it.paid = (it.paid || 0) + amt;
+    done();
+    apArRefresh(listContainer, key);
+  });
+
+  const first = form.querySelector('input[name="amount"]');
+  if (first) first.focus();
+}
+
+// ---------- General Entry ----------
+// Content ported from the Finance reference build's General Entry page: a single-sided cash /
+// bank transaction (Payment or Receive) posted against one Chart of Accounts head, with an
+// optional party when that head's control type calls for one. Accounts are read live from the
+// Chart of Accounts and Cash & Bank tabs rather than duplicated here.
+const GE_DIRECTIONS = ['Payment', 'Receive'];
+
+const GE_CHART_GROUPS = () => coaCategoryDefs().map(c => [c.label, c.list]);
+
+// Which accounts need a party picker is read from the control type stored on the account, never
+// guessed from its name. Receivable/payable parties come from the AP/AR registers; the rest
+// have no register yet, so they use the same fallback lists as the reference build.
+const GE_PARTY_CONFIG = {
+  receivable: { label: 'Customer / Buyer', parties: () => apArPartyOptions('receivable') },
+  payable: { label: 'Supplier / Vendor', parties: () => apArPartyOptions('payable') },
+  loan_receivable: { label: 'Borrower', parties: () => ['Everest Apparels Ltd.', 'Northline Buying House'] },
+  loan_payable: { label: 'Lender', parties: () => ['City Bank PLC', 'HSBC Bangladesh'] },
+  investor: { label: 'Investor', parties: () => ['Mr. Karim Rahman'] },
+};
+
+const generalEntries = [];
+
+const geForm = {
+  date: new Date().toISOString().slice(0, 10),
+  direction: '', bank: '', coa: '', party: '', amount: '', desc: '',
+  msg: '', msgTone: 'muted',
+};
+
+function geResetForm() {
+  geForm.date = new Date().toISOString().slice(0, 10);
+  geForm.direction = ''; geForm.bank = ''; geForm.coa = ''; geForm.party = '';
+  geForm.amount = ''; geForm.desc = '';
+  geForm.msg = ''; geForm.msgTone = 'muted';
+}
+
+function geNextNo() {
+  const year = new Date().getFullYear();
+  const max = generalEntries
+    .filter(e => e.entryNo.startsWith(`DE-${year}-`))
+    .reduce((m, e) => Math.max(m, parseInt(e.entryNo.split('-')[2], 10) || 0), 0);
+  return `DE-${year}-${String(max + 1).padStart(4, '0')}`;
+}
+
+function geFindAccount(value) {
+  const code = String(value || '').split(' — ')[0].trim();
+  for (const [, list] of GE_CHART_GROUPS()) {
+    const acc = list.find(a => a.code === code);
+    if (acc) return acc;
+  }
+  return null;
+}
+
+function gePartyConfig(coaValue) {
+  const acc = geFindAccount(coaValue);
+  return (acc && acc.controlType && GE_PARTY_CONFIG[acc.controlType]) || null;
+}
+
+function geSetMsg(text, tone) {
+  geForm.msg = text || '';
+  geForm.msgTone = tone || 'muted';
+  const el = document.getElementById('geFormMsg');
+  if (el) {
+    el.textContent = geForm.msg;
+    el.className = `${geForm.msg ? '' : 'hidden '}text-helper text-${geForm.msgTone} mr-auto`;
+  }
+}
+
+function geDailyEntryCard() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3.5">
+        ${coaField('Daily Entry No.', `<input type="text" value="${escapeHtml(geNextNo())}" readonly class="${COA_AUTO} tabular" />`)}
+        ${coaField('Date', `<input data-gef="date" type="date" value="${escapeHtml(geForm.date)}" class="${COA_INPUT} tabular" />`)}
+      </div>
+    </section>`;
+}
+
+function geAccountingCard() {
+  const bankOptions = coaCashBankAccounts.filter(a => a.status === 'Active')
+    .map(a => { const v = `${a.code} — ${a.name}`; return `<option value="${escapeHtml(v)}" ${v === geForm.bank ? 'selected' : ''}>${escapeHtml(v)}</option>`; }).join('');
+  const coaOptions = GE_CHART_GROUPS().map(([label, list]) => `
+    <optgroup label="${escapeHtml(label)}">
+      ${list.map(a => { const v = `${a.code} — ${a.name}`; return `<option value="${escapeHtml(v)}" ${v === geForm.coa ? 'selected' : ''}>${escapeHtml(v)}</option>`; }).join('')}
+    </optgroup>`).join('');
+  const dueBox = (id, label) => `
+    <div class="flex-1 min-w-0 h-9 px-3 rounded border border-side-line bg-side-hover flex items-center justify-between gap-2">
+      <span class="text-label text-secondary whitespace-nowrap">${label}</span>
+      <span id="${id}" class="text-[13px] font-medium text-muted tabular truncate">—</span>
+    </div>`;
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+      <h3 class="text-section-title text-primary mb-3.5">Accounting Entry</h3>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-3.5">
+        <div class="space-y-3.5">
+          ${coaField('Transaction Type', `<select data-gef="direction" class="${COA_INPUT}"><option value="">Payment / Receive</option>${GE_DIRECTIONS.map(d => `<option value="${d}" ${d === geForm.direction ? 'selected' : ''}>${d}</option>`).join('')}</select>`)}
+          ${coaField('Cash / Bank Account', `<select data-gef="bank" class="${COA_INPUT}"><option value="">Select cash / bank account…</option>${bankOptions}</select>`)}
+          ${coaField('Account (Chart of Accounts)', `<select data-gef="coa" id="geCoaSelect" class="${COA_INPUT}"><option value="">Select account…</option>${coaOptions}</select>`)}
+          ${coaField('Party', `<select data-gef="party" id="gePartySelect" class="${COA_INPUT}" disabled></select>`)}
+        </div>
+        <div class="space-y-3.5">
+          <div class="flex flex-col sm:flex-row gap-3 lg:mt-[22px]">
+            ${dueBox('gePayableDue', 'Payable Amount')}
+            ${dueBox('geReceivableDue', 'Receivable Amount')}
+          </div>
+          ${coaField('Amount (BDT)', `<input data-gef="amount" type="text" inputmode="decimal" autocomplete="off" value="${escapeHtml(geForm.amount)}" placeholder="0.00" class="${COA_INPUT} tabular" />`)}
+          ${coaField('Description (optional)',`<input data-gef="desc" type="text" autocomplete="off" value="${escapeHtml(geForm.desc)}" placeholder="Short description of this entry" class="${COA_INPUT}" />`)}
+        </div>
+      </div>
+    </section>`;
+}
+
+function geFooterButtons() {
+  return `
+    <div class="flex items-center justify-end gap-3">
+      <p id="geFormMsg" class="${geForm.msg ? '' : 'hidden '}text-helper text-${geForm.msgTone} mr-auto">${escapeHtml(geForm.msg)}</p>
+      <button type="button" id="geResetBtn" class="${COA_BTN}">Reset</button>
+      <button type="button" id="geSaveBtn" class="${COA_BTN_PRIMARY}">${BI_SAVE_ICON}Save Entry</button>
+    </div>`;
+}
+
+function geRecentCard() {
+  const headers = ['Entry No.', 'Date', 'Type', 'Cash / Bank', 'Account (CoA)', 'Amount (BDT)', 'Description'];
+  const rows = generalEntries.length
+    ? generalEntries.slice(0, 10).map(e => `
+      <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
+        <td class="pl-4 pr-2 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(e.entryNo)}</td>
+        <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(biFromISO(e.date) || e.date)}</td>
+        <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(e.type)}</td>
+        <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(e.bankAccount)}</td>
+        <td class="px-3 py-2 text-[13.5px] text-primary">${escapeHtml(e.coaAccount)}</td>
+        <td class="px-3 py-2 text-[13.5px] font-semibold text-primary whitespace-nowrap tabular text-right">${coaMoney(e.amount)}</td>
+        <td class="pr-4 pl-3 py-2 text-[13.5px] text-secondary">${escapeHtml(e.description || '')}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="${headers.length}" class="px-4 py-8 text-center text-[13.5px] text-muted">No general entries posted yet.</td></tr>`;
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex items-center gap-2.5 p-4">
+        <span class="text-side-accent shrink-0">${COA_HISTORY_ICON}</span>
+        <h3 class="text-section-title text-primary">Recent General Entries</h3>
+      </div>
+      <div class="overflow-x-auto border-t border-side-line">
+        <table class="w-full min-w-[860px]">
+          <thead><tr class="border-b border-side-line">
+            ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${i === 5 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </section>`;
+}
+
+function renderGeneralEntry(container) {
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      ${geDailyEntryCard()}
+      ${geAccountingCard()}
+      ${geFooterButtons()}
+      ${geRecentCard()}
+    </div>`;
+  geRefreshParty(container);
+  geBindEvents(container);
+}
+
+// Enables the party picker only when the chosen account's control type defines one, and keeps
+// the previously chosen party if it's still valid for that account.
+function geRefreshParty(container) {
+  const sel = container.querySelector('#gePartySelect');
+  if (!sel) return;
+  const cfg = gePartyConfig(geForm.coa);
+  const parties = cfg ? cfg.parties() : [];
+  if (cfg && parties.length) {
+    if (!parties.includes(geForm.party)) geForm.party = '';
+    sel.innerHTML = `<option value="">Select ${escapeHtml(cfg.label)}</option>${parties.map(p => `<option value="${escapeHtml(p)}" ${p === geForm.party ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('')}`;
+    sel.disabled = false;
+  } else {
+    geForm.party = '';
+    sel.innerHTML = '<option value="">Select Supplier / Customer</option>';
+    sel.disabled = true;
+  }
+  sel.classList.toggle('opacity-60', sel.disabled);
+  sel.classList.toggle('cursor-not-allowed', sel.disabled);
+  geRefreshDue(container);
+}
+
+// Quick context before typing the amount: what is currently outstanding for the picked party
+// (or the whole ledger until one is picked). Display only — not an editable value.
+function geRefreshDue(container) {
+  const acc = geFindAccount(geForm.coa);
+  const type = acc ? acc.controlType : null;
+  const due = (key) => apArItems[key]
+    .filter(b => !geForm.party || b.party === geForm.party)
+    .reduce((s, b) => s + apArBalance(b), 0);
+  [['gePayableDue', 'payable'], ['geReceivableDue', 'receivable']].forEach(([id, key]) => {
+    const el = container.querySelector('#' + id);
+    if (!el) return;
+    const active = type === key;
+    el.textContent = active ? coaMoney(due(key)) : '—';
+    el.classList.toggle('text-muted', !active);
+    el.classList.toggle('text-primary', active);
+    el.classList.toggle('font-semibold', active);
+  });
+}
+
+function geBindEvents(container) {
+  container.querySelectorAll('[data-gef]').forEach(el => {
+    const handler = () => {
+      geForm[el.dataset.gef] = el.value;
+      if (el.dataset.gef === 'coa') { geForm.party = ''; geRefreshParty(container); }
+      else if (el.dataset.gef === 'party') geRefreshDue(container);
+    };
+    el.addEventListener('change', handler);
+    if (el.tagName !== 'SELECT') el.addEventListener('input', () => { geForm[el.dataset.gef] = el.value; });
+  });
+
+  container.querySelector('#geResetBtn').addEventListener('click', () => {
+    geResetForm();
+    renderGeneralEntry(container);
+  });
+
+  container.querySelector('#geSaveBtn').addEventListener('click', () => {
+    const cfg = gePartyConfig(geForm.coa);
+    const amount = coaNum(geForm.amount);
+    if (!geForm.direction) return geSetMsg('Select Payment or Receive before saving.', 'danger');
+    if (!geForm.bank) return geSetMsg('Select a Cash / Bank account before saving.', 'danger');
+    if (!geForm.coa) return geSetMsg('Select an account from the Chart of Accounts before saving.', 'danger');
+    if (cfg && !geForm.party) return geSetMsg(`Select a ${cfg.label} before saving.`, 'danger');
+    if (amount <= 0) return geSetMsg('Enter a valid amount before saving.', 'danger');
+
+    const entryNo = geNextNo();
+    generalEntries.unshift({
+      entryNo,
+      type: geForm.direction,
+      date: geForm.date,
+      bankAccount: geForm.bank,
+      coaAccount: geForm.coa + (geForm.party ? ` — ${geForm.party}` : ''),
+      amount,
+      description: geForm.desc.trim(),
+    });
+    geResetForm();
+    renderGeneralEntry(container);
+    geSetMsg(`General entry ${entryNo} posted successfully.`, 'success');
+  });
+}
+
+// ---------- VAT & Tax (Mushak 6.3 Tax Invoice register) ----------
+// Content ported from the Finance reference build. Bangladesh's VAT & SD Rules 2016 require every
+// VAT-registered supplier to issue a serially numbered Mushak 6.3 Tax Invoice at each taxable
+// supply. This register captures every one issued, renders any of them in the official layout and
+// rolls up output VAT. Invoices are cancelled rather than deleted, so the serial sequence stays
+// intact for audit.
+const VAT_RATES = [15, 7.5, 5, 0];
+const VAT_STATUSES = ['Issued', 'Cancelled'];
+
+const vatCompanyProfile = {
+  name: 'SRS Idea Limited',
+  bin: '000-123456-0001',
+  address: 'Tejgaon Industrial Area, Dhaka-1208, Bangladesh',
+};
+
+const vatInvoices = [
+  {
+    challanNo: 'MSK-0001', issueDate: '2026-06-05', issueTime: '11:20',
+    buyerName: 'Everest Apparels Ltd.', buyerBin: '000-987654-0002', buyerAddress: 'Gulshan-1, Dhaka-1212',
+    vatRate: 15, status: 'Issued',
+    items: [{ description: 'Woven Fabric Cutting & Finishing Service', unit: 'Job', quantity: 1, unitPrice: 850000 }],
+  },
+  {
+    challanNo: 'MSK-0002', issueDate: '2026-06-18', issueTime: '15:05',
+    buyerName: 'Metro Fashion House', buyerBin: '000-456789-0003', buyerAddress: 'Banani, Dhaka-1213',
+    vatRate: 15, status: 'Issued',
+    items: [
+      { description: 'Knit T-Shirt — Style STY-118', unit: 'Pcs', quantity: 6000, unitPrice: 220 },
+      { description: 'Printing & Embellishment Charges', unit: 'Job', quantity: 1, unitPrice: 45000 },
+    ],
+  },
+  {
+    challanNo: 'MSK-0003', issueDate: '2026-07-02', issueTime: '10:40',
+    buyerName: 'ABC Textiles Ltd.', buyerBin: '000-321654-0004', buyerAddress: 'Narayanganj',
+    vatRate: 7.5, status: 'Cancelled',
+    items: [{ description: 'Yarn Dyeing Service', unit: 'Kg', quantity: 2500, unitPrice: 180 }],
+  },
+];
+
+const vatFilter = { q: '', rate: 'All Rates', status: 'All Statuses', page: 1 };
+const vatUi = { previewNo: null };
+const vatForm = { buyerName: '', buyerBin: '', buyerAddress: '', issueDate: '', issueTime: '', rate: 15, items: [] };
+
+function vatNewLine() { return { description: '', unit: 'Pcs', quantity: 1, unitPrice: 0 }; }
+
+function vatResetForm() {
+  vatForm.buyerName = ''; vatForm.buyerBin = ''; vatForm.buyerAddress = '';
+  vatForm.issueDate = new Date().toISOString().slice(0, 10);
+  vatForm.issueTime = new Date().toTimeString().slice(0, 5);
+  vatForm.rate = 15;
+  vatForm.items = [vatNewLine()];
+}
+
+// Taka amount in words, using the crore / lakh / thousand grouping Mushak forms use.
+function vatNumberToWords(n) {
+  n = Math.floor(Math.abs(n));
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  const two = (v) => v < 20 ? ones[v] : tens[Math.floor(v / 10)] + (v % 10 ? ' ' + ones[v % 10] : '');
+  const three = (v) => {
+    const h = Math.floor(v / 100), r = v % 100;
+    return (h ? ones[h] + ' Hundred' + (r ? ' ' : '') : '') + (r ? two(r) : '');
+  };
+  if (n === 0) return 'Zero';
+  const crore = Math.floor(n / 10000000); n %= 10000000;
+  const lakh = Math.floor(n / 100000); n %= 100000;
+  const thousand = Math.floor(n / 1000); n %= 1000;
+  const parts = [];
+  if (crore) parts.push(three(crore) + ' Crore');
+  if (lakh) parts.push(two(lakh) + ' Lakh');
+  if (thousand) parts.push(two(thousand) + ' Thousand');
+  if (n) parts.push(three(n));
+  return parts.join(' ').trim();
+}
+
+function vatAmountInWords(amount) {
+  const taka = Math.floor(amount);
+  const poisha = Math.round((amount - taka) * 100);
+  return 'Taka ' + vatNumberToWords(taka) + (poisha > 0 ? ' and ' + vatNumberToWords(poisha) + ' Poisha' : '') + ' Only';
+}
+
+function vatLineValue(it) { return (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0); }
+function vatItemsValue(items) { return (items || []).reduce((s, it) => s + vatLineValue(it), 0); }
+function vatCalcFor(items, rate) {
+  const taxable = vatItemsValue(items);
+  const vatAmount = Math.round(taxable * (rate / 100) * 100) / 100;
+  return { taxable, vatAmount, total: taxable + vatAmount };
+}
+function vatCalc(inv) { return vatCalcFor(inv.items, inv.vatRate); }
+
+function vatNextChallanNo() {
+  const max = vatInvoices.reduce((m, v) => Math.max(m, parseInt((v.challanNo.split('-')[1] || '0'), 10) || 0), 0);
+  return `MSK-${String(max + 1).padStart(4, '0')}`;
+}
+
+function vatStatusPill(status) {
+  const map = { Issued: ['successSoft', 'success'], Cancelled: ['dangerSoft', 'danger'] };
+  const [bg, fg] = map[status] || map.Issued;
+  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg}"><span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>${escapeHtml(status)}</span>`;
+}
+
+function vatFiltered() {
+  const q = vatFilter.q.trim().toLowerCase();
+  return vatInvoices.filter(v => {
+    if (q && !(v.challanNo.toLowerCase().includes(q) || v.buyerName.toLowerCase().includes(q) || (v.buyerBin || '').toLowerCase().includes(q))) return false;
+    if (vatFilter.rate !== 'All Rates' && `${v.vatRate}%` !== vatFilter.rate) return false;
+    if (vatFilter.status !== 'All Statuses' && v.status !== vatFilter.status) return false;
+    return true;
+  });
+}
+
+function vatSummaryCards() {
+  let taxable = 0, vat = 0, total = 0, issued = 0;
+  vatInvoices.forEach(v => {
+    if (v.status !== 'Issued') return;
+    const c = vatCalc(v);
+    taxable += c.taxable; vat += c.vatAmount; total += c.total; issued += 1;
+  });
+  return `
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      ${coaCashBankStatCard(AP_AR_ICON_OUTSTANDING, issued, 'Mushak 6.3 Issued')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, coaInt(Math.round(taxable)), 'Total Taxable Value (BDT)')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_CASH_ICON, coaInt(Math.round(vat)), 'Output VAT Collected (BDT)')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, coaInt(Math.round(total)), 'Total Invoice Value (BDT)')}
+    </div>`;
+}
+
+function vatFilterBar() {
+  const opt = (list, sel) => list.map(v => `<option value="${escapeHtml(v)}" ${v === sel ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <span class="block text-label font-medium text-secondary mb-1">Search</span>
+          <div class="relative">
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input id="vatSearch" type="text" value="${escapeHtml(vatFilter.q)}" placeholder="Search challan no., buyer or BIN…" class="${COA_INPUT} pl-9" />
+          </div>
+        </div>
+        ${coaField('VAT Rate', `<select id="vatRateFilter" class="${COA_INPUT}">${opt(['All Rates', ...VAT_RATES.map(r => `${r}%`)], vatFilter.rate)}</select>`)}
+        ${coaField('Status', `<select id="vatStatusFilter" class="${COA_INPUT}">${opt(['All Statuses', ...VAT_STATUSES], vatFilter.status)}</select>`)}
+      </div>
+    </section>`;
+}
+
+function vatFormLineRow(it, i) {
+  return `
+    <tr data-vrow="${i}" class="border-b border-side-line last:border-b-0">
+      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${i + 1}</td>
+      <td class="px-3 py-2 min-w-[220px]"><input data-vitem="description" type="text" autocomplete="off" value="${escapeHtml(it.description)}" placeholder="Description of goods / services" class="${COA_INPUT}" /></td>
+      <td class="px-3 py-2 w-24"><input data-vitem="unit" type="text" autocomplete="off" value="${escapeHtml(it.unit)}" placeholder="Pcs" class="${COA_INPUT}" /></td>
+      <td class="px-3 py-2 w-28"><input data-vitem="quantity" type="number" min="0" step="0.01" value="${escapeHtml(it.quantity)}" class="${COA_INPUT} tabular text-right" /></td>
+      <td class="px-3 py-2 w-32"><input data-vitem="unitPrice" type="number" min="0" step="0.01" value="${escapeHtml(it.unitPrice)}" class="${COA_INPUT} tabular text-right" /></td>
+      <td data-vline-total class="px-3 py-2 w-32 text-[13.5px] font-semibold text-primary tabular text-right whitespace-nowrap">${coaMoney(vatLineValue(it))}</td>
+      <td class="pr-4 pl-3 py-2 w-12">
+        <button type="button" data-vitem-del="${i}" class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:text-danger hover:bg-dangerSoft disabled:opacity-40 disabled:cursor-not-allowed" title="Remove line" ${vatForm.items.length <= 1 ? 'disabled' : ''}>${COA_DELETE_ICON}</button>
+      </td>
+    </tr>`;
+}
+
+function vatFormTotalsInner() {
+  const c = vatCalcFor(vatForm.items, vatForm.rate);
+  return `
+    <div class="min-w-0">
+      <p class="text-micro text-muted mb-0.5">Amount in Words</p>
+      <p class="text-body text-secondary italic">${escapeHtml(vatAmountInWords(c.total))}</p>
+    </div>
+    <div class="flex items-center gap-8 shrink-0">
+      <div class="text-right"><p class="text-micro text-muted mb-0.5">Taxable Value</p><p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(c.taxable)}</p></div>
+      <div class="text-right"><p class="text-micro text-muted mb-0.5">VAT @ ${vatForm.rate}%</p><p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(c.vatAmount)}</p></div>
+      <div class="text-right"><p class="text-micro text-muted mb-0.5">Total Value</p><p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(c.total)}</p></div>
+    </div>`;
+}
+
+// The body of the New Mushak 6.3 popup. Inputs write straight into vatForm (see vatOpenNewModal).
+function vatFormBodyHtml() {
+  const f = vatForm;
+  const readonly = (v) => `<input type="text" value="${escapeHtml(v)}" readonly class="${COA_AUTO}" />`;
+  const sub = (t) => `<p class="text-micro text-muted mb-2">${t}</p>`;
+  return `
+    <div class="sm:col-span-2 space-y-4">
+      <div>
+        ${sub('Registered Person (Supplier)')}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          ${coaField('Name', readonly(vatCompanyProfile.name))}
+          ${coaField('BIN', readonly(vatCompanyProfile.bin))}
+          ${coaField('Address', readonly(vatCompanyProfile.address))}
+        </div>
+      </div>
+      <div>
+        ${sub('Buyer / Recipient')}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          ${coaField('Buyer Name', `<input data-vatf="buyerName" type="text" autocomplete="off" value="${escapeHtml(f.buyerName)}" placeholder="e.g. Everest Apparels Ltd." class="${COA_INPUT}" />`)}
+          ${coaField('Buyer BIN (optional)', `<input data-vatf="buyerBin" type="text" autocomplete="off" value="${escapeHtml(f.buyerBin)}" placeholder="Blank for an unregistered buyer" class="${COA_INPUT}" />`)}
+          ${coaField('Buyer Address', `<input data-vatf="buyerAddress" type="text" autocomplete="off" value="${escapeHtml(f.buyerAddress)}" placeholder="e.g. Gulshan-1, Dhaka" class="${COA_INPUT}" />`)}
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        ${coaField('Tax Invoice No.', `<input type="text" value="${escapeHtml(vatNextChallanNo())}" readonly class="${COA_AUTO} tabular" />`)}
+        ${coaField('Date of Issue', `<input data-vatf="issueDate" type="date" value="${escapeHtml(f.issueDate)}" class="${COA_INPUT} tabular" />`)}
+        ${coaField('Time of Issue', `<input data-vatf="issueTime" type="time" value="${escapeHtml(f.issueTime)}" class="${COA_INPUT} tabular" />`)}
+        ${coaField('VAT Rate', `<select data-vatf="rate" class="${COA_INPUT}">${VAT_RATES.map(r => `<option value="${r}" ${r === f.rate ? 'selected' : ''}>${r}%</option>`).join('')}</select>`)}
+      </div>
+      <div class="border border-side-line rounded-lg overflow-hidden">
+        <div class="flex items-center justify-between gap-3 px-3 py-2.5 border-b border-side-line">
+          <h4 class="text-body-medium text-primary">Description of Goods / Services</h4>
+          <button type="button" id="vatAddLine" class="${COA_BTN}">${COA_PLUS_ICON}Add Line</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[720px]">
+            <thead><tr class="border-b border-side-line">
+              <th class="pl-4 pr-2 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">SL</th>
+              <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">Description</th>
+              <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">Unit</th>
+              <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-right whitespace-nowrap">Quantity</th>
+              <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-right whitespace-nowrap">Unit Price</th>
+              <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-right whitespace-nowrap">Value (BDT)</th>
+              <th class="pr-4 pl-3 py-2.5"></th>
+            </tr></thead>
+            <tbody id="vatFormLines">${f.items.map(vatFormLineRow).join('')}</tbody>
+          </table>
+        </div>
+        <div id="vatFormTotals" class="flex flex-wrap items-center justify-between gap-3 px-3 py-3 border-t border-side-line">${vatFormTotalsInner()}</div>
+      </div>
+    </div>`;
+}
+
+// The official Mushak 6.3 layout. It is a paper document, so it stays black-on-white in both themes.
+function vatMushakPreview(v) {
+  const c = vatCalc(v);
+  const itemRows = v.items.map((it, i) => `
+    <tr>
+      <td class="border border-slate-400 p-1.5 text-center">${i + 1}</td>
+      <td class="border border-slate-400 p-1.5">${escapeHtml(it.description)}</td>
+      <td class="border border-slate-400 p-1.5 text-center">${escapeHtml(it.unit)}</td>
+      <td class="border border-slate-400 p-1.5 text-right tabular">${Number(it.quantity).toLocaleString()}</td>
+      <td class="border border-slate-400 p-1.5 text-right tabular">${coaMoney(it.unitPrice)}</td>
+      <td class="border border-slate-400 p-1.5 text-right tabular">${coaMoney(vatLineValue(it))}</td>
+    </tr>`).join('');
+  return `
+    <div class="bg-white text-slate-900 rounded border border-slate-300 p-6 max-w-3xl mx-auto" style="font-family: Georgia, 'Times New Roman', serif;">
+      <div class="text-center mb-4">
+        <p class="text-base font-bold">মূসক-৬.৩ / Mushak-6.3</p>
+        <p class="text-xs">Tax Invoice [Rule 40(1)(ga) and (cha)]${v.status === 'Cancelled' ? ' — CANCELLED' : ''}</p>
+      </div>
+      <div class="grid grid-cols-2 gap-4 text-xs mb-3">
+        <div class="border border-slate-400 rounded p-2.5">
+          <p class="font-semibold uppercase text-[11px] text-slate-500 mb-1">Registered Person (Supplier)</p>
+          <p><span class="text-slate-500">Name:</span> ${escapeHtml(vatCompanyProfile.name)}</p>
+          <p><span class="text-slate-500">BIN:</span> ${escapeHtml(vatCompanyProfile.bin)}</p>
+          <p><span class="text-slate-500">Address:</span> ${escapeHtml(vatCompanyProfile.address)}</p>
+        </div>
+        <div class="border border-slate-400 rounded p-2.5">
+          <p class="font-semibold uppercase text-[11px] text-slate-500 mb-1">Buyer / Recipient</p>
+          <p><span class="text-slate-500">Name:</span> ${escapeHtml(v.buyerName)}</p>
+          <p><span class="text-slate-500">BIN:</span> ${escapeHtml(v.buyerBin || 'Unregistered')}</p>
+          <p><span class="text-slate-500">Address:</span> ${escapeHtml(v.buyerAddress || '—')}</p>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-x-6 gap-y-1 text-xs mb-3">
+        <p><span class="text-slate-500">Tax Invoice No.:</span> <span class="font-semibold">${escapeHtml(v.challanNo)}</span></p>
+        <p><span class="text-slate-500">Date of Issue:</span> <span class="font-semibold">${coaFormatDateDisplay(v.issueDate)}</span></p>
+        <p><span class="text-slate-500">Time of Issue:</span> <span class="font-semibold">${escapeHtml(v.issueTime || '—')}</span></p>
+      </div>
+      <table class="w-full text-xs border-collapse mb-3">
+        <thead><tr class="bg-slate-100">
+          <th class="border border-slate-400 p-1.5">SL</th>
+          <th class="border border-slate-400 p-1.5">Description of Goods/Services</th>
+          <th class="border border-slate-400 p-1.5">Unit</th>
+          <th class="border border-slate-400 p-1.5">Quantity</th>
+          <th class="border border-slate-400 p-1.5">Unit Price (Tk.)</th>
+          <th class="border border-slate-400 p-1.5">Value (Tk.)</th>
+        </tr></thead>
+        <tbody>${itemRows}</tbody>
+      </table>
+      <div class="flex justify-end mb-3">
+        <table class="text-xs">
+          <tr><td class="pr-6 py-0.5 text-slate-500">Total Taxable Value</td><td class="text-right tabular font-medium">Tk. ${coaMoney(c.taxable)}</td></tr>
+          <tr><td class="pr-6 py-0.5 text-slate-500">VAT Rate</td><td class="text-right tabular font-medium">${v.vatRate}%</td></tr>
+          <tr><td class="pr-6 py-0.5 text-slate-500">VAT Amount</td><td class="text-right tabular font-medium">Tk. ${coaMoney(c.vatAmount)}</td></tr>
+          <tr><td class="pr-6 py-1 text-slate-700 font-semibold border-t border-slate-300">Total Value (Incl. VAT)</td><td class="text-right tabular font-bold border-t border-slate-300">Tk. ${coaMoney(c.total)}</td></tr>
+        </table>
+      </div>
+      <p class="text-xs italic mb-6">In Words: ${escapeHtml(vatAmountInWords(c.total))}</p>
+      <div class="flex justify-between text-xs pt-8">
+        <div class="text-center"><div class="border-t border-slate-500 w-40 pt-1">Prepared By</div></div>
+        <div class="text-center"><div class="border-t border-slate-500 w-40 pt-1">Authorized Signature</div></div>
+      </div>
+    </div>`;
+}
+
+function vatRow(v, n) {
+  const c = vatCalc(v);
+  const previewing = vatUi.previewNo === v.challanNo;
+  return `
+    <tr class="group border-b border-side-line hover:bg-side-hover">
+      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n}</td>
+      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(v.challanNo)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${coaFormatDateDisplay(v.issueDate)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(v.buyerName)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(v.buyerBin || '—')}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular text-right">${coaMoney(c.taxable)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular text-right">${v.vatRate}%</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary font-semibold whitespace-nowrap tabular text-right">${coaMoney(c.vatAmount)}</td>
+      <td class="px-3 py-2">${vatStatusPill(v.status)}</td>
+      <td class="pr-4 pl-3 py-2 text-right whitespace-nowrap">
+        <button type="button" data-vat-view="${escapeHtml(v.challanNo)}" class="h-7 px-2.5 rounded border border-side-accent/40 text-side-accent text-[12px] font-semibold hover:bg-side-active ${v.status === 'Issued' ? 'mr-1.5' : ''}">${previewing ? 'Hide' : 'View'}</button>
+        ${v.status === 'Issued' ? `<button type="button" data-vat-cancel="${escapeHtml(v.challanNo)}" class="h-7 px-2.5 rounded border border-side-border text-secondary text-[12px] font-semibold hover:text-danger hover:bg-dangerSoft">Cancel</button>` : ''}
+      </td>
+    </tr>
+    ${previewing ? `<tr class="border-b border-side-line bg-side-hover"><td colspan="10" class="p-4">${vatMushakPreview(v)}</td></tr>` : ''}`;
+}
+
+function vatResultsHtml() {
+  const all = vatFiltered();
+  const totalPages = Math.max(1, Math.ceil(all.length / COA_PAGE_SIZE));
+  vatFilter.page = Math.min(Math.max(1, vatFilter.page), totalPages);
+  const start = (vatFilter.page - 1) * COA_PAGE_SIZE;
+  const rows = all.slice(start, start + COA_PAGE_SIZE);
+  const headers = ['SL', 'Challan No.', 'Date', 'Buyer', 'Buyer BIN', 'Taxable Value (BDT)', 'VAT Rate', 'VAT Amount (BDT)', 'Status', 'Actions'];
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[1100px]">
+        <thead><tr class="border-b border-side-line">
+          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${i >= 5 && i <= 7 ? 'right' : i === headers.length - 1 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows.length ? rows.map((v, i) => vatRow(v, start + i + 1)).join('') : `<tr><td colspan="10" class="px-4 py-10 text-center"><p class="text-body text-muted">No Mushak 6.3 tax invoices match your filters.</p></td></tr>`}</tbody>
+      </table>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
+      <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
+      <div class="flex items-center gap-1.5">
+        <button data-vatpage="prev" ${vatFilter.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-vatpage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === vatFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        <button data-vatpage="next" ${vatFilter.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
+      </div>
+    </div>`;
+}
+
+function vatCounterText() {
+  return `${vatFiltered().length} of ${vatInvoices.length} tax invoice${vatInvoices.length === 1 ? '' : 's'}`;
+}
+
+function vatListCard() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex flex-wrap items-start justify-between gap-3 p-4">
+        <div>
+          <h3 class="text-section-title text-primary">VAT &amp; Tax — Mushak 6.3 Register</h3>
+          <p id="vatCounter" class="text-helper text-muted mt-0.5">${vatCounterText()}</p>
+        </div>
+        <button type="button" id="vatNew" class="${COA_BTN_PRIMARY}">${COA_PLUS_ICON}New Mushak 6.3</button>
+      </div>
+      <div id="vatResults">${vatResultsHtml()}</div>
+    </section>`;
+}
+
+function renderVatTax(container) {
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      ${vatSummaryCards()}
+      ${vatFilterBar()}
+      ${vatListCard()}
+    </div>`;
+  vatBindEvents(container);
+}
+
+function vatRefreshResults(container) {
+  container.querySelector('#vatResults').innerHTML = vatResultsHtml();
+  container.querySelector('#vatCounter').textContent = vatCounterText();
+}
+
+function vatBindEvents(container) {
+  container.querySelector('#vatSearch').addEventListener('input', (e) => { vatFilter.q = e.target.value; vatFilter.page = 1; vatRefreshResults(container); });
+  container.querySelector('#vatRateFilter').addEventListener('change', (e) => { vatFilter.rate = e.target.value; vatFilter.page = 1; vatRefreshResults(container); });
+  container.querySelector('#vatStatusFilter').addEventListener('change', (e) => { vatFilter.status = e.target.value; vatFilter.page = 1; vatRefreshResults(container); });
+
+  container.querySelector('#vatNew').addEventListener('click', () => vatOpenNewModal(container));
+
+  container.querySelector('#vatResults').addEventListener('click', (e) => {
+    const pageBtn = e.target.closest('[data-vatpage]');
+    if (pageBtn && !pageBtn.disabled) {
+      const totalPages = Math.max(1, Math.ceil(vatFiltered().length / COA_PAGE_SIZE));
+      const p = pageBtn.dataset.vatpage;
+      vatFilter.page = p === 'prev' ? Math.max(1, vatFilter.page - 1) : p === 'next' ? Math.min(totalPages, vatFilter.page + 1) : +p;
+      vatRefreshResults(container);
+      return;
+    }
+    const viewBtn = e.target.closest('[data-vat-view]');
+    if (viewBtn) {
+      const no = viewBtn.dataset.vatView;
+      vatUi.previewNo = vatUi.previewNo === no ? null : no;
+      vatRefreshResults(container);
+      return;
+    }
+    const cancelBtn = e.target.closest('[data-vat-cancel]');
+    if (cancelBtn) {
+      const inv = vatInvoices.find(v => v.challanNo === cancelBtn.dataset.vatCancel);
+      if (!inv || !window.confirm(`Cancel ${inv.challanNo}? A cancelled Mushak 6.3 keeps its serial number and cannot be reissued.`)) return;
+      inv.status = 'Cancelled';
+      renderVatTax(container);
+    }
+  });
+}
+
+function vatOpenNewModal(container) {
+  vatResetForm();
+  finOpenModal({
+    id: 'vatNewModal', title: 'New Mushak 6.3 Tax Invoice', icon: 'wallet', wide: true, width: 'max-w-[940px]',
+    submitLabel: 'Save & Issue',
+    body: vatFormBodyHtml(),
+    onOpen(form) {
+      const refreshTotals = () => { form.querySelector('#vatFormTotals').innerHTML = vatFormTotalsInner(); };
+      const redrawLines = () => { form.querySelector('#vatFormLines').innerHTML = vatForm.items.map(vatFormLineRow).join(''); refreshTotals(); };
+
+      form.addEventListener('input', (e) => {
+        const t = e.target;
+        if (t.dataset.vatf && t.dataset.vatf !== 'rate') vatForm[t.dataset.vatf] = t.value;
+        if (t.dataset.vitem) {
+          const row = t.closest('[data-vrow]');
+          const it = vatForm.items[+row.dataset.vrow];
+          const numeric = t.dataset.vitem === 'quantity' || t.dataset.vitem === 'unitPrice';
+          it[t.dataset.vitem] = numeric ? (parseFloat(t.value) || 0) : t.value;
+          if (numeric) {
+            row.querySelector('[data-vline-total]').textContent = coaMoney(vatLineValue(it));
+            refreshTotals();
+          }
+        }
+      });
+      form.addEventListener('change', (e) => {
+        if (e.target.dataset.vatf === 'rate') { vatForm.rate = parseFloat(e.target.value); refreshTotals(); }
+      });
+      form.addEventListener('click', (e) => {
+        const del = e.target.closest('[data-vitem-del]');
+        if (del && !del.disabled) { vatForm.items.splice(+del.dataset.vitemDel, 1); redrawLines(); return; }
+        if (e.target.closest('#vatAddLine')) { vatForm.items.push(vatNewLine()); redrawLines(); }
+      });
+    },
+    onSubmit() {
+      const f = vatForm;
+      const items = f.items.filter(it => it.description.trim() && (Number(it.quantity) || 0) > 0);
+      // A Mushak 6.3 is invalid without buyer name and address, issue date and time, and at least one
+      // described, priced line. Buyer BIN stays optional for an unregistered buyer.
+      if (!f.buyerName.trim()) return 'Enter the buyer name.';
+      if (!f.buyerAddress.trim()) return 'Enter the buyer address.';
+      if (!f.issueDate || !f.issueTime) return 'Enter the date and time of issue.';
+      if (!items.length) return 'Add at least one line with a description and quantity.';
+      vatInvoices.push({
+        challanNo: vatNextChallanNo(),
+        issueDate: f.issueDate,
+        issueTime: f.issueTime,
+        buyerName: f.buyerName.trim(),
+        buyerBin: f.buyerBin.trim(),
+        buyerAddress: f.buyerAddress.trim(),
+        vatRate: f.rate,
+        status: 'Issued',
+        items: items.map(it => ({ description: it.description.trim(), unit: it.unit.trim() || 'Pcs', quantity: Number(it.quantity), unitPrice: Number(it.unitPrice) || 0 })),
+      });
+      vatFilter.page = Math.ceil(vatFiltered().length / COA_PAGE_SIZE);
+      renderVatTax(container);
+    },
+  });
+}
+
+// ---------- Shared modal helpers (Finance pages) ----------
+// One small dialog shell for the Finance registers' "New …" / "Record …" forms, matching the
+// modal look used by Accounts Payable / Receivable. onSubmit(form) returns an error string to keep
+// the dialog open, or nothing to close it.
+function finFormField(label, name, o) {
+  o = o || {};
+  const span = o.span ? ' sm:col-span-2' : '';
+  let inner;
+  if (o.options) {
+    inner = `<select name="${name}" class="${COA_INPUT}">${o.options.map(v => `<option value="${escapeHtml(v)}" ${v === o.value ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('')}</select>`;
+  } else if (o.textarea) {
+    inner = `<textarea name="${name}" placeholder="${escapeHtml(o.placeholder || '')}" style="height:72px" class="${COA_INPUT} py-2 resize-none">${escapeHtml(o.value || '')}</textarea>`;
+  } else {
+    inner = `<input name="${name}" type="${o.type || 'text'}" ${o.type === 'number' ? 'min="0" step="0.01"' : ''} autocomplete="off" value="${escapeHtml(o.value ?? '')}" placeholder="${escapeHtml(o.placeholder || '')}" ${o.readonly ? 'readonly' : ''} class="${o.readonly ? COA_AUTO : COA_INPUT} ${o.type === 'number' || o.type === 'date' || o.readonly ? 'tabular' : ''}" />`;
+  }
+  return `<label class="block min-w-0${span}">${biLabel(label, { req: o.req })}${inner}</label>`;
+}
+
+function finOpenModal(o) {
+  if (document.getElementById(o.id)) return;
+  const close = '<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  const wrap = document.createElement('div');
+  wrap.id = o.id;
+  wrap.className = 'fixed inset-0 z-50';
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
+  wrap.setAttribute('aria-label', o.title);
+  wrap.innerHTML = `
+    <div data-close class="absolute inset-0" style="background: var(--overlay)"></div>
+    <div class="relative mx-auto mt-[6vh] w-full ${o.width || (o.wide ? 'max-w-[720px]' : 'max-w-[440px]')} px-4">
+      <form class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
+        <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
+          <span class="text-side-accent shrink-0">${iconSvg(o.icon || 'doc', 'w-4 h-4')}</span>
+          <h3 class="text-[14.5px] font-semibold text-primary">${escapeHtml(o.title)}</h3>
+          <button type="button" data-close aria-label="Close" class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
+        </div>
+        ${o.intro ? `<p class="px-4 pt-3 text-helper text-muted">${o.intro}</p>` : ''}
+        <div class="p-4 grid grid-cols-1 ${o.wide ? 'sm:grid-cols-2' : ''} gap-x-3 gap-y-2.5 max-h-[62vh] overflow-y-auto">
+          ${o.body}
+          <p data-msg class="${o.wide ? 'sm:col-span-2 ' : ''}text-helper text-danger min-h-[17px]"></p>
+        </div>
+        <div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-side-line">
+          <button type="button" data-close class="${COA_BTN}">Cancel</button>
+          <button type="submit" class="${COA_BTN_PRIMARY}">${escapeHtml(o.submitLabel)}</button>
+        </div>
+      </form>
+    </div>`;
+  document.body.appendChild(wrap);
+  const form = wrap.querySelector('form');
+  const done = () => { document.removeEventListener('keydown', onKey); wrap.remove(); };
+  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); done(); } };
+  wrap.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) done(); });
+  document.addEventListener('keydown', onKey);
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const err = o.onSubmit(form);
+    if (err) { form.querySelector('[data-msg]').textContent = err; return; }
+    done();
+  });
+  if (o.onOpen) o.onOpen(form);
+  const first = form.querySelector('input:not([readonly]), select, textarea');
+  if (first) first.focus();
+}
+
+function finFormVal(form, name) { return (form.elements[name].value || '').trim(); }
+
+function finPill(text, tone, dot) {
+  const [bg, fg] = { success: ['successSoft', 'success'], warning: ['warningSoft', 'warning'], danger: ['dangerSoft', 'danger'], info: ['infoSoft', 'info'], neutral: ['neutralSoft', 'neutral'] }[tone] || ['neutralSoft', 'neutral'];
+  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[12px] font-semibold whitespace-nowrap bg-${bg} text-${fg}">${dot ? `<span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>` : ''}${escapeHtml(text)}</span>`;
+}
+
+function finPager(attr, page, totalPages) {
+  return `
+    <div class="flex items-center gap-1.5">
+      <button data-${attr}="prev" ${page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
+      ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-${attr}="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+      <button data-${attr}="next" ${page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
+    </div>`;
+}
+
+// ---------- Budget Management ----------
+// Content ported from the Finance reference build: departmental / cost-centre budget lines per
+// fiscal year, with actual spend recorded against each line so variance and utilization stay
+// current. Spend status is derived from the amounts rather than stored, so it can't drift.
+const BUDGET_DEPARTMENTS = ['Merchandising', 'Production / Factory', 'Procurement', 'Admin & HR', 'Finance', 'Commercial / Export', 'Quality Assurance', 'Sample Development', 'IT & Systems'];
+const BUDGET_CATEGORIES = ['Raw Material Consumption', 'Direct Factory Labor', 'Factory Overhead', 'Admin Salaries', 'Rent Expense', 'Utilities', 'Office Supplies', 'Sample & Development', 'Marketing & Business Promotion', 'Freight & Shipping (Export)', 'Commission Expense', 'Bank Interest & Charges', 'Machinery & CapEx', 'Compliance & Audit', 'Contingency / Miscellaneous'];
+const BUDGET_PERIOD_TYPES = ['Annual', 'Quarterly', 'Monthly'];
+const BUDGET_APPROVAL_STATUSES = ['Draft', 'Pending Approval', 'Approved', 'Rejected'];
+
+// Bangladesh's fiscal year runs July–June, so offer the previous, current and next FY.
+const BUDGET_FISCAL_YEARS = (() => {
+  const now = new Date();
+  const y = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  return [`FY${y - 1}-${String(y).slice(-2)}`, `FY${y}-${String(y + 1).slice(-2)}`, `FY${y + 1}-${String(y + 2).slice(-2)}`];
+})();
+
+const budgetRecords = (() => {
+  const fy = BUDGET_FISCAL_YEARS[1];
+  const y1 = fy.slice(2, 6), y2 = `20${fy.slice(-2)}`;
+  return [
+    { budgetCode: 'BUD-0001', title: 'Woven Fabric & Trims Procurement', department: 'Procurement', category: 'Raw Material Consumption', fiscalYear: fy, periodType: 'Annual', startDate: `${y1}-07-01`, endDate: `${y2}-06-30`, budgetedAmount: 45000000, actualSpent: 28500000, approvalStatus: 'Approved', approvedBy: 'Head of Finance', notes: 'Covers fabric, trims and accessories for confirmed POs this fiscal year.' },
+    { budgetCode: 'BUD-0002', title: 'Factory Floor Wages & Overtime', department: 'Production / Factory', category: 'Direct Factory Labor', fiscalYear: fy, periodType: 'Annual', startDate: `${y1}-07-01`, endDate: `${y2}-06-30`, budgetedAmount: 18000000, actualSpent: 17200000, approvalStatus: 'Approved', approvedBy: 'Managing Director', notes: '' },
+    { budgetCode: 'BUD-0003', title: 'Sample & Development Costs', department: 'Sample Development', category: 'Sample & Development', fiscalYear: fy, periodType: 'Quarterly', startDate: `${y1}-07-01`, endDate: `${y1}-09-30`, budgetedAmount: 1200000, actualSpent: 1350000, approvalStatus: 'Approved', approvedBy: 'Head of Merchandising', notes: 'Buyer sample requests ran ahead of plan this quarter.' },
+    { budgetCode: 'BUD-0004', title: 'Export Freight & Shipping', department: 'Commercial / Export', category: 'Freight & Shipping (Export)', fiscalYear: fy, periodType: 'Annual', startDate: `${y1}-07-01`, endDate: `${y2}-06-30`, budgetedAmount: 9500000, actualSpent: 4100000, approvalStatus: 'Approved', approvedBy: 'Head of Finance', notes: '' },
+    { budgetCode: 'BUD-0005', title: 'Head Office Admin & Utilities', department: 'Admin & HR', category: 'Utilities', fiscalYear: fy, periodType: 'Monthly', startDate: `${y1}-07-01`, endDate: `${y1}-07-31`, budgetedAmount: 650000, actualSpent: 0, approvalStatus: 'Pending Approval', approvedBy: '', notes: '' },
+  ];
+})();
+
+const budgetFilter = { q: '', department: 'All Departments', fiscalYear: 'All Fiscal Years', status: 'All Statuses', page: 1 };
+
+function budgetVariance(b) { return (b.budgetedAmount || 0) - (b.actualSpent || 0); }
+function budgetUtilizationPct(b) { return b.budgetedAmount ? ((b.actualSpent || 0) / b.budgetedAmount) * 100 : 0; }
+function budgetSpendStatus(b) {
+  const pct = budgetUtilizationPct(b);
+  if (pct > 100) return 'Over Budget';
+  if (pct >= 90) return 'Near Limit';
+  return 'On Track';
+}
+function budgetNextCode() {
+  const max = budgetRecords.reduce((m, b) => Math.max(m, parseInt((b.budgetCode.split('-')[1] || '0'), 10) || 0), 0);
+  return `BUD-${String(max + 1).padStart(4, '0')}`;
+}
+
+function budgetFiltered() {
+  const q = budgetFilter.q.trim().toLowerCase();
+  return budgetRecords.filter(b => {
+    if (q && !(b.budgetCode.toLowerCase().includes(q) || b.title.toLowerCase().includes(q) || b.department.toLowerCase().includes(q))) return false;
+    if (budgetFilter.department !== 'All Departments' && b.department !== budgetFilter.department) return false;
+    if (budgetFilter.fiscalYear !== 'All Fiscal Years' && b.fiscalYear !== budgetFilter.fiscalYear) return false;
+    if (budgetFilter.status !== 'All Statuses' && budgetSpendStatus(b) !== budgetFilter.status) return false;
+    return true;
+  });
+}
+
+function budgetSummaryCards() {
+  let budgeted = 0, spent = 0, over = 0;
+  budgetRecords.forEach(b => { budgeted += b.budgetedAmount || 0; spent += b.actualSpent || 0; if (budgetSpendStatus(b) === 'Over Budget') over += 1; });
+  return `
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, coaInt(Math.round(budgeted)), 'Total Budgeted (BDT)')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, coaInt(Math.round(spent)), 'Total Actual Spend (BDT)')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_CASH_ICON, coaInt(Math.round(budgeted - spent)), 'Remaining Balance (BDT)')}
+      ${coaCashBankStatCard(AP_AR_ICON_OVERDUE, over, 'Lines Over Budget')}
+    </div>`;
+}
+
+function budgetFilterBar() {
+  const opt = (list, sel) => list.map(v => `<option value="${escapeHtml(v)}" ${v === sel ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div>
+          <span class="block text-label font-medium text-secondary mb-1">Search</span>
+          <div class="relative">
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input id="budgetSearch" type="text" value="${escapeHtml(budgetFilter.q)}" placeholder="Search code, title or department…" class="${COA_INPUT} pl-9" />
+          </div>
+        </div>
+        ${coaField('Department', `<select id="budgetDept" class="${COA_INPUT}">${opt(['All Departments', ...BUDGET_DEPARTMENTS], budgetFilter.department)}</select>`)}
+        ${coaField('Fiscal Year', `<select id="budgetFy" class="${COA_INPUT}">${opt(['All Fiscal Years', ...BUDGET_FISCAL_YEARS], budgetFilter.fiscalYear)}</select>`)}
+        ${coaField('Status', `<select id="budgetStatus" class="${COA_INPUT}">${opt(['All Statuses', 'On Track', 'Near Limit', 'Over Budget'], budgetFilter.status)}</select>`)}
+      </div>
+    </section>`;
+}
+
+function budgetRow(b, n) {
+  const variance = budgetVariance(b);
+  const pct = budgetUtilizationPct(b);
+  const status = budgetSpendStatus(b);
+  const tone = status === 'Over Budget' ? 'danger' : status === 'Near Limit' ? 'warning' : 'success';
+  const barColor = status === 'Over Budget' ? 'bg-danger' : status === 'Near Limit' ? 'bg-warning' : 'bg-side-accent';
+  const approvalTone = { Approved: 'success', 'Pending Approval': 'warning', Rejected: 'danger', Draft: 'neutral' }[b.approvalStatus];
+  const canSpend = b.approvalStatus === 'Approved';
+  return `
+    <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
+      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n}</td>
+      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(b.budgetCode)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary min-w-[200px]">
+        <p class="font-medium">${escapeHtml(b.title)}</p>
+        ${b.notes ? `<p class="text-helper text-muted mt-0.5">${escapeHtml(b.notes)}</p>` : ''}
+      </td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(b.department)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(b.fiscalYear)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular text-right">${coaInt(b.budgetedAmount)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular text-right">${coaInt(b.actualSpent)}</td>
+      <td class="px-3 py-2 text-[13.5px] font-semibold whitespace-nowrap tabular text-right ${variance >= 0 ? 'text-success' : 'text-danger'}">${variance < 0 ? '−' : ''}${coaInt(Math.abs(variance))}</td>
+      <td class="px-3 py-2 whitespace-nowrap">
+        <div class="w-24 h-1.5 rounded-full bg-side-line overflow-hidden inline-block align-middle mr-1.5"><div class="h-full ${barColor}" style="width:${Math.min(100, Math.max(0, pct))}%"></div></div>
+        <span class="text-[13px] tabular text-secondary align-middle">${pct.toFixed(0)}%</span>
+      </td>
+      <td class="px-3 py-2">${finPill(status, tone, true)}</td>
+      <td class="px-3 py-2" title="${b.approvedBy ? `Approved by ${escapeHtml(b.approvedBy)}` : ''}">${finPill(b.approvalStatus, approvalTone)}</td>
+      <td class="pr-4 pl-3 py-2 text-right whitespace-nowrap">
+        <button type="button" data-budget-spend="${escapeHtml(b.budgetCode)}" ${canSpend ? '' : 'disabled title="Spend can only be recorded against an approved budget line"'} class="h-7 px-2.5 rounded border border-side-accent/40 text-side-accent text-[12px] font-semibold hover:bg-side-active mr-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent">Record Spend</button>
+        <button type="button" data-budget-remove="${escapeHtml(b.budgetCode)}" class="w-7 h-7 rounded border border-side-border inline-flex items-center justify-center text-muted hover:text-danger hover:bg-dangerSoft" title="Remove">${COA_DELETE_ICON}</button>
+      </td>
+    </tr>`;
+}
+
+function budgetResultsHtml() {
+  const all = budgetFiltered();
+  const totalPages = Math.max(1, Math.ceil(all.length / COA_PAGE_SIZE));
+  budgetFilter.page = Math.min(Math.max(1, budgetFilter.page), totalPages);
+  const start = (budgetFilter.page - 1) * COA_PAGE_SIZE;
+  const rows = all.slice(start, start + COA_PAGE_SIZE);
+  const headers = ['SL', 'Budget Code', 'Title', 'Department', 'Fiscal Year', 'Budgeted (BDT)', 'Actual (BDT)', 'Variance (BDT)', 'Utilization', 'Spend Status', 'Approval', 'Actions'];
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[1400px]">
+        <thead><tr class="border-b border-side-line">
+          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${i >= 5 && i <= 7 || i === headers.length - 1 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows.length ? rows.map((b, i) => budgetRow(b, start + i + 1)).join('') : `<tr><td colspan="12" class="px-4 py-10 text-center"><p class="text-body text-muted">No budget lines match your filters.</p></td></tr>`}</tbody>
+      </table>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
+      <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
+      ${finPager('budgetpage', budgetFilter.page, totalPages)}
+    </div>`;
+}
+
+function budgetCounterText() {
+  return `${budgetFiltered().length} of ${budgetRecords.length} budget line${budgetRecords.length === 1 ? '' : 's'}`;
+}
+
+function renderBudgetManagement(container) {
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      <div id="budgetSummary">${budgetSummaryCards()}</div>
+      ${budgetFilterBar()}
+      <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+        <div class="flex flex-wrap items-start justify-between gap-3 p-4">
+          <div>
+            <h3 class="text-section-title text-primary">Budget Lines</h3>
+            <p id="budgetCounter" class="text-helper text-muted mt-0.5">${budgetCounterText()}</p>
+          </div>
+          <button type="button" id="budgetNew" class="${COA_BTN_PRIMARY}">${COA_PLUS_ICON}New Budget Line</button>
+        </div>
+        <div id="budgetResults">${budgetResultsHtml()}</div>
+      </section>
+    </div>`;
+  budgetBindEvents(container);
+}
+
+// Filters only touch the table and counter; anything that changes the amounts also redraws the
+// summary cards.
+function budgetRefresh(container, withSummary) {
+  container.querySelector('#budgetResults').innerHTML = budgetResultsHtml();
+  container.querySelector('#budgetCounter').textContent = budgetCounterText();
+  if (withSummary) container.querySelector('#budgetSummary').innerHTML = budgetSummaryCards();
+}
+
+function budgetBindEvents(container) {
+  const bind = (id, key, ev) => container.querySelector('#' + id).addEventListener(ev, (e) => { budgetFilter[key] = e.target.value; budgetFilter.page = 1; budgetRefresh(container); });
+  bind('budgetSearch', 'q', 'input');
+  bind('budgetDept', 'department', 'change');
+  bind('budgetFy', 'fiscalYear', 'change');
+  bind('budgetStatus', 'status', 'change');
+
+  container.querySelector('#budgetNew').addEventListener('click', () => budgetOpenNewModal(container));
+
+  container.querySelector('#budgetResults').addEventListener('click', (e) => {
+    const pageBtn = e.target.closest('[data-budgetpage]');
+    if (pageBtn && !pageBtn.disabled) {
+      const totalPages = Math.max(1, Math.ceil(budgetFiltered().length / COA_PAGE_SIZE));
+      const p = pageBtn.dataset.budgetpage;
+      budgetFilter.page = p === 'prev' ? Math.max(1, budgetFilter.page - 1) : p === 'next' ? Math.min(totalPages, budgetFilter.page + 1) : +p;
+      budgetRefresh(container);
+      return;
+    }
+    const spendBtn = e.target.closest('[data-budget-spend]');
+    if (spendBtn && !spendBtn.disabled) { budgetOpenSpendModal(spendBtn.dataset.budgetSpend, container); return; }
+    const removeBtn = e.target.closest('[data-budget-remove]');
+    if (removeBtn) {
+      const i = budgetRecords.findIndex(b => b.budgetCode === removeBtn.dataset.budgetRemove);
+      if (i > -1) budgetRecords.splice(i, 1);
+      budgetRefresh(container, true);
+    }
+  });
+}
+
+function budgetOpenNewModal(container) {
+  const today = new Date().toISOString().slice(0, 10);
+  finOpenModal({
+    id: 'budgetNewModal', title: 'New Budget Line', icon: 'wallet', wide: true, submitLabel: 'Save Budget Line',
+    body: [
+      finFormField('Budget Code', 'code', { value: budgetNextCode(), readonly: true }),
+      finFormField('Budget Title', 'title', { req: true, placeholder: 'e.g. Woven Fabric & Trims Procurement' }),
+      finFormField('Department / Cost Centre', 'department', { options: BUDGET_DEPARTMENTS }),
+      finFormField('Category', 'category', { options: BUDGET_CATEGORIES }),
+      finFormField('Fiscal Year', 'fiscalYear', { options: BUDGET_FISCAL_YEARS, value: BUDGET_FISCAL_YEARS[1] }),
+      finFormField('Period Type', 'periodType', { options: BUDGET_PERIOD_TYPES }),
+      finFormField('Start Date', 'startDate', { type: 'date', value: today }),
+      finFormField('End Date', 'endDate', { type: 'date', value: today }),
+      finFormField('Budgeted Amount (BDT)', 'amount', { type: 'number', req: true, placeholder: '0.00' }),
+      finFormField('Approval Status', 'approvalStatus', { options: BUDGET_APPROVAL_STATUSES }),
+      finFormField('Approved By (optional)', 'approvedBy', { placeholder: 'e.g. Head of Finance' }),
+      finFormField('Notes (optional)', 'notes', { textarea: true, span: true, placeholder: 'Any context for this budget line' }),
+    ].join(''),
+    onSubmit(form) {
+      const v = (n) => finFormVal(form, n);
+      const amount = Number(v('amount')) || 0;
+      if (!v('title')) return 'Enter a budget title.';
+      if (amount <= 0) return 'Enter a budgeted amount greater than zero.';
+      if (!v('startDate') || !v('endDate')) return 'Enter both start and end dates.';
+      if (v('endDate') < v('startDate')) return 'End date cannot be before the start date.';
+      budgetRecords.push({
+        budgetCode: budgetNextCode(), title: v('title'), department: v('department'), category: v('category'),
+        fiscalYear: v('fiscalYear'), periodType: v('periodType'), startDate: v('startDate'), endDate: v('endDate'),
+        budgetedAmount: amount, actualSpent: 0, approvalStatus: v('approvalStatus'), approvedBy: v('approvedBy'), notes: v('notes'),
+      });
+      budgetFilter.page = Math.ceil(budgetFiltered().length / COA_PAGE_SIZE);
+      budgetRefresh(container, true);
+    },
+  });
+}
+
+function budgetOpenSpendModal(code, container) {
+  const b = budgetRecords.find(x => x.budgetCode === code);
+  if (!b) return;
+  finOpenModal({
+    id: 'budgetSpendModal', title: `Record Spend — ${b.budgetCode}`, icon: 'wallet', submitLabel: 'Record Spend',
+    intro: `${escapeHtml(b.title)} — <span class="text-primary font-semibold tabular">BDT ${coaMoney(Math.max(0, budgetVariance(b)))}</span> remaining of BDT ${coaMoney(b.budgetedAmount)}`,
+    body: finFormField('Spend Amount (BDT)', 'amount', { type: 'number', req: true, placeholder: '0.00' }),
+    onSubmit(form) {
+      const amount = Number(finFormVal(form, 'amount')) || 0;
+      if (amount <= 0) return 'Enter a spend amount greater than zero.';
+      b.actualSpent = (b.actualSpent || 0) + amount;
+      budgetRefresh(container, true);
+    },
+  });
+}
+
+// ---------- LC & Export Finance ----------
+// Content ported from the Finance reference build: a register of Letters of Credit (export LCs
+// and the back-to-back / revolving LCs used to finance materials against them), showing how much
+// of each LC's value has been utilized and how much headroom is left before expiry. Status is
+// derived from amount, utilized total and expiry date so it can't drift out of sync.
+const LC_TYPES = ['Export LC - Sight', 'Export LC - Usance', 'Back-to-Back LC', 'Revolving LC'];
+const LC_SHIPMENT_OPTIONS = ['Allowed', 'Not Allowed'];
+const LC_CURRENCIES = COA_CASHBANK_CURRENCIES.slice(1);
+const LC_STATUSES = ['Active', 'Partially Utilized', 'Utilized', 'Expired'];
+
+const lcRecords = [
+  { lcNo: '0123456789012001', lcType: 'Export LC - Sight', issuingBank: 'HSBC Bangladesh', advisingBank: 'City Bank PLC', buyer: 'Everest Apparels Ltd.', contractRef: 'SC-4471', amount: 4500000, currency: 'USD', issueDate: '2026-03-01', expiryDate: '2026-09-30', latestShipmentDate: '2026-09-15', portOfLoading: 'Chattogram', portOfDischarge: 'Rotterdam', partialShipment: 'Allowed', utilized: 2000000 },
+  { lcNo: '0123456789012002', lcType: 'Export LC - Usance', issuingBank: 'Standard Chartered Bank', advisingBank: 'HSBC Bangladesh', buyer: 'Metro Fashion House', contractRef: 'SO-118', amount: 620000, currency: 'USD', issueDate: '2026-04-10', expiryDate: '2026-08-10', latestShipmentDate: '2026-07-25', portOfLoading: 'Chattogram', portOfDischarge: 'Hamburg', partialShipment: 'Not Allowed', utilized: 620000 },
+  { lcNo: '0123456789012003', lcType: 'Back-to-Back LC', issuingBank: 'City Bank PLC', advisingBank: '', buyer: 'ABC Textiles Ltd. (supplier)', contractRef: 'PO-2031', amount: 875000, currency: 'USD', issueDate: '2026-05-01', expiryDate: '2026-11-01', latestShipmentDate: '2026-10-15', portOfLoading: '', portOfDischarge: 'Chattogram', partialShipment: 'Allowed', utilized: 150000 },
+  { lcNo: '0123456789012004', lcType: 'Export LC - Sight', issuingBank: 'Northline Buying House Bankers', advisingBank: 'Dutch-Bangla Bank Ltd.', buyer: 'Northline Buying House', contractRef: 'SMP-77', amount: 85000, currency: 'USD', issueDate: '2026-01-05', expiryDate: '2026-04-05', latestShipmentDate: '2026-03-20', portOfLoading: 'Chattogram', portOfDischarge: 'Felixstowe', partialShipment: 'Not Allowed', utilized: 0 },
+  { lcNo: '0123456789012005', lcType: 'Revolving LC', issuingBank: 'HSBC Bangladesh', advisingBank: '', buyer: 'Everest Apparels Ltd.', contractRef: 'SC-4502', amount: 3100000, currency: 'USD', issueDate: '2026-06-18', expiryDate: '2027-06-18', latestShipmentDate: '2027-06-01', portOfLoading: 'Chattogram', portOfDischarge: 'Rotterdam', partialShipment: 'Allowed', utilized: 0 },
+];
+
+const lcFilter = { q: '', lcType: 'All Types', bank: 'All Banks', status: 'All Statuses', page: 1 };
+
+function lcBalance(l) { return Math.max(0, (l.amount || 0) - (l.utilized || 0)); }
+
+function lcDaysToExpiry(l) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return (new Date(l.expiryDate + 'T00:00:00') - today) / 86400000;
+}
+
+function lcStatus(l) {
+  if (lcBalance(l) <= 0) return 'Utilized';
+  if (lcDaysToExpiry(l) < 0) return 'Expired';
+  return l.utilized > 0 ? 'Partially Utilized' : 'Active';
+}
+
+function lcStatusPill(status) {
+  return finPill(status, { Active: 'success', 'Partially Utilized': 'info', Utilized: 'neutral', Expired: 'danger' }[status], true);
+}
+
+// LCs can be in different currencies, so totals are summed per currency, never across them.
+function lcTotalsText(valueOf, records) {
+  const by = {};
+  (records || lcRecords).forEach(l => { by[l.currency] = (by[l.currency] || 0) + valueOf(l); });
+  const keys = Object.keys(by);
+  return keys.length ? keys.map(c => `${c} ${coaInt(Math.round(by[c]))}`).join(' · ') : '0';
+}
+
+function lcBankOptions() {
+  return Array.from(new Set(lcRecords.map(l => l.issuingBank).filter(Boolean))).sort();
+}
+
+function lcFiltered() {
+  const q = lcFilter.q.trim().toLowerCase();
+  return lcRecords.filter(l => {
+    if (q && !(l.lcNo.toLowerCase().includes(q) || l.buyer.toLowerCase().includes(q) || l.issuingBank.toLowerCase().includes(q) || (l.contractRef || '').toLowerCase().includes(q))) return false;
+    if (lcFilter.lcType !== 'All Types' && l.lcType !== lcFilter.lcType) return false;
+    if (lcFilter.bank !== 'All Banks' && l.issuingBank !== lcFilter.bank) return false;
+    if (lcFilter.status !== 'All Statuses' && lcStatus(l) !== lcFilter.status) return false;
+    return true;
+  });
+}
+
+function lcSummaryCards() {
+  const expiring = lcRecords.filter(l => lcBalance(l) > 0 && lcDaysToExpiry(l) >= 0 && lcDaysToExpiry(l) <= 30).length;
+  return `
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, lcTotalsText(l => l.amount || 0), 'Total LC Value')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, lcTotalsText(l => l.utilized || 0), 'Total Utilized')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_CASH_ICON, lcTotalsText(lcBalance), 'Available Balance')}
+      ${coaCashBankStatCard(AP_AR_ICON_DUESOON, expiring, 'Expiring in 30 Days')}
+    </div>`;
+}
+
+function lcFilterBar() {
+  const opt = (list, sel) => list.map(v => `<option value="${escapeHtml(v)}" ${v === sel ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div>
+          <span class="block text-label font-medium text-secondary mb-1">Search</span>
+          <div class="relative">
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input id="lcSearch" type="text" value="${escapeHtml(lcFilter.q)}" placeholder="Search LC no., buyer, bank or contract…" class="${COA_INPUT} pl-9" />
+          </div>
+        </div>
+        ${coaField('LC Type', `<select id="lcTypeFilter" class="${COA_INPUT}">${opt(['All Types', ...LC_TYPES], lcFilter.lcType)}</select>`)}
+        ${coaField('Issuing Bank', `<select id="lcBankFilter" class="${COA_INPUT}">${opt(['All Banks', ...lcBankOptions()], lcFilter.bank)}</select>`)}
+        ${coaField('Status', `<select id="lcStatusFilter" class="${COA_INPUT}">${opt(['All Statuses', ...LC_STATUSES], lcFilter.status)}</select>`)}
+      </div>
+    </section>`;
+}
+
+function lcRow(l, n) {
+  const balance = lcBalance(l);
+  const status = lcStatus(l);
+  return `
+    <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
+      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n}</td>
+      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(l.lcNo)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(l.lcType)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(l.issuingBank)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(l.buyer)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${coaFormatDateDisplay(l.expiryDate)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary font-semibold whitespace-nowrap tabular text-right">${coaInt(l.amount)} ${escapeHtml(l.currency)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular text-right">${coaInt(l.utilized)}</td>
+      <td class="px-3 py-2 text-[13.5px] font-semibold whitespace-nowrap tabular text-right ${balance > 0 ? 'text-success' : 'text-secondary'}">${coaInt(balance)}</td>
+      <td class="px-3 py-2">${lcStatusPill(status)}</td>
+      <td class="pr-4 pl-3 py-2 text-right whitespace-nowrap">
+        ${balance > 0 && status !== 'Expired' ? `<button type="button" data-lc-utilize="${escapeHtml(l.lcNo)}" class="h-7 px-2.5 rounded border border-side-accent/40 text-side-accent text-[12px] font-semibold hover:bg-side-active mr-1.5">Utilize</button>` : ''}
+        <button type="button" data-lc-remove="${escapeHtml(l.lcNo)}" class="w-7 h-7 rounded border border-side-border inline-flex items-center justify-center text-muted hover:text-danger hover:bg-dangerSoft" title="Remove">${COA_DELETE_ICON}</button>
+      </td>
+    </tr>`;
+}
+
+function lcResultsHtml() {
+  const all = lcFiltered();
+  const totalPages = Math.max(1, Math.ceil(all.length / COA_PAGE_SIZE));
+  lcFilter.page = Math.min(Math.max(1, lcFilter.page), totalPages);
+  const start = (lcFilter.page - 1) * COA_PAGE_SIZE;
+  const rows = all.slice(start, start + COA_PAGE_SIZE);
+  const headers = ['SL', 'LC No.', 'Type', 'Issuing Bank', 'Buyer', 'Expiry', 'LC Value', 'Utilized', 'Balance', 'Status', 'Actions'];
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[1250px]">
+        <thead><tr class="border-b border-side-line">
+          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${i >= 6 && i <= 8 || i === headers.length - 1 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows.length ? rows.map((l, i) => lcRow(l, start + i + 1)).join('') : `<tr><td colspan="11" class="px-4 py-10 text-center"><p class="text-body text-muted">No LC records match your filters.</p></td></tr>`}</tbody>
+      </table>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
+      <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
+      ${finPager('lcpage', lcFilter.page, totalPages)}
+    </div>`;
+}
+
+function lcCounterText() {
+  return `${lcFiltered().length} of ${lcRecords.length} record${lcRecords.length === 1 ? '' : 's'}`;
+}
+
+function renderLcExportFinance(container) {
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      <div id="lcSummary">${lcSummaryCards()}</div>
+      ${lcFilterBar()}
+      <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+        <div class="flex flex-wrap items-start justify-between gap-3 p-4">
+          <div>
+            <h3 class="text-section-title text-primary">LC &amp; Export Finance Register</h3>
+            <p id="lcCounter" class="text-helper text-muted mt-0.5">${lcCounterText()}</p>
+          </div>
+          <button type="button" id="lcNew" class="${COA_BTN_PRIMARY}">${COA_PLUS_ICON}New LC Record</button>
+        </div>
+        <div id="lcResults">${lcResultsHtml()}</div>
+      </section>
+    </div>`;
+  lcBindEvents(container);
+}
+
+function lcRefresh(container, withSummary) {
+  container.querySelector('#lcResults').innerHTML = lcResultsHtml();
+  container.querySelector('#lcCounter').textContent = lcCounterText();
+  if (withSummary) {
+    container.querySelector('#lcSummary').innerHTML = lcSummaryCards();
+    // A new issuing bank may have appeared, or the last LC for one may be gone.
+    const bankSel = container.querySelector('#lcBankFilter');
+    const banks = lcBankOptions();
+    if (lcFilter.bank !== 'All Banks' && !banks.includes(lcFilter.bank)) lcFilter.bank = 'All Banks';
+    bankSel.innerHTML = ['All Banks', ...banks].map(v => `<option value="${escapeHtml(v)}" ${v === lcFilter.bank ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+  }
+}
+
+function lcBindEvents(container) {
+  const bind = (id, key, ev) => container.querySelector('#' + id).addEventListener(ev, (e) => { lcFilter[key] = e.target.value; lcFilter.page = 1; lcRefresh(container); });
+  bind('lcSearch', 'q', 'input');
+  bind('lcTypeFilter', 'lcType', 'change');
+  bind('lcBankFilter', 'bank', 'change');
+  bind('lcStatusFilter', 'status', 'change');
+
+  container.querySelector('#lcNew').addEventListener('click', () => lcOpenNewModal(container));
+
+  container.querySelector('#lcResults').addEventListener('click', (e) => {
+    const pageBtn = e.target.closest('[data-lcpage]');
+    if (pageBtn && !pageBtn.disabled) {
+      const totalPages = Math.max(1, Math.ceil(lcFiltered().length / COA_PAGE_SIZE));
+      const p = pageBtn.dataset.lcpage;
+      lcFilter.page = p === 'prev' ? Math.max(1, lcFilter.page - 1) : p === 'next' ? Math.min(totalPages, lcFilter.page + 1) : +p;
+      lcRefresh(container);
+      return;
+    }
+    const utilBtn = e.target.closest('[data-lc-utilize]');
+    if (utilBtn) { lcOpenUtilizeModal(utilBtn.dataset.lcUtilize, container); return; }
+    const removeBtn = e.target.closest('[data-lc-remove]');
+    if (removeBtn) {
+      const i = lcRecords.findIndex(l => l.lcNo === removeBtn.dataset.lcRemove);
+      if (i > -1) lcRecords.splice(i, 1);
+      lcRefresh(container, true);
+    }
+  });
+}
+
+// LC no., type, issuing bank, buyer, value, currency and the three dates are what a bank or
+// auditor expects on file; advising bank, contract ref and ports are supporting detail.
+function lcOpenNewModal(container) {
+  const today = new Date().toISOString().slice(0, 10);
+  finOpenModal({
+    id: 'lcNewModal', title: 'New LC / Export Finance Record', icon: 'doc', wide: true, submitLabel: 'Save Record',
+    body: [
+      finFormField('LC Number', 'lcNo', { req: true, placeholder: 'e.g. 0123456789012006' }),
+      finFormField('LC Type', 'lcType', { options: LC_TYPES }),
+      finFormField('Issuing Bank', 'issuingBank', { req: true, placeholder: 'e.g. HSBC Bangladesh' }),
+      finFormField('Advising Bank (optional)', 'advisingBank', { placeholder: 'e.g. City Bank PLC' }),
+      finFormField('Buyer / Applicant', 'buyer', { req: true, placeholder: 'e.g. Everest Apparels Ltd.' }),
+      finFormField('Sales Contract / PO Ref. (optional)', 'contractRef', { placeholder: 'e.g. SC-4471' }),
+      finFormField('LC Amount', 'amount', { type: 'number', req: true, placeholder: '0.00' }),
+      finFormField('Currency', 'currency', { options: LC_CURRENCIES, value: 'USD' }),
+      finFormField('Partial Shipment', 'partialShipment', { options: LC_SHIPMENT_OPTIONS }),
+      finFormField('Issue Date', 'issueDate', { type: 'date', value: today }),
+      finFormField('Expiry Date', 'expiryDate', { type: 'date', value: today }),
+      finFormField('Latest Shipment Date', 'latestShipmentDate', { type: 'date', value: today }),
+      finFormField('Port of Loading (optional)', 'portOfLoading', { placeholder: 'e.g. Chattogram' }),
+      finFormField('Port of Discharge (optional)', 'portOfDischarge', { placeholder: 'e.g. Rotterdam' }),
+    ].join(''),
+    onSubmit(form) {
+      const v = (n) => finFormVal(form, n);
+      const amount = Number(v('amount')) || 0;
+      if (!v('lcNo')) return 'Enter the LC number.';
+      if (lcRecords.some(l => l.lcNo === v('lcNo'))) return `LC ${v('lcNo')} is already on file.`;
+      if (!v('issuingBank')) return 'Enter the issuing bank.';
+      if (!v('buyer')) return 'Enter the buyer / applicant.';
+      if (amount <= 0) return 'Enter an LC amount greater than zero.';
+      if (!v('issueDate') || !v('expiryDate') || !v('latestShipmentDate')) return 'Enter the issue, expiry and latest shipment dates.';
+      if (v('expiryDate') < v('issueDate')) return 'Expiry date cannot be before the issue date.';
+      if (v('latestShipmentDate') > v('expiryDate')) return 'Latest shipment date cannot be after the expiry date.';
+      lcRecords.push({
+        lcNo: v('lcNo'), lcType: v('lcType'), issuingBank: v('issuingBank'), advisingBank: v('advisingBank'),
+        buyer: v('buyer'), contractRef: v('contractRef'), amount, currency: v('currency'),
+        issueDate: v('issueDate'), expiryDate: v('expiryDate'), latestShipmentDate: v('latestShipmentDate'),
+        portOfLoading: v('portOfLoading'), portOfDischarge: v('portOfDischarge'), partialShipment: v('partialShipment'), utilized: 0,
+      });
+      lcFilter.page = Math.ceil(lcFiltered().length / COA_PAGE_SIZE);
+      lcRefresh(container, true);
+    },
+  });
+}
+
+function lcOpenUtilizeModal(lcNo, container) {
+  const l = lcRecords.find(x => x.lcNo === lcNo);
+  if (!l) return;
+  const balance = lcBalance(l);
+  finOpenModal({
+    id: 'lcUtilizeModal', title: `Record Utilization — ${l.lcNo}`, icon: 'doc', submitLabel: 'Record Utilization',
+    intro: `${escapeHtml(l.buyer)} — available balance <span class="text-primary font-semibold tabular">${escapeHtml(l.currency)} ${coaMoney(balance)}</span>`,
+    body: finFormField(`Utilization Amount (${l.currency})`, 'amount', { type: 'number', req: true, value: balance }),
+    onSubmit(form) {
+      const amount = Number(finFormVal(form, 'amount')) || 0;
+      if (amount <= 0 || amount > balance + 0.005) return `Enter an amount between 0 and ${l.currency} ${coaMoney(balance)}.`;
+      l.utilized = (l.utilized || 0) + amount;
+      lcRefresh(container, true);
+    },
+  });
+}
+
+// ---------- Audit ----------
+// Content ported from the Finance reference build: one home for audit findings raised against any
+// Finance area (internal, external, statutory, VAT or tax audits), plus an on-demand report
+// generator that summarises the live data already on file in VAT & Tax, Budget Management,
+// Cash & Bank and LC & Export Finance.
+const AUDIT_AREAS = ['Chart of Accounts', 'Voucher Management', 'Accounts Payable & Receivable', 'Cash & Bank', 'VAT & Tax', 'LC & Export Finance', 'Budget Management', 'Financial Statements'];
+const AUDIT_TYPES = ['Internal Audit', 'External Audit', 'Statutory Audit', 'VAT Audit', 'Tax Audit'];
+const AUDIT_RISK_LEVELS = ['Low', 'Medium', 'High'];
+const AUDIT_STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed'];
+const AUDIT_REPORT_TYPES = [
+  { key: 'vat', label: 'VAT & Tax Summary (Mushak 6.3)' },
+  { key: 'budget', label: 'Budget Variance Summary' },
+  { key: 'cashbank', label: 'Cash & Bank Position' },
+  { key: 'lc', label: 'LC & Export Finance Summary' },
+  { key: 'findings', label: 'Audit Findings Summary' },
+];
+
+const auditFindings = [
+  { auditRef: 'AUD-0001', area: 'VAT & Tax', auditType: 'VAT Audit', auditorName: 'NBR VAT Circle Team', date: '2026-06-20', observation: 'Two Mushak 6.3 tax invoices were on file without the buyer’s BIN recorded.', riskLevel: 'Medium', status: 'In Progress', recommendation: 'Make the buyer BIN field mandatory before a Mushak 6.3 can be saved, with an explicit unregistered-buyer override.', followUpDate: '2026-07-15' },
+  { auditRef: 'AUD-0002', area: 'Cash & Bank', auditType: 'Internal Audit', auditorName: 'Internal Audit Dept.', date: '2026-05-10', observation: 'Factory Floor Petty Cash account has shown a nil balance for over a month with no replenishment entry.', riskLevel: 'Low', status: 'Resolved', recommendation: 'Replenish the petty cash float and set a minimum-balance alert.', followUpDate: '2026-05-25' },
+  { auditRef: 'AUD-0003', area: 'Budget Management', auditType: 'Internal Audit', auditorName: 'Internal Audit Dept.', date: '2026-07-05', observation: 'Sample & Development budget line was exceeded without a prior approval addendum on file.', riskLevel: 'High', status: 'Open', recommendation: 'Require an approval addendum before actual spend can exceed the budgeted amount on a line.', followUpDate: '2026-07-20' },
+];
+
+const auditFilter = { q: '', area: 'All Areas', risk: 'All Risk Levels', status: 'All Statuses', page: 1 };
+const auditReport = { type: 'vat', from: '', to: '', generated: false };
+
+function auditNextRef() {
+  const max = auditFindings.reduce((m, a) => Math.max(m, parseInt((a.auditRef.split('-')[1] || '0'), 10) || 0), 0);
+  return `AUD-${String(max + 1).padStart(4, '0')}`;
+}
+
+function auditInRange(dateStr, from, to) {
+  if (!dateStr) return true;
+  if (from && dateStr < from) return false;
+  if (to && dateStr > to) return false;
+  return true;
+}
+
+function auditFiltered() {
+  const q = auditFilter.q.trim().toLowerCase();
+  return auditFindings.filter(a => {
+    if (q && !(a.auditRef.toLowerCase().includes(q) || a.observation.toLowerCase().includes(q) || a.area.toLowerCase().includes(q))) return false;
+    if (auditFilter.area !== 'All Areas' && a.area !== auditFilter.area) return false;
+    if (auditFilter.risk !== 'All Risk Levels' && a.riskLevel !== auditFilter.risk) return false;
+    if (auditFilter.status !== 'All Statuses' && a.status !== auditFilter.status) return false;
+    return true;
+  });
+}
+
+function auditRiskPill(risk) {
+  return finPill(risk, { Low: 'success', Medium: 'warning', High: 'danger' }[risk], true);
+}
+
+const AUDIT_STATUS_TEXT = { Open: 'text-danger', 'In Progress': 'text-warning', Resolved: 'text-info', Closed: 'text-secondary' };
+
+function auditSummaryCards() {
+  const unresolved = (a) => a.status === 'Open' || a.status === 'In Progress';
+  return `
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      ${coaCashBankStatCard(AP_AR_ICON_OUTSTANDING, auditFindings.length, 'Total Findings Logged')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, auditFindings.filter(unresolved).length, 'Open / In Progress')}
+      ${coaCashBankStatCard(AP_AR_ICON_OVERDUE, auditFindings.filter(a => a.riskLevel === 'High' && unresolved(a)).length, 'Unresolved High Risk')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, auditFindings.filter(a => !unresolved(a)).length, 'Resolved / Closed')}
+    </div>`;
+}
+
+// ---- Report Generator: a point-in-time summary computed from each area's live data ----
+function auditReportRow(label, value) {
+  return `<tr class="border-b border-side-line last:border-b-0"><td class="py-1.5 pr-6 text-[13.5px] text-secondary">${escapeHtml(label)}</td><td class="py-1.5 text-[13.5px] text-primary font-semibold text-right tabular whitespace-nowrap">${escapeHtml(String(value))}</td></tr>`;
+}
+
+function auditReportHtml() {
+  const r = auditReport;
+  const rangeNote = (r.from || r.to) ? ` for ${r.from ? coaFormatDateDisplay(r.from) : 'the start'} to ${r.to ? coaFormatDateDisplay(r.to) : 'today'}` : ' (all dates on file)';
+  const bdt = (n) => `BDT ${coaInt(Math.round(n))}`;
+  let title, note, rows;
+
+  if (r.type === 'vat') {
+    const list = vatInvoices.filter(v => v.status === 'Issued' && auditInRange(v.issueDate, r.from, r.to));
+    let taxable = 0, vat = 0;
+    list.forEach(v => { const c = vatCalc(v); taxable += c.taxable; vat += c.vatAmount; });
+    title = 'VAT & Tax Summary'; note = `Mushak 6.3 invoices issued${rangeNote}`;
+    rows = [['Mushak 6.3 Invoices Issued', list.length], ['Total Taxable Value', bdt(taxable)], ['Total Output VAT', bdt(vat)], ['Total Invoice Value', bdt(taxable + vat)]];
+  } else if (r.type === 'budget') {
+    const list = budgetRecords.filter(b => (!r.to || b.startDate <= r.to) && (!r.from || b.endDate >= r.from));
+    let budgeted = 0, spent = 0, over = 0;
+    list.forEach(b => { budgeted += b.budgetedAmount || 0; spent += b.actualSpent || 0; if (budgetSpendStatus(b) === 'Over Budget') over += 1; });
+    title = 'Budget Variance Summary'; note = `Budget lines active${rangeNote}`;
+    rows = [['Budget Lines', list.length], ['Total Budgeted', bdt(budgeted)], ['Total Actual Spend', bdt(spent)], ['Remaining Balance', bdt(budgeted - spent)], ['Lines Over Budget', over]];
+  } else if (r.type === 'cashbank') {
+    const by = {};
+    coaCashBankAccounts.forEach(c => { by[c.currency] = (by[c.currency] || 0) + (c.currentBalance || 0); });
+    title = 'Cash & Bank Position'; note = 'Snapshot as of today — not affected by the date range';
+    rows = [['Accounts on File', coaCashBankAccounts.length], ['Active Accounts', coaCashBankAccounts.filter(c => c.status === 'Active').length], ...Object.keys(by).map(cur => [`Balance (${cur})`, coaInt(by[cur])])];
+  } else if (r.type === 'lc') {
+    const list = lcRecords.filter(l => auditInRange(l.issueDate, r.from, r.to));
+    title = 'LC & Export Finance Summary'; note = `Letters of Credit issued${rangeNote}`;
+    rows = [['LCs on File', list.length], ['Total LC Value', lcTotalsText(l => l.amount || 0, list)], ['Total Utilized', lcTotalsText(l => l.utilized || 0, list)], ['Available Balance', lcTotalsText(lcBalance, list)], ['Expiring in 30 Days', list.filter(l => lcBalance(l) > 0 && lcDaysToExpiry(l) >= 0 && lcDaysToExpiry(l) <= 30).length]];
+  } else {
+    const list = auditFindings.filter(a => auditInRange(a.date, r.from, r.to));
+    title = 'Audit Findings Summary'; note = `Findings logged${rangeNote}`;
+    rows = [['Total Findings', list.length], ...AUDIT_STATUSES.map(s => [s, list.filter(a => a.status === s).length]), ...AUDIT_RISK_LEVELS.map(s => [`${s} Risk`, list.filter(a => a.riskLevel === s).length])];
+  }
+  return `
+    <div class="p-4 border-t border-side-line">
+      <h4 class="text-body-medium text-primary">Report: ${escapeHtml(title)}</h4>
+      <p class="text-helper text-muted mt-0.5 mb-2.5">${escapeHtml(note)}</p>
+      <table class="w-full max-w-md">${rows.map(([l, v]) => auditReportRow(l, v)).join('')}</table>
+    </div>`;
+}
+
+function auditReportCard() {
+  const r = auditReport;
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="p-4"><h3 class="text-section-title text-primary">Report Generator</h3></div>
+      <div class="px-4 pb-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+          ${coaField('Report Type', `<select id="auditReportType" class="${COA_INPUT}">${AUDIT_REPORT_TYPES.map(t => `<option value="${t.key}" ${t.key === r.type ? 'selected' : ''}>${escapeHtml(t.label)}</option>`).join('')}</select>`)}
+          ${coaField('From (optional)', `<input id="auditReportFrom" type="date" value="${escapeHtml(r.from)}" class="${COA_INPUT} tabular" />`)}
+          ${coaField('To (optional)', `<input id="auditReportTo" type="date" value="${escapeHtml(r.to)}" class="${COA_INPUT} tabular" />`)}
+          <button type="button" id="auditReportGenerate" class="${COA_BTN_PRIMARY} justify-center">Generate Report</button>
+        </div>
+        <p class="text-helper text-muted mt-2.5">The date range applies to VAT &amp; Tax, LC &amp; Export Finance and Audit Findings. Budget lines are matched by overlap; Cash &amp; Bank is always today's snapshot.</p>
+      </div>
+      <div id="auditReportOut">${r.generated ? auditReportHtml() : ''}</div>
+    </section>`;
+}
+
+function auditFilterBar() {
+  const opt = (list, sel) => list.map(v => `<option value="${escapeHtml(v)}" ${v === sel ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div>
+          <span class="block text-label font-medium text-secondary mb-1">Search</span>
+          <div class="relative">
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input id="auditSearch" type="text" value="${escapeHtml(auditFilter.q)}" placeholder="Search ref., area or observation…" class="${COA_INPUT} pl-9" />
+          </div>
+        </div>
+        ${coaField('Area', `<select id="auditAreaFilter" class="${COA_INPUT}">${opt(['All Areas', ...AUDIT_AREAS], auditFilter.area)}</select>`)}
+        ${coaField('Risk Level', `<select id="auditRiskFilter" class="${COA_INPUT}">${opt(['All Risk Levels', ...AUDIT_RISK_LEVELS], auditFilter.risk)}</select>`)}
+        ${coaField('Status', `<select id="auditStatusFilter" class="${COA_INPUT}">${opt(['All Statuses', ...AUDIT_STATUSES], auditFilter.status)}</select>`)}
+      </div>
+    </section>`;
+}
+
+function auditRow(a, n) {
+  const followUpOverdue = (a.status === 'Open' || a.status === 'In Progress') && a.followUpDate && a.followUpDate < new Date().toISOString().slice(0, 10);
+  return `
+    <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover align-top">
+      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n}</td>
+      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.auditRef)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${coaFormatDateDisplay(a.date)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(a.area)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(a.auditType)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary min-w-[280px] max-w-md">
+        <p>${escapeHtml(a.observation)}</p>
+        ${a.recommendation ? `<p class="text-helper text-muted mt-1"><span class="font-semibold text-secondary">Recommendation:</span> ${escapeHtml(a.recommendation)}</p>` : ''}
+      </td>
+      <td class="px-3 py-2 whitespace-nowrap">${auditRiskPill(a.riskLevel)}</td>
+      <td class="px-3 py-2 text-[13.5px] whitespace-nowrap tabular ${followUpOverdue ? 'text-danger font-semibold' : 'text-secondary'}">${a.followUpDate ? coaFormatDateDisplay(a.followUpDate) : '—'}</td>
+      <td class="px-3 py-2">
+        <select data-audit-status="${escapeHtml(a.auditRef)}" aria-label="Status of ${escapeHtml(a.auditRef)}" class="h-7 px-2 rounded border border-side-border bg-canvas text-[12px] font-semibold ${AUDIT_STATUS_TEXT[a.status]} focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent">
+          ${AUDIT_STATUSES.map(s => `<option value="${s}" ${s === a.status ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </td>
+      <td class="pr-4 pl-3 py-2 text-right whitespace-nowrap">
+        <button type="button" data-audit-remove="${escapeHtml(a.auditRef)}" class="w-7 h-7 rounded border border-side-border inline-flex items-center justify-center text-muted hover:text-danger hover:bg-dangerSoft" title="Remove">${COA_DELETE_ICON}</button>
+      </td>
+    </tr>`;
+}
+
+function auditResultsHtml() {
+  const all = auditFiltered();
+  const totalPages = Math.max(1, Math.ceil(all.length / COA_PAGE_SIZE));
+  auditFilter.page = Math.min(Math.max(1, auditFilter.page), totalPages);
+  const start = (auditFilter.page - 1) * COA_PAGE_SIZE;
+  const rows = all.slice(start, start + COA_PAGE_SIZE);
+  const headers = ['SL', 'Audit Ref.', 'Date', 'Area', 'Audit Type', 'Observation', 'Risk', 'Follow-up', 'Status', 'Actions'];
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[1250px]">
+        <thead><tr class="border-b border-side-line">
+          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${i === headers.length - 1 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows.length ? rows.map((a, i) => auditRow(a, start + i + 1)).join('') : `<tr><td colspan="10" class="px-4 py-10 text-center"><p class="text-body text-muted">No audit findings match your filters.</p></td></tr>`}</tbody>
+      </table>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
+      <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
+      ${finPager('auditpage', auditFilter.page, totalPages)}
+    </div>`;
+}
+
+function auditCounterText() {
+  return `${auditFiltered().length} of ${auditFindings.length} finding${auditFindings.length === 1 ? '' : 's'}`;
+}
+
+function renderFinanceAudit(container) {
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      <div id="auditSummary">${auditSummaryCards()}</div>
+      ${auditReportCard()}
+      ${auditFilterBar()}
+      <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+        <div class="flex flex-wrap items-start justify-between gap-3 p-4">
+          <div>
+            <h3 class="text-section-title text-primary">Audit Findings Register</h3>
+            <p id="auditCounter" class="text-helper text-muted mt-0.5">${auditCounterText()}</p>
+          </div>
+          <button type="button" id="auditNew" class="${COA_BTN_PRIMARY}">${COA_PLUS_ICON}New Audit Finding</button>
+        </div>
+        <div id="auditResults">${auditResultsHtml()}</div>
+      </section>
+    </div>`;
+  auditBindEvents(container);
+}
+
+function auditRefresh(container, withSummary) {
+  container.querySelector('#auditResults').innerHTML = auditResultsHtml();
+  container.querySelector('#auditCounter').textContent = auditCounterText();
+  if (withSummary) container.querySelector('#auditSummary').innerHTML = auditSummaryCards();
+  // The findings summary report reads this same list, so keep it current once generated.
+  if (withSummary && auditReport.generated) container.querySelector('#auditReportOut').innerHTML = auditReportHtml();
+}
+
+function auditBindEvents(container) {
+  const bind = (id, key, ev) => container.querySelector('#' + id).addEventListener(ev, (e) => { auditFilter[key] = e.target.value; auditFilter.page = 1; auditRefresh(container); });
+  bind('auditSearch', 'q', 'input');
+  bind('auditAreaFilter', 'area', 'change');
+  bind('auditRiskFilter', 'risk', 'change');
+  bind('auditStatusFilter', 'status', 'change');
+
+  container.querySelector('#auditNew').addEventListener('click', () => auditOpenNewModal(container));
+
+  container.querySelector('#auditReportGenerate').addEventListener('click', () => {
+    auditReport.type = container.querySelector('#auditReportType').value;
+    auditReport.from = container.querySelector('#auditReportFrom').value;
+    auditReport.to = container.querySelector('#auditReportTo').value;
+    auditReport.generated = true;
+    container.querySelector('#auditReportOut').innerHTML = auditReportHtml();
+  });
+
+  const results = container.querySelector('#auditResults');
+  results.addEventListener('click', (e) => {
+    const pageBtn = e.target.closest('[data-auditpage]');
+    if (pageBtn && !pageBtn.disabled) {
+      const totalPages = Math.max(1, Math.ceil(auditFiltered().length / COA_PAGE_SIZE));
+      const p = pageBtn.dataset.auditpage;
+      auditFilter.page = p === 'prev' ? Math.max(1, auditFilter.page - 1) : p === 'next' ? Math.min(totalPages, auditFilter.page + 1) : +p;
+      auditRefresh(container);
+      return;
+    }
+    const removeBtn = e.target.closest('[data-audit-remove]');
+    if (removeBtn) {
+      const i = auditFindings.findIndex(a => a.auditRef === removeBtn.dataset.auditRemove);
+      if (i > -1) auditFindings.splice(i, 1);
+      auditRefresh(container, true);
+    }
+  });
+  results.addEventListener('change', (e) => {
+    if (!e.target.dataset.auditStatus) return;
+    const a = auditFindings.find(x => x.auditRef === e.target.dataset.auditStatus);
+    if (a) a.status = e.target.value;
+    auditRefresh(container, true);
+  });
+}
+
+function auditOpenNewModal(container) {
+  const today = new Date().toISOString().slice(0, 10);
+  finOpenModal({
+    id: 'auditNewModal', title: 'New Audit Finding', icon: 'doc', wide: true, submitLabel: 'Save Finding',
+    body: [
+      finFormField('Audit Ref.', 'ref', { value: auditNextRef(), readonly: true }),
+      finFormField('Area', 'area', { options: AUDIT_AREAS }),
+      finFormField('Audit Type', 'auditType', { options: AUDIT_TYPES }),
+      finFormField('Auditor Name', 'auditor', { req: true, placeholder: 'e.g. Internal Audit Dept.' }),
+      finFormField('Date', 'date', { type: 'date', value: today }),
+      finFormField('Risk Level', 'risk', { options: AUDIT_RISK_LEVELS }),
+      finFormField('Status', 'status', { options: AUDIT_STATUSES }),
+      finFormField('Follow-up Date (optional)', 'followUp', { type: 'date' }),
+      finFormField('Observation / Finding', 'observation', { textarea: true, span: true, req: true, placeholder: 'What was found during the audit' }),
+      finFormField('Recommendation (optional)', 'recommendation', { textarea: true, span: true, placeholder: 'Corrective action recommended' }),
+    ].join(''),
+    onSubmit(form) {
+      const v = (n) => finFormVal(form, n);
+      if (!v('auditor')) return 'Enter the auditor name.';
+      if (!v('date')) return 'Enter the audit date.';
+      if (!v('observation')) return 'Describe what was found.';
+      if (v('followUp') && v('followUp') < v('date')) return 'Follow-up date cannot be before the audit date.';
+      auditFindings.push({
+        auditRef: auditNextRef(), area: v('area'), auditType: v('auditType'), auditorName: v('auditor'), date: v('date'),
+        observation: v('observation'), riskLevel: v('risk'), status: v('status'), recommendation: v('recommendation'), followUpDate: v('followUp'),
+      });
+      auditFilter.page = Math.ceil(auditFiltered().length / COA_PAGE_SIZE);
+      auditRefresh(container, true);
+    },
+  });
+}
+
+// ---------- Financial Statements ----------
+// Content ported from the Finance reference build: Trial Balance, General Ledger, Profit & Loss
+// and Balance Sheet, all computed from the account lines saved by every posted Journal Entry and
+// voucher (coaJournalEntries). Nothing here is stored — each tab is recomputed from the ledger.
+const FS_TABS = ['Trial Balance', 'General Ledger', 'Profit & Loss', 'Balance Sheet'];
+const fsState = { ledgerAccount: '' };
+
+function fsBalances() {
+  const by = {};
+  coaJournalEntries.forEach(e => e.lines.forEach(l => {
+    const x = by[l.account] || (by[l.account] = { debit: 0, credit: 0 });
+    x.debit += l.debit; x.credit += l.credit;
+  }));
+  return by;
+}
+
+// Net balance on the account's normal side (debit-normal: Dr − Cr; credit-normal: Cr − Dr). A
+// contra account (e.g. Accumulated Depreciation) simply comes out negative.
+function fsNet(acc, by) {
+  const x = by[acc.code] || { debit: 0, credit: 0 };
+  return acc.normal === 'debit' ? x.debit - x.credit : x.credit - x.debit;
+}
+
+function fsSection(catKey, by) {
+  const rows = coaAllAccounts().filter(a => a.cat === catKey).map(a => ({ code: a.code, name: a.name, amount: fsNet(a, by) })).filter(r => Math.abs(r.amount) > 0.004);
+  return { rows, total: rows.reduce((s, r) => s + r.amount, 0) };
+}
+
+// Signed BDT amount with a true minus sign, used wherever a total can go negative.
+function fsMoney(n) { return `${n < -0.004 ? '−' : ''}${coaMoney(Math.abs(n))}`; }
+
+function fsBalancedPill(ok) { return finPill(ok ? 'Balanced' : 'Not balanced', ok ? 'success' : 'danger'); }
+
+function fsEmptyCard(what) {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow px-6 py-12 text-center">
+      <p class="text-body text-muted">No journal entries yet — post a voucher from Voucher Management to see ${what} here.</p>
+    </section>`;
+}
+
+function fsTableHead(cols) {
+  return `<thead><tr class="border-b border-side-line">${cols.map(([h, right], i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === cols.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${right ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}</tr></thead>`;
+}
+
+function fsAmountRows(rows, emptyText) {
+  return rows.length ? rows.map(r => `
+    <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
+      <td class="pl-4 pr-2 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(r.code)}</td>
+      <td class="px-3 py-2 text-[13.5px] text-primary">${escapeHtml(r.name)}</td>
+      <td class="pr-4 pl-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${fsMoney(r.amount)}</td>
+    </tr>`).join('') : `<tr><td colspan="3" class="px-4 py-6 text-center text-[13.5px] text-muted">${emptyText}</td></tr>`;
+}
+
+function fsSectionCard(title, section, totalLabel, emptyText) {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="p-4"><h3 class="text-section-title text-primary">${escapeHtml(title)}</h3></div>
+      <div class="overflow-x-auto border-t border-side-line">
+        <table class="w-full">${fsTableHead([['Code'], ['Account'], ['Amount (BDT)', true]])}<tbody>${fsAmountRows(section.rows, emptyText)}</tbody></table>
+      </div>
+      <div class="flex items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
+        <p class="text-body-medium text-secondary">${escapeHtml(totalLabel)}</p>
+        <p class="text-[15px] font-semibold text-primary tabular">BDT ${fsMoney(section.total)}</p>
+      </div>
+    </section>`;
+}
+
+function fsTrialHtml() {
+  const by = fsBalances();
+  let totalDr = 0, totalCr = 0;
+  const rows = [];
+  coaAllAccounts().forEach(a => {
+    const x = by[a.code];
+    if (!x) return;
+    const net = x.debit - x.credit;
+    if (Math.abs(net) < 0.005) return;
+    const dr = net > 0 ? net : 0, cr = net < 0 ? -net : 0;
+    totalDr += dr; totalCr += cr;
+    rows.push(`
+      <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
+        <td class="pl-4 pr-2 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
+        <td class="px-3 py-2 text-[13.5px] text-primary">${escapeHtml(a.name)}</td>
+        <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(a.catLabel)}</td>
+        <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${dr ? coaMoney(dr) : ''}</td>
+        <td class="pr-4 pl-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${cr ? coaMoney(cr) : ''}</td>
+      </tr>`);
+  });
+  if (!rows.length) return fsEmptyCard('balances');
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="p-4">
+        <h3 class="text-section-title text-primary">Trial Balance</h3>
+        <p class="text-helper text-muted mt-0.5">${rows.length} account${rows.length === 1 ? '' : 's'} with a balance</p>
+      </div>
+      <div class="overflow-x-auto border-t border-side-line">
+        <table class="w-full min-w-[640px]">${fsTableHead([['Code'], ['Account'], ['Category'], ['Debit (BDT)', true], ['Credit (BDT)', true]])}<tbody>${rows.join('')}</tbody></table>
+      </div>
+      <div class="flex flex-wrap items-center justify-end gap-8 px-4 py-3.5 border-t border-side-line">
+        <div class="text-right"><p class="text-micro text-muted mb-0.5">Total Debit</p><p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(totalDr)}</p></div>
+        <div class="text-right"><p class="text-micro text-muted mb-0.5">Total Credit</p><p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(totalCr)}</p></div>
+        ${fsBalancedPill(Math.abs(totalDr - totalCr) < 0.005)}
+      </div>
+    </section>`;
+}
+
+function fsLedgerHtml() {
+  const selected = fsState.ledgerAccount || coaAccountList()[0];
+  const acc = coaFindAccount(selected);
+  const lines = [];
+  coaJournalEntries.forEach((e, idx) => e.lines.forEach(l => { if (acc && l.account === acc.code) lines.push({ e, l, idx }); }));
+  lines.sort((a, b) => (a.e.date < b.e.date ? -1 : a.e.date > b.e.date ? 1 : a.idx - b.idx));
+  let running = 0, totalDr = 0, totalCr = 0;
+  const rows = lines.map(({ e, l }) => {
+    running += acc.normal === 'debit' ? l.debit - l.credit : l.credit - l.debit;
+    totalDr += l.debit; totalCr += l.credit;
+    return `
+      <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
+        <td class="pl-4 pr-2 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${coaFormatDateDisplay(e.date)}</td>
+        <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(e.ref)}</td>
+        <td class="px-3 py-2 text-[13.5px] text-secondary">${escapeHtml(e.memo)}</td>
+        <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${l.debit ? coaMoney(l.debit) : ''}</td>
+        <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${l.credit ? coaMoney(l.credit) : ''}</td>
+        <td class="pr-4 pl-3 py-2 text-[13.5px] font-semibold text-primary whitespace-nowrap tabular text-right">${fsMoney(running)}</td>
+      </tr>`;
+  });
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="max-w-sm">${coaField('Account', `<select id="fsLedgerAccount" class="${COA_INPUT}">${coaAccountOptionsHtml(selected)}</select>`)}</div>
+    </section>
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="p-4">
+        <h3 class="text-section-title text-primary">General Ledger — ${escapeHtml(selected)}</h3>
+        <p class="text-helper text-muted mt-0.5">${lines.length} entr${lines.length === 1 ? 'y' : 'ies'} · normal balance: ${acc ? acc.normal : 'debit'}</p>
+      </div>
+      <div class="overflow-x-auto border-t border-side-line">
+        <table class="w-full min-w-[760px]">${fsTableHead([['Date'], ['Voucher'], ['Memo'], ['Debit (BDT)', true], ['Credit (BDT)', true], ['Balance (BDT)', true]])}
+          <tbody>${rows.length ? rows.join('') : `<tr><td colspan="6" class="px-4 py-10 text-center text-[13.5px] text-muted">No entries posted to ${escapeHtml(selected)} yet.</td></tr>`}</tbody>
+        </table>
+      </div>
+      ${rows.length ? `
+      <div class="flex flex-wrap items-center justify-end gap-8 px-4 py-3.5 border-t border-side-line">
+        <div class="text-right"><p class="text-micro text-muted mb-0.5">Total Debit</p><p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(totalDr)}</p></div>
+        <div class="text-right"><p class="text-micro text-muted mb-0.5">Total Credit</p><p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(totalCr)}</p></div>
+        <div class="text-right"><p class="text-micro text-muted mb-0.5">Closing Balance</p><p class="text-[15px] font-semibold text-primary tabular">BDT ${fsMoney(running)}</p></div>
+      </div>` : ''}
+    </section>`;
+}
+
+function fsIncome(by) {
+  const rev = fsSection('revenue', by), exp = fsSection('expense', by);
+  return { rev, exp, net: rev.total - exp.total };
+}
+
+function fsPlHtml() {
+  const by = fsBalances();
+  const { rev, exp, net } = fsIncome(by);
+  if (!rev.rows.length && !exp.rows.length) return fsEmptyCard('the Profit & Loss statement');
+  return `
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, coaMoney(rev.total), 'Total Revenue (BDT)')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_CASH_ICON, coaMoney(exp.total), 'Total Expenses (BDT)')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, fsMoney(net), net >= 0 ? 'Net Profit (BDT)' : 'Net Loss (BDT)')}
+    </div>
+    ${fsSectionCard('Revenue', rev, 'Total Revenue', 'No revenue posted yet.')}
+    ${fsSectionCard('Expenses', exp, 'Total Expenses', 'No expenses posted yet.')}`;
+}
+
+function fsBsHtml() {
+  const by = fsBalances();
+  const assets = fsSection('asset', by), liab = fsSection('liability', by), eq = fsSection('equity', by);
+  if (!assets.rows.length && !liab.rows.length && !eq.rows.length && !fsIncome(by).rev.rows.length && !fsIncome(by).exp.rows.length) return fsEmptyCard('the Balance Sheet');
+  const earnings = fsIncome(by).net;
+  const totalEquity = eq.total + earnings;
+  const balanced = Math.abs(assets.total - (liab.total + totalEquity)) < 0.005;
+  const equityWithEarnings = { rows: [...eq.rows, { code: '—', name: 'Current Year Earnings', amount: earnings }], total: totalEquity };
+  return `
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, fsMoney(assets.total), 'Total Assets (BDT)')}
+      ${coaCashBankStatCard(AP_AR_ICON_OUTSTANDING, fsMoney(liab.total), 'Total Liabilities (BDT)')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_CASH_ICON, fsMoney(totalEquity), 'Total Equity (BDT)')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, balanced ? 'Balanced' : 'Not balanced', 'Assets = Liabilities + Equity')}
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+      ${fsSectionCard('Assets', assets, 'Total Assets', 'No assets posted yet.')}
+      <div class="space-y-4">
+        ${fsSectionCard('Liabilities', liab, 'Total Liabilities', 'No liabilities posted yet.')}
+        ${fsSectionCard('Equity', equityWithEarnings, 'Total Equity', 'No equity posted yet.')}
+      </div>
+    </div>`;
+}
+
+function renderFinancialStatements(tabsEl, container) {
+  tabsEl.classList.remove('hidden');
+  tabsEl.innerHTML = `
+    <div class="flex items-center gap-1 -mb-px pb-px overflow-x-auto overflow-y-hidden">
+      ${FS_TABS.map((t, i) => `
+        <button type="button" data-fstab="${i}" class="px-3.5 py-2.5 text-label font-semibold border-b-2 whitespace-nowrap -mb-px ${i === state.tabIndex ? 'border-side-accent text-side-accent' : 'border-transparent text-muted hover:text-secondary'}">${escapeHtml(t)}</button>
+      `).join('')}
+    </div>`;
+  tabsEl.querySelectorAll('[data-fstab]').forEach(btn => {
+    btn.addEventListener('click', () => { state.tabIndex = +btn.dataset.fstab; renderFinancialStatements(tabsEl, container); });
+  });
+  document.getElementById('page-actions').innerHTML = '';
+
+  const panels = [fsTrialHtml, fsLedgerHtml, fsPlHtml, fsBsHtml];
+  container.innerHTML = `<div class="space-y-4 pb-8">${panels[state.tabIndex]()}</div>`;
+  const sel = container.querySelector('#fsLedgerAccount');
+  if (sel) sel.addEventListener('change', (e) => { fsState.ledgerAccount = e.target.value; renderFinancialStatements(tabsEl, container); });
 }
 
 // ---------- Command palette ----------
