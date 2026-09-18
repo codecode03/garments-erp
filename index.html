@@ -254,17 +254,34 @@
 
   /* ---------- Typography scale ----------
      Large numbers get lighter weight + tighter tracking, not heavier weight.
-     That is the difference between an enterprise figure and a marketing figure. */
+     That is the difference between an enterprise figure and a marketing figure.
+     Every font size in the app comes from these tokens, so one edit here resizes the whole UI.
+     Nothing readable sits below 12px: this is a data-dense screen used all day by all ages. */
+  :root {
+    --fs-caps:  12px;    /* UPPERCASE labels: table headers, micro labels */
+    --fs-small: 12.5px;  /* helper text, pills, small buttons */
+    --fs-head:  13.5px;  /* column headings */
+    --fs-base:  14px;    /* body, table cells, form fields, labels */
+    --fs-lead:  15px;    /* dialog titles */
+    --fs-title: 16px;    /* card titles, key totals */
+  }
+  .fs-caps  { font-size: var(--fs-caps); }
+  .fs-small { font-size: var(--fs-small); }
+  .fs-head  { font-size: var(--fs-head); }
+  .fs-base  { font-size: var(--fs-base); }
+  .fs-lead  { font-size: var(--fs-lead); }
+  .fs-title { font-size: var(--fs-title); }
+
   .text-display       { font-size: 30px; line-height: 34px; font-weight: 600; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; }
   .text-page-title    { font-size: 20px; line-height: 26px; font-weight: 600; letter-spacing: -0.02em; }
-  .text-section-title { font-size: 15px; line-height: 22px; font-weight: 600; letter-spacing: -0.01em; }
-  .text-body          { font-size: 13.5px; line-height: 20px; font-weight: 400; }
-  .text-body-medium   { font-size: 13.5px; line-height: 20px; font-weight: 500; }
-  .text-label         { font-size: 13.5px; line-height: 19px; font-weight: 500; }
-  .text-table-header  { font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: 0.045em; text-transform: uppercase; }
-  .text-table-body    { font-size: 13.5px; line-height: 20px; font-weight: 400; font-variant-numeric: tabular-nums; }
-  .text-helper        { font-size: 11.5px; line-height: 17px; font-weight: 400; }
-  .text-micro         { font-size: 10.5px; line-height: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+  .text-section-title { font-size: var(--fs-title); line-height: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .text-body          { font-size: var(--fs-base); line-height: 21px; font-weight: 400; }
+  .text-body-medium   { font-size: var(--fs-base); line-height: 21px; font-weight: 500; }
+  .text-label         { font-size: var(--fs-base); line-height: 20px; font-weight: 500; }
+  .text-table-header  { font-size: var(--fs-caps); line-height: 16px; font-weight: 600; letter-spacing: 0.045em; text-transform: uppercase; }
+  .text-table-body    { font-size: var(--fs-base); line-height: 21px; font-weight: 400; font-variant-numeric: tabular-nums; }
+  .text-helper        { font-size: var(--fs-small); line-height: 18px; font-weight: 400; }
+  .text-micro         { font-size: var(--fs-caps); line-height: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
 
   .num, input[type="number"], input[type="date"], .tabular { font-variant-numeric: tabular-nums; }
 </style>
@@ -282,7 +299,7 @@
         <div class="w-9 h-9 rounded-md bg-side-accent flex items-center justify-center shrink-0">
           <svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><path d="M4 21V9l8-6 8 6v12"/><path d="M9 21v-6h6v6"/></svg>
         </div>
-        <p id="brandText" class="text-[15px] leading-tight tracking-tight whitespace-nowrap overflow-hidden">
+        <p id="brandText" class="fs-title leading-tight tracking-tight whitespace-nowrap overflow-hidden">
           <span class="font-bold text-primary">Obsidian</span><span class="font-bold text-side-accent">ERP</span>
         </p>
       </div>
@@ -562,7 +579,7 @@ function renderNav() {
     mod.submodules.forEach((sm, i) => {
       const active = isActive && state.subIndex === i;
       const item = document.createElement('button');
-      item.className = `flex items-center gap-2 text-left px-2.5 py-1.5 text-[13px] rounded ${active ? 'bg-side-navSubActiveBg text-side-navSubActiveText font-semibold shadow-[inset_2px_0_0_0_var(--nav-sub-active-bar)]' : 'text-side-navSubText hover:bg-side-navHoverBg hover:text-side-navHoverText'}`;
+      item.className = `flex items-center gap-2 text-left px-2.5 py-1.5 fs-head rounded ${active ? 'bg-side-navSubActiveBg text-side-navSubActiveText font-semibold shadow-[inset_2px_0_0_0_var(--nav-sub-active-bar)]' : 'text-side-navSubText hover:bg-side-navHoverBg hover:text-side-navHoverText'}`;
       item.setAttribute('aria-current', active ? 'page' : 'false');
       item.innerHTML = `<span class="w-1 h-1 rounded-full shrink-0 ${active ? 'bg-side-navSubActiveDot' : 'bg-side-navDot'}"></span><span>${escapeHtml(sm.name)}</span>`;
       item.addEventListener('click', (e) => { e.stopPropagation(); goTo(mod.key, i); });
@@ -968,8 +985,8 @@ function biLoadInquiry(no) {
 }
 
 /* ---------- shared bits ---------- */
-const BI_INPUT = 'w-full h-9 px-3 rounded border border-side-border bg-canvas text-[13px] font-medium text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent';
-const BI_AUTO  = 'w-full h-9 px-3 rounded border border-side-line bg-side-hover text-[13px] font-medium text-secondary cursor-default focus:outline-none';
+const BI_INPUT = 'w-full h-9 px-3 rounded border border-side-border bg-canvas fs-head font-medium text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent';
+const BI_AUTO  = 'w-full h-9 px-3 rounded border border-side-line bg-side-hover fs-head font-medium text-secondary cursor-default focus:outline-none';
 const BI_BTN   = 'h-9 px-3.5 rounded border border-side-border text-label font-semibold text-secondary hover:bg-side-hover inline-flex items-center gap-1.5';
 const BI_BTN_PRIMARY = 'h-9 px-3.5 rounded bg-side-accent text-white text-label font-semibold hover:bg-side-accentHover inline-flex items-center gap-1.5';
 const BI_SAVE_ICON = '<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>';
@@ -978,7 +995,7 @@ const BI_SAVE_ICON = '<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" s
 function biStatus(text, strong) {
   return `<span class="inline-flex items-center gap-1.5 whitespace-nowrap">
     <span class="w-[7px] h-[7px] rounded-full shrink-0" style="background:var(${BI_STATUS_VAR[text] || '--neutral'})"></span>
-    <span class="text-[13px] ${strong ? 'font-medium text-primary' : 'text-secondary'}">${escapeHtml(text)}</span>
+    <span class="fs-head ${strong ? 'font-medium text-primary' : 'text-secondary'}">${escapeHtml(text)}</span>
   </span>`;
 }
 
@@ -987,8 +1004,8 @@ function biRow(label, value) {
   const empty = value === null || value === undefined || value === '';
   return `
     <div class="flex items-baseline gap-3 py-[5px]">
-      <span class="text-[13px] text-muted w-[106px] shrink-0">${escapeHtml(label)}</span>
-      <span class="text-[13px] ${empty ? 'text-disabled' : 'font-medium text-primary'} min-w-0">${empty ? '&mdash;' : escapeHtml(String(value))}</span>
+      <span class="fs-head text-muted w-[106px] shrink-0">${escapeHtml(label)}</span>
+      <span class="fs-head ${empty ? 'text-disabled' : 'font-medium text-primary'} min-w-0">${empty ? '&mdash;' : escapeHtml(String(value))}</span>
     </div>`;
 }
 
@@ -998,7 +1015,7 @@ function biCard(icon, title, body, opts) {
     <section class="${o.span || ''} bg-cardBg border border-side-panel rounded-lg card-shadow p-4 flex flex-col">
       <div class="flex items-center gap-2 pb-2.5 mb-2.5 border-b border-side-line">
         <span class="text-side-accent shrink-0">${iconSvg(icon, 'w-4 h-4')}</span>
-        <h3 class="text-[14.5px] font-semibold text-primary">${escapeHtml(title)}</h3>
+        <h3 class="fs-lead font-semibold text-primary">${escapeHtml(title)}</h3>
         ${o.right ? `<div class="ml-auto shrink-0">${o.right}</div>` : ''}
       </div>
       <div class="flex-1">${body}</div>
@@ -1008,8 +1025,8 @@ function biCard(icon, title, body, opts) {
 function biLabel(text, opts) {
   const o = opts || {};
   return `<span class="flex items-center gap-1.5 mb-1">
-    <span class="text-[12px] font-medium text-muted">${escapeHtml(text)}</span>
-    ${o.req ? '<span class="text-[12px] font-medium text-danger">*</span>' : ''}
+    <span class="fs-small font-medium text-muted">${escapeHtml(text)}</span>
+    ${o.req ? '<span class="fs-small font-medium text-danger">*</span>' : ''}
   </span>`;
 }
 
@@ -1057,10 +1074,10 @@ function biBuyerCombo() {
   return `
     <div class="min-w-0">
       <span class="flex items-center gap-1.5 mb-1">
-        <span class="text-[12px] font-medium text-muted">Buyer</span>
-        <span class="text-[12px] font-medium text-danger">*</span>
+        <span class="fs-small font-medium text-muted">Buyer</span>
+        <span class="fs-small font-medium text-danger">*</span>
         <button type="button" id="biBuyerAdd" title="Create a buyer that is not in the list"
-          class="ml-auto inline-flex items-center gap-1 text-[12px] font-semibold text-side-accent hover:text-side-accentHover">${plus}Add Buyer</button>
+          class="ml-auto inline-flex items-center gap-1 fs-small font-semibold text-side-accent hover:text-side-accentHover">${plus}Add Buyer</button>
       </span>
       <div class="relative">
         <input id="biBuyerInput" type="text" role="combobox" aria-expanded="false" aria-controls="biBuyerList"
@@ -1148,7 +1165,7 @@ function biPaintList() {
     <li role="option" data-id="${b.id}" aria-selected="${i === biCombo.cursor}"
       class="px-3 py-2 cursor-pointer flex items-center gap-2 ${i === biCombo.cursor ? 'bg-side-active' : ''}">
       <span class="w-[7px] h-[7px] rounded-full shrink-0" style="background:var(${BI_STATUS_VAR[b.quality] || '--neutral'})"></span>
-      <span class="text-[13px] font-medium text-primary truncate">${escapeHtml(b.name)}</span>
+      <span class="fs-head font-medium text-primary truncate">${escapeHtml(b.name)}</span>
       <span class="text-helper text-muted ml-auto shrink-0">${escapeHtml(b.country)}</span>
     </li>`).join('') : `
     <li class="px-3 py-2.5">
@@ -1224,7 +1241,7 @@ function biOpenBuyerModal(prefillName) {
       <form id="biBuyerForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
         <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
           <span class="text-side-accent shrink-0">${iconSvg('user', 'w-4 h-4')}</span>
-          <h3 class="text-[14.5px] font-semibold text-primary">Add New Buyer</h3>
+          <h3 class="fs-lead font-semibold text-primary">Add New Buyer</h3>
           <button type="button" data-close aria-label="Close"
             class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
         </div>
@@ -1346,14 +1363,14 @@ function refreshBiTable() {
     return `
       <tr data-no="${i.no}" tabindex="0"
         class="group cursor-pointer border-b border-side-line last:border-b-0 ${on ? 'bg-side-active' : 'hover:bg-side-hover'}">
-        <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n + 1}</td>
-        <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(i.no)}</td>
-        <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(i.date)}</td>
-        <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(i.buyer)}</td>
-        <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(i.style)}</td>
-        <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(i.qty)}<span class="text-disabled font-normal ml-1">PCS</span></td>
-        <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(i.season)}</td>
-        <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(i.country)}</td>
+        <td class="pl-4 pr-2 py-2 fs-base text-muted tabular">${n + 1}</td>
+        <td class="px-3 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(i.no)}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular">${escapeHtml(i.date)}</td>
+        <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(i.buyer)}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(i.style)}</td>
+        <td class="px-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${escapeHtml(i.qty)}<span class="text-disabled font-normal ml-1">PCS</span></td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(i.season)}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(i.country)}</td>
         <td class="px-3 py-2">${biStatus(i.status)}</td>
         <td class="pr-4 pl-3 py-2">
           <div class="flex items-center gap-0.5 text-disabled group-hover:text-muted">
@@ -1406,7 +1423,7 @@ function renderBuyerInquiry(container) {
           <div class="flex items-center gap-2">
             <span class="text-side-accent shrink-0">${iconSvg('list', 'w-4 h-4')}</span>
             <div>
-              <h3 class="text-[14.5px] font-semibold text-primary">Current Inquiries / Orders</h3>
+              <h3 class="fs-lead font-semibold text-primary">Current Inquiries / Orders</h3>
               <p class="text-helper text-muted mt-0.5">Select a row to load it into the inquiry card</p>
             </div>
           </div>
@@ -1414,7 +1431,7 @@ function renderBuyerInquiry(container) {
             <div class="relative">
               <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
               <input id="biSearch" type="text" value="${escapeHtml(state.inqQuery)}" placeholder="Search by Inquiry No, Buyer, Style..."
-                class="w-72 h-9 pl-9 pr-3 rounded border border-side-border bg-canvas text-[13px] font-medium text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
+                class="w-72 h-9 pl-9 pr-3 rounded border border-side-border bg-canvas fs-head font-medium text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
             </div>
             <button class="${BI_BTN}">
               <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>
@@ -1427,7 +1444,7 @@ function renderBuyerInquiry(container) {
           <table class="w-full min-w-[900px]">
             <thead>
               <tr class="border-b border-side-line">
-                ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+                ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
               </tr>
             </thead>
             <tbody id="biTableBody"></tbody>
@@ -1670,8 +1687,8 @@ function comboFieldHtml(id, label, value, opts) {
 function comboInquiryItem(inq, active) {
   return `<li role="option" data-combo-key="${escapeHtml(inq.no)}" aria-selected="${active}"
     class="px-3 py-2 cursor-pointer flex items-center gap-3 ${active ? 'bg-side-active' : ''}">
-    <span class="text-[13px] font-medium text-primary w-[130px] shrink-0 truncate">${escapeHtml(inq.no)}</span>
-    <span class="text-[13px] text-secondary flex-1 min-w-0 truncate">${escapeHtml(inq.buyer)}</span>
+    <span class="fs-head font-medium text-primary w-[130px] shrink-0 truncate">${escapeHtml(inq.no)}</span>
+    <span class="fs-head text-secondary flex-1 min-w-0 truncate">${escapeHtml(inq.buyer)}</span>
     <span class="text-helper text-muted shrink-0">${escapeHtml(inq.style)}</span>
   </li>`;
 }
@@ -1685,8 +1702,8 @@ function matchInquiries(q) {
 function comboStyleItem(s, active) {
   return `<li role="option" data-combo-key="${escapeHtml(String(s.id))}" aria-selected="${active}"
     class="px-3 py-2 cursor-pointer flex items-center gap-3 ${active ? 'bg-side-active' : ''}">
-    <span class="text-[13px] font-medium text-primary w-[100px] shrink-0 truncate">${escapeHtml(s.style)}</span>
-    <span class="text-[13px] text-secondary flex-1 min-w-0 truncate">${escapeHtml(s.product)}</span>
+    <span class="fs-head font-medium text-primary w-[100px] shrink-0 truncate">${escapeHtml(s.style)}</span>
+    <span class="fs-head text-secondary flex-1 min-w-0 truncate">${escapeHtml(s.product)}</span>
     <span class="text-helper text-muted shrink-0">${escapeHtml(s.qty)} Pcs</span>
   </li>`;
 }
@@ -1790,7 +1807,7 @@ function styCard(icon, bgVar, fgVar, title, body, opts) {
       <div class="flex items-center gap-2.5 pb-3 mb-3 border-b border-side-line">
         ${styBadge(icon, bgVar, fgVar)}
         <div class="min-w-0">
-          <h3 class="text-[14.5px] font-semibold text-primary">${escapeHtml(title)}</h3>
+          <h3 class="fs-lead font-semibold text-primary">${escapeHtml(title)}</h3>
           ${o.subtitle ? `<p class="text-helper text-muted mt-0.5">${escapeHtml(o.subtitle)}</p>` : ''}
         </div>
         ${o.right ? `<div class="ml-auto shrink-0">${o.right}</div>` : ''}
@@ -1820,8 +1837,8 @@ function stySuffix(key, suffix, placeholder) {
   return `<div class="flex h-9 rounded border border-side-border bg-canvas overflow-hidden focus-within:ring-2 focus-within:ring-[var(--accent-ring)] focus-within:border-side-accent">
     <input id="styF_${key}" data-styf="${key}" type="text" inputmode="decimal" autocomplete="off"
       value="${escapeHtml(styForm[key] || '')}" placeholder="${escapeHtml(placeholder || '0')}"
-      class="flex-1 min-w-0 px-3 bg-transparent text-[13px] font-medium text-primary placeholder-muted focus:outline-none tabular" />
-    <span id="styS_${key}" class="px-2.5 flex items-center text-[12px] font-semibold text-muted bg-side-hover border-l border-side-border shrink-0">${escapeHtml(suffix)}</span>
+      class="flex-1 min-w-0 px-3 bg-transparent fs-head font-medium text-primary placeholder-muted focus:outline-none tabular" />
+    <span id="styS_${key}" class="px-2.5 flex items-center fs-small font-semibold text-muted bg-side-hover border-l border-side-border shrink-0">${escapeHtml(suffix)}</span>
   </div>`;
 }
 
@@ -1887,7 +1904,7 @@ function styDetailsCard() {
 function styStatusPill(status) {
   const map = { Open: ['successSoft', 'success'], Closed: ['neutralSoft', 'neutral'], 'On Hold': ['warningSoft', 'warning'] };
   const [bg, fg] = map[status] || map.Open;
-  return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg}">${escapeHtml(status)}</span>`;
+  return `<span class="inline-flex items-center px-2 py-0.5 rounded-full fs-small font-semibold bg-${bg} text-${fg}">${escapeHtml(status)}</span>`;
 }
 
 const STY_EDIT_ICON = '<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
@@ -1908,7 +1925,7 @@ function styListSection() {
         <div class="flex items-center gap-2.5">
           <span class="text-side-accent shrink-0">${iconSvg('list', 'w-4 h-4')}</span>
           <div>
-            <h3 class="text-[14.5px] font-semibold text-primary">Style List</h3>
+            <h3 class="fs-lead font-semibold text-primary">Style List</h3>
             <p class="text-helper text-muted mt-0.5">Style information is automatically linked with the selected inquiry.</p>
           </div>
         </div>
@@ -1917,7 +1934,7 @@ function styListSection() {
       <div class="overflow-x-auto border-t border-side-line">
         <table class="w-full min-w-[980px]">
           <thead><tr class="border-b border-side-line">
-            ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+            ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
           </tr></thead>
           <tbody id="styTableBody"></tbody>
         </table>
@@ -1932,15 +1949,15 @@ function styRefreshTable() {
     const editing = s.id === state.editingId;
     return `
     <tr data-id="${s.id}" class="group border-b border-side-line last:border-b-0 ${editing ? 'bg-side-active' : 'hover:bg-side-hover'}">
-      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n + 1}</td>
-      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(s.style)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(s.product)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(s.category)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(s.fabric)}</td>
+      <td class="pl-4 pr-2 py-2 fs-base text-muted tabular">${n + 1}</td>
+      <td class="px-3 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(s.style)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(s.product)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(s.category)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(s.fabric)}</td>
       <td class="px-3 py-2"><span class="w-3 h-3 rounded-full inline-block" style="background:${styColorHex(s.color)}" title="${escapeHtml(s.color)}"></span></td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(s.qty)}<span class="text-disabled font-normal ml-1">Pcs</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(s.price)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(s.shipDate)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${escapeHtml(s.qty)}<span class="text-disabled font-normal ml-1">Pcs</span></td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${escapeHtml(s.price)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular">${escapeHtml(s.shipDate)}</td>
       <td class="px-3 py-2">${styStatusPill(s.status)}</td>
       <td class="pr-4 pl-3 py-2">
         <div class="flex items-center gap-1.5">
@@ -1958,7 +1975,7 @@ function styInfoBanner() {
   return `
     <div class="flex items-start gap-2.5 px-4 py-3 rounded-md bg-infoSoft">
       <span class="text-info shrink-0 mt-0.5">${iconSvg('info', 'w-4 h-4')}</span>
-      <p class="text-[13px] text-secondary">Style information is automatically linked with the selected inquiry. You can proceed to Costing, BOM, and PQ.</p>
+      <p class="fs-head text-secondary">Style information is automatically linked with the selected inquiry. You can proceed to Costing, BOM, and PQ.</p>
     </div>`;
 }
 
@@ -2307,8 +2324,8 @@ function bomMaterialCard() {
         <div class="flex h-9 rounded border border-side-border bg-canvas overflow-hidden focus-within:ring-2 focus-within:ring-[var(--accent-ring)] focus-within:border-side-accent">
           <input id="bomF_fabric" data-bomf="fabric" type="text" inputmode="decimal" autocomplete="off"
             value="${escapeHtml(bomForm.fabric)}" placeholder="0.00"
-            class="flex-1 min-w-0 px-3 bg-transparent text-[13px] font-medium text-primary placeholder-muted focus:outline-none tabular" />
-          <span class="px-2.5 flex items-center text-[12px] font-semibold text-muted bg-side-hover border-l border-side-border shrink-0">kg/pc</span>
+            class="flex-1 min-w-0 px-3 bg-transparent fs-head font-medium text-primary placeholder-muted focus:outline-none tabular" />
+          <span class="px-2.5 flex items-center fs-small font-semibold text-muted bg-side-hover border-l border-side-border shrink-0">kg/pc</span>
         </div>`, { req: true })}
       <div id="bomItems" class="space-y-2">${bomForm.items.map(itemRow).join('')}</div>
     </div>`;
@@ -2318,12 +2335,12 @@ function bomMaterialCard() {
 /* ---------- card 3: costing ---------- */
 function bomCostRow(label, key) {
   return `<div class="flex items-center justify-between gap-3 py-1">
-    <span class="text-[13px] text-secondary">${escapeHtml(label)}</span>
+    <span class="fs-head text-secondary">${escapeHtml(label)}</span>
     <div class="flex items-center gap-1.5">
-      <span class="text-[12px] font-semibold text-muted">$</span>
+      <span class="fs-small font-semibold text-muted">$</span>
       <input id="bomF_${key}" data-bomf="${key}" type="text" inputmode="decimal" autocomplete="off"
         value="${escapeHtml(bomForm[key] || '')}" placeholder="0.00"
-        class="w-[72px] h-8 px-2 rounded border border-side-border bg-canvas text-[13px] font-medium text-primary text-right tabular focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
+        class="w-[72px] h-8 px-2 rounded border border-side-border bg-canvas fs-head font-medium text-primary text-right tabular focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
     </div>
   </div>`;
 }
@@ -2332,48 +2349,48 @@ function bomCostingCard() {
   const t = bomTotals();
   const body = `
     <div class="mb-3">
-      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-semibold bg-successSoft text-success">STYLE: ${escapeHtml(bomForm.styleNo || '—')}</span>
+      <span class="inline-flex items-center px-2.5 py-1 rounded-full fs-small font-semibold bg-successSoft text-success">STYLE: ${escapeHtml(bomForm.styleNo || '—')}</span>
     </div>
     <div class="flex items-center justify-between pb-1.5 mb-1 border-b border-side-line">
-      <span class="text-[12px] font-semibold text-muted">Fabric</span>
-      <span class="text-[12px] font-semibold text-muted">Price / pcs</span>
+      <span class="fs-small font-semibold text-muted">Fabric</span>
+      <span class="fs-small font-semibold text-muted">Price / pcs</span>
     </div>
     <div class="divide-y divide-side-line">
       ${BOM_COST_FIELDS.map(f => bomCostRow(f.label, f.key)).join('')}
     </div>
     <div class="mt-3 rounded-md bg-side-hover p-3 space-y-2.5">
       <div class="flex items-center justify-between gap-3">
-        <span class="text-[13px] text-muted">Total Cost</span>
-        <span id="bomTotalCost" class="text-[13px] font-semibold text-primary">${bomMoney(t.cost)}</span>
+        <span class="fs-head text-muted">Total Cost</span>
+        <span id="bomTotalCost" class="fs-head font-semibold text-primary">${bomMoney(t.cost)}</span>
       </div>
       <div class="flex items-center justify-between gap-3">
-        <span class="text-[13px] text-muted shrink-0">Profit</span>
+        <span class="fs-head text-muted shrink-0">Profit</span>
         <div class="flex items-center gap-1.5">
-          <span class="text-[12px] text-muted">$</span>
+          <span class="fs-small text-muted">$</span>
           <input id="bomF_profit" data-bomf="profit" type="text" inputmode="decimal" autocomplete="off"
             value="${escapeHtml(bomForm.profit || '')}" placeholder="0.00"
-            class="w-[64px] h-7 px-2 rounded border border-side-border bg-cardBg text-[13px] font-medium text-primary text-right tabular focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
-          <span id="bomProfitPct" class="inline-flex items-center justify-center h-7 px-2 rounded border border-side-border bg-cardBg text-[13px] font-medium text-primary tabular">${t.profitPct.toFixed(1)}</span>
-          <span class="text-[12px] text-muted">%</span>
+            class="w-[64px] h-7 px-2 rounded border border-side-border bg-cardBg fs-head font-medium text-primary text-right tabular focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
+          <span id="bomProfitPct" class="inline-flex items-center justify-center h-7 px-2 rounded border border-side-border bg-cardBg fs-head font-medium text-primary tabular">${t.profitPct.toFixed(1)}</span>
+          <span class="fs-small text-muted">%</span>
         </div>
       </div>
       <div class="flex items-center justify-between gap-3">
-        <span class="text-[13px] text-muted">FOB Price</span>
-        <span id="bomFobPrice" class="text-[13px] font-semibold text-primary">${bomMoney(t.fob)}</span>
+        <span class="fs-head text-muted">FOB Price</span>
+        <span id="bomFobPrice" class="fs-head font-semibold text-primary">${bomMoney(t.fob)}</span>
       </div>
       <div class="flex items-center justify-between gap-3">
-        <span class="text-[13px] text-muted">Quantity</span>
+        <span class="fs-head text-muted">Quantity</span>
         <div class="flex items-center gap-1.5">
           <input id="bomF_qty" data-bomf="qty" type="text" inputmode="numeric" autocomplete="off"
             value="${escapeHtml(bomForm.qty || '')}" placeholder="0"
-            class="w-20 h-7 px-2 rounded border border-side-border bg-cardBg text-[13px] font-medium text-primary text-right tabular focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
-          <span class="text-[12px] text-muted">PCS</span>
+            class="w-20 h-7 px-2 rounded border border-side-border bg-cardBg fs-head font-medium text-primary text-right tabular focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
+          <span class="fs-small text-muted">PCS</span>
         </div>
       </div>
     </div>
     <div class="mt-3 flex items-center justify-between px-3 py-2.5 rounded-md bg-successSoft">
-      <span class="text-[13px] font-semibold text-success">Total</span>
-      <span id="bomTotalValue" class="text-[15px] font-bold text-success">${bomMoney(t.total)}</span>
+      <span class="fs-head font-semibold text-success">Total</span>
+      <span id="bomTotalValue" class="fs-title font-bold text-success">${bomMoney(t.total)}</span>
     </div>`;
   return styCard('chartbar', '--violet-soft', '--violet', 'Costing', body);
 }
@@ -2403,7 +2420,7 @@ function bomListSection() {
         <div class="flex items-center gap-2.5">
           <span class="text-side-accent shrink-0">${iconSvg('list', 'w-4 h-4')}</span>
           <div>
-            <h3 class="text-[14.5px] font-semibold text-primary">Save BoM & Costing DATA LIST</h3>
+            <h3 class="fs-lead font-semibold text-primary">Save BoM & Costing DATA LIST</h3>
             <p class="text-helper text-muted mt-0.5">Styles with completed BOM & Costing</p>
           </div>
         </div>
@@ -2411,7 +2428,7 @@ function bomListSection() {
       <div class="overflow-x-auto border-t border-side-line">
         <table class="w-full min-w-[980px]">
           <thead><tr class="border-b border-side-line">
-            ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+            ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
           </tr></thead>
           <tbody id="bomTableBody"></tbody>
         </table>
@@ -2426,15 +2443,15 @@ function bomRefreshTable() {
     const editing = r.id === state.editingBomId;
     return `
     <tr data-id="${r.id}" class="group border-b border-side-line last:border-b-0 ${editing ? 'bg-side-active' : 'hover:bg-side-hover'}">
-      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n + 1}</td>
-      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(r.style)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(r.product)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(r.category)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(r.fabric)}</td>
+      <td class="pl-4 pr-2 py-2 fs-base text-muted tabular">${n + 1}</td>
+      <td class="px-3 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(r.style)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(r.product)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(r.category)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(r.fabric)}</td>
       <td class="px-3 py-2"><span class="w-3 h-3 rounded-full inline-block" style="background:${styColorHex(r.color)}" title="${escapeHtml(r.color)}"></span></td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(r.qty)}<span class="text-disabled font-normal ml-1">Pcs</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${escapeHtml(r.price)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(r.shipDate)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${escapeHtml(r.qty)}<span class="text-disabled font-normal ml-1">Pcs</span></td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${escapeHtml(r.price)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular">${escapeHtml(r.shipDate)}</td>
       <td class="px-3 py-2">${styStatusPill(r.status)}</td>
       <td class="pr-4 pl-3 py-2">
         <div class="flex items-center gap-1.5">
@@ -2452,7 +2469,7 @@ function bomInfoBanner() {
   return `
     <div class="flex items-start gap-2.5 px-4 py-3 rounded-md bg-infoSoft">
       <span class="text-info shrink-0 mt-0.5">${iconSvg('info', 'w-4 h-4')}</span>
-      <p class="text-[13px] text-secondary">BOM & costing information is automatically linked with the selected inquiry. You can proceed to Costing, PO, and other related modules.</p>
+      <p class="fs-head text-secondary">BOM & costing information is automatically linked with the selected inquiry. You can proceed to Costing, PO, and other related modules.</p>
     </div>`;
 }
 
@@ -2717,20 +2734,20 @@ function popiHeaderStrip(type) {
   const chip = (k, v, opts) => {
     const o = opts || {};
     return `<div class="flex flex-col gap-1 min-w-[128px]">
-      <span class="text-[11px] font-medium text-muted whitespace-nowrap">${escapeHtml(k)}</span>
-      <span class="text-[13px] font-semibold ${o.link ? 'text-side-accent' : 'text-primary'} whitespace-nowrap">${o.html || escapeHtml(v)}</span>
+      <span class="fs-caps font-medium text-muted whitespace-nowrap">${escapeHtml(k)}</span>
+      <span class="fs-head font-semibold ${o.link ? 'text-side-accent' : 'text-primary'} whitespace-nowrap">${o.html || escapeHtml(v)}</span>
     </div>`;
   };
   const dateChip = `<div class="flex flex-col gap-1 min-w-[128px]">
-    <span class="text-[11px] font-medium text-muted whitespace-nowrap">${escapeHtml(cfg.dateLabel)}</span>
+    <span class="fs-caps font-medium text-muted whitespace-nowrap">${escapeHtml(cfg.dateLabel)}</span>
     <input data-popif="date" type="date" value="${escapeHtml(f.date)}"
-      class="text-[13px] font-semibold text-primary bg-transparent border-none p-0 h-auto focus:outline-none tabular" />
+      class="fs-head font-semibold text-primary bg-transparent border-none p-0 h-auto focus:outline-none tabular" />
   </div>`;
   const statusChip = `<div class="flex flex-col gap-1 min-w-[170px]">
-    <span class="text-[11px] font-medium text-muted whitespace-nowrap">${escapeHtml(cfg.statusLabel)}</span>
+    <span class="fs-caps font-medium text-muted whitespace-nowrap">${escapeHtml(cfg.statusLabel)}</span>
     <div class="flex items-center gap-2">
-      <span class="text-[13px] font-semibold text-side-accent whitespace-nowrap">${escapeHtml(f.bomNo)}</span>
-      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-successSoft text-success w-fit">Confirmed</span>
+      <span class="fs-head font-semibold text-side-accent whitespace-nowrap">${escapeHtml(f.bomNo)}</span>
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full fs-small font-semibold bg-successSoft text-success w-fit">Confirmed</span>
     </div>
   </div>`;
   const fields = [
@@ -2805,7 +2822,7 @@ function popiStyleCard(type) {
       <div class="w-[100px] shrink-0">
         <div class="rounded-md border border-side-line bg-side-hover p-3 text-center h-full flex flex-col items-center justify-center gap-1.5">
           <span class="text-side-accent">${iconSvg('shirt', 'w-6 h-6')}</span>
-          <span class="text-[12px] font-semibold text-primary truncate w-full">${escapeHtml(f.styleNo || '—')}</span>
+          <span class="fs-small font-semibold text-primary truncate w-full">${escapeHtml(f.styleNo || '—')}</span>
           <span class="text-helper text-muted truncate w-full">${escapeHtml(f.product || '')}</span>
         </div>
       </div>
@@ -2843,8 +2860,8 @@ function popiCommercialCard(type) {
       ${biField('VAT / Tax', popiText(type, 'vat', '0.00'))}
     </div>
     <div class="mt-3 flex items-center justify-between px-3 py-2.5 rounded-md bg-successSoft">
-      <span class="text-[13px] font-semibold text-success">Total Order Value</span>
-      <span data-popi-total class="text-[15px] font-bold text-success">${bomMoney(popiGrandTotal(type))}</span>
+      <span class="fs-head font-semibold text-success">Total Order Value</span>
+      <span data-popi-total class="fs-title font-bold text-success">${bomMoney(popiGrandTotal(type))}</span>
     </div>`;
   return styCard('chartbar', '--success-soft', '--success', 'Commercial Terms', body);
 }
@@ -2870,25 +2887,25 @@ function popiShippingCard(type) {
 function popiRowHtml(r, i) {
   return `
     <tr data-idx="${i}">
-      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${i + 1}</td>
-      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap">${escapeHtml(r.no)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(r.product)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(r.cat)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(r.fabric)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(r.color)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(r.size)}</td>
+      <td class="pl-4 pr-2 py-2 fs-base text-muted tabular">${i + 1}</td>
+      <td class="px-3 py-2 fs-base font-medium text-primary whitespace-nowrap">${escapeHtml(r.no)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(r.product)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(r.cat)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(r.fabric)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(r.color)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(r.size)}</td>
       <td class="px-3 py-2 text-right">
         <input type="text" inputmode="numeric" data-popi-row="${i}" data-popi-cell="qty" value="${r.qty}"
-          class="w-20 h-8 px-2 rounded border border-side-border bg-canvas text-[13px] font-medium text-primary text-right tabular focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
+          class="w-20 h-8 px-2 rounded border border-side-border bg-canvas fs-head font-medium text-primary text-right tabular focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
       </td>
       <td class="px-3 py-2">
         <div class="flex items-center justify-end gap-1">
-          <span class="text-[12px] text-muted">$</span>
+          <span class="fs-small text-muted">$</span>
           <input type="text" inputmode="decimal" data-popi-row="${i}" data-popi-cell="price" value="${r.price.toFixed(2)}"
-            class="w-16 h-8 px-2 rounded border border-side-border bg-canvas text-[13px] font-medium text-primary text-right tabular focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
+            class="w-16 h-8 px-2 rounded border border-side-border bg-canvas fs-head font-medium text-primary text-right tabular focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent" />
         </div>
       </td>
-      <td class="px-3 py-2 text-[13.5px] font-semibold text-primary whitespace-nowrap tabular text-right" data-popi-amount="${i}">${bomMoney(r.qty * r.price)}</td>
+      <td class="px-3 py-2 fs-base font-semibold text-primary whitespace-nowrap tabular text-right" data-popi-amount="${i}">${bomMoney(r.qty * r.price)}</td>
       <td class="pr-4 pl-3 py-2">
         <button type="button" data-popi-rowdel="${i}" class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:text-danger hover:bg-dangerSoft" title="Remove">${STY_DELETE_ICON}</button>
       </td>
@@ -2905,14 +2922,14 @@ function popiTableSection(type) {
       <div class="flex flex-wrap items-center justify-between gap-3 p-4">
         <div class="flex items-center gap-2.5">
           <span class="text-side-accent shrink-0">${iconSvg('list', 'w-4 h-4')}</span>
-          <h3 class="text-[14.5px] font-semibold text-primary">Order Details</h3>
+          <h3 class="fs-lead font-semibold text-primary">Order Details</h3>
         </div>
         <button type="button" data-popi-addrow class="${POPI_BTN_PRIMARY}">${STY_PLUS_ICON}Add Item</button>
       </div>
       <div class="overflow-x-auto border-t border-side-line">
         <table class="w-full min-w-[980px]">
           <thead><tr class="border-b border-side-line">
-            ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+            ${headers.map(([h, align], idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${align} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
           </tr></thead>
           <tbody data-popi-rows>${popiState[type].rows.map((r, i) => popiRowHtml(r, i)).join('')}</tbody>
         </table>
@@ -2938,7 +2955,7 @@ function popiInfoBanner() {
   return `
     <div class="flex items-start gap-2.5 px-4 py-3 rounded-md bg-infoSoft">
       <span class="text-info shrink-0 mt-0.5">${iconSvg('info', 'w-4 h-4')}</span>
-      <p class="text-[13px] text-secondary">Order information is automatically linked with the selected inquiry. You can proceed to shipment and finance modules.</p>
+      <p class="fs-head text-secondary">Order information is automatically linked with the selected inquiry. You can proceed to shipment and finance modules.</p>
     </div>`;
 }
 
@@ -3238,7 +3255,7 @@ function coaHeaderCard() {
 function coaLineRow(l, i) {
   return `
     <tr data-line="${i}" class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
-      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${i + 1}</td>
+      <td class="pl-4 pr-2 py-2 fs-base text-muted tabular">${i + 1}</td>
       <td class="px-3 py-2 min-w-[200px]">
         <select data-coaline="account" class="${COA_INPUT}">
           ${coaAccountOptionsHtml(l.account)}
@@ -3263,12 +3280,12 @@ function coaEntriesCard() {
       <div class="overflow-x-auto border-t border-side-line">
         <table class="w-full min-w-[860px]">
           <thead><tr class="border-b border-side-line">
-            <th class="pl-4 pr-2 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">SL</th>
-            <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">Account</th>
-            <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-right whitespace-nowrap">Debit (BDT)</th>
-            <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-right whitespace-nowrap">Credit (BDT)</th>
-            <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">Narration</th>
-            <th class="pr-4 pl-3 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">Action</th>
+            <th class="pl-4 pr-2 py-2.5 fs-head font-semibold text-muted text-left whitespace-nowrap">SL</th>
+            <th class="px-3 py-2.5 fs-head font-semibold text-muted text-left whitespace-nowrap">Account</th>
+            <th class="px-3 py-2.5 fs-head font-semibold text-muted text-right whitespace-nowrap">Debit (BDT)</th>
+            <th class="px-3 py-2.5 fs-head font-semibold text-muted text-right whitespace-nowrap">Credit (BDT)</th>
+            <th class="px-3 py-2.5 fs-head font-semibold text-muted text-left whitespace-nowrap">Narration</th>
+            <th class="pr-4 pl-3 py-2.5 fs-head font-semibold text-muted text-left whitespace-nowrap">Action</th>
           </tr></thead>
           <tbody id="coaLinesBody">${jeForm.lines.map(coaLineRow).join('')}</tbody>
         </table>
@@ -3282,13 +3299,13 @@ function coaTotalsInner() {
   return `
     <div class="text-right">
       <p class="text-micro text-muted mb-0.5">Total Debit</p>
-      <p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(t.debit)}</p>
+      <p class="fs-title font-semibold text-primary tabular">BDT ${coaMoney(t.debit)}</p>
     </div>
     <div class="text-right">
       <p class="text-micro text-muted mb-0.5">Total Credit</p>
-      <p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(t.credit)}</p>
+      <p class="fs-title font-semibold text-primary tabular">BDT ${coaMoney(t.credit)}</p>
     </div>
-    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold ${t.balanced ? 'bg-successSoft text-success' : 'bg-warningSoft text-warning'}">
+    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full fs-small font-semibold ${t.balanced ? 'bg-successSoft text-success' : 'bg-warningSoft text-warning'}">
       ${t.balanced ? COA_CHECK_ICON : ''}${t.balanced ? 'Balanced' : 'Unbalanced'}
     </span>`;
 }
@@ -3296,7 +3313,7 @@ function coaTotalsInner() {
 function coaStatusPill(status) {
   const map = { Posted: ['successSoft', 'success'], Draft: ['neutralSoft', 'neutral'] };
   const [bg, fg] = map[status] || map.Draft;
-  return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg}">${escapeHtml(status)}</span>`;
+  return `<span class="inline-flex items-center px-2 py-0.5 rounded-full fs-small font-semibold bg-${bg} text-${fg}">${escapeHtml(status)}</span>`;
 }
 
 function coaRecentCard() {
@@ -3310,16 +3327,16 @@ function coaRecentCard() {
       <div class="overflow-x-auto border-t border-side-line">
         <table class="w-full min-w-[760px]">
           <thead><tr class="border-b border-side-line">
-            ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${idx >= 3 && idx <= 4 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+            ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${idx >= 3 && idx <= 4 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
           </tr></thead>
           <tbody>
             ${jeEntries.map(e => `
               <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
-                <td class="pl-4 pr-2 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(e.date)}</td>
-                <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(e.voucherNo)}</td>
-                <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(e.description)}</td>
-                <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${coaMoney(e.debit)}</td>
-                <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${coaMoney(e.credit)}</td>
+                <td class="pl-4 pr-2 py-2 fs-base text-secondary whitespace-nowrap tabular">${escapeHtml(e.date)}</td>
+                <td class="px-3 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(e.voucherNo)}</td>
+                <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(e.description)}</td>
+                <td class="px-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${coaMoney(e.debit)}</td>
+                <td class="px-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${coaMoney(e.credit)}</td>
                 <td class="px-3 py-2">${coaStatusPill(e.status)}</td>
                 <td class="pr-4 pl-3 py-2"><span class="w-7 h-7 rounded border border-side-border inline-flex items-center justify-center text-muted">${COA_ARROW_ICON}</span></td>
               </tr>`).join('')}
@@ -3522,15 +3539,15 @@ function coaChartParentLabel(a) {
 function coaChartAccountRow(a, n) {
   return `
     <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
-      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n}</td>
-      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">
+      <td class="pl-4 pr-2 py-2 fs-base text-muted tabular">${n}</td>
+      <td class="px-3 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">
         <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#4f8ff7"></span>${escapeHtml(a.name)}</span>
       </td>
-      <td class="px-3 py-2 whitespace-nowrap"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-side-active text-side-accent whitespace-nowrap">Posting</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">Debit</td>
-      <td class="px-3 py-2 whitespace-nowrap">${a.controlType ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-side-active text-side-accent whitespace-nowrap">${escapeHtml(COA_CONTROL_TYPE_LABEL[a.controlType])}</span>` : '<span class="text-[13.5px] text-muted">—</span>'}</td>
-      <td class="px-3 py-2 text-[13.5px] text-muted whitespace-nowrap">${escapeHtml(coaChartParentLabel(a))}</td>
+      <td class="px-3 py-2 whitespace-nowrap"><span class="inline-flex items-center px-2 py-0.5 rounded-full fs-small font-semibold bg-side-active text-side-accent whitespace-nowrap">Posting</span></td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">Debit</td>
+      <td class="px-3 py-2 whitespace-nowrap">${a.controlType ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full fs-small font-semibold bg-side-active text-side-accent whitespace-nowrap">${escapeHtml(COA_CONTROL_TYPE_LABEL[a.controlType])}</span>` : '<span class="fs-base text-muted">—</span>'}</td>
+      <td class="px-3 py-2 fs-base text-muted whitespace-nowrap">${escapeHtml(coaChartParentLabel(a))}</td>
       <td class="pr-4 pl-3 py-2">
         <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_KEBAB_ICON}</button>
       </td>
@@ -3549,7 +3566,7 @@ function coaChartAccountsResultsHtml() {
     <div class="overflow-x-auto border-t border-side-line">
       <table class="w-full min-w-[940px]">
         <thead><tr class="border-b border-side-line">
-          ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-left whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
         </tr></thead>
         <tbody>${rows.length ? rows.map((a, i) => coaChartAccountRow(a, start + i + 1)).join('') : `<tr><td colspan="8" class="px-4 py-10 text-center"><p class="text-body text-muted">No accounts match your search.</p></td></tr>`}</tbody>
       </table>
@@ -3558,7 +3575,7 @@ function coaChartAccountsResultsHtml() {
       <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
       <div class="flex items-center gap-1.5">
         <button data-coachartpage="prev" ${coaChartState.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
-        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coachartpage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaChartState.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coachartpage="${p}" class="w-7 h-7 rounded fs-small font-semibold ${p === coaChartState.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
         <button data-coachartpage="next" ${coaChartState.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
       </div>
     </div>`;
@@ -3650,7 +3667,7 @@ function coaAssetStatusPill(status) {
     'Under Maintenance': ['warningSoft', 'warning'], Disposed: ['dangerSoft', 'danger'],
   };
   const [bg, fg] = map[status] || map.Active;
-  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg}">
+  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full fs-small font-semibold bg-${bg} text-${fg}">
     <span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>${escapeHtml(status)}
   </span>`;
 }
@@ -3699,13 +3716,13 @@ function coaAssetRow(a, n) {
   return `
     <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
       <td class="pl-4 pr-2 py-2"><input type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></td>
-      <td class="px-3 py-2 text-[13.5px] text-disabled tabular">${n}</td>
-      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(a.name)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CATEGORY_ICON[a.category] || ''}</span>${escapeHtml(a.category)}</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_PIN_ICON}</span>${escapeHtml(a.location)}</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CAL_ICON}</span>${escapeHtml(a.date)}</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${coaInt(a.cost)}</td>
+      <td class="px-3 py-2 fs-base text-muted tabular">${n}</td>
+      <td class="px-3 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(a.name)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CATEGORY_ICON[a.category] || ''}</span>${escapeHtml(a.category)}</span></td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_PIN_ICON}</span>${escapeHtml(a.location)}</span></td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CAL_ICON}</span>${escapeHtml(a.date)}</span></td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${coaInt(a.cost)}</td>
       <td class="px-3 py-2">${coaAssetStatusPill(a.status)}</td>
       <td class="pr-4 pl-3 py-2">
         <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_KEBAB_ICON}</button>
@@ -3726,7 +3743,7 @@ function coaAssetsResultsHtml() {
       <table class="w-full min-w-[1020px]">
         <thead><tr class="border-b border-side-line">
           <th class="pl-4 pr-2 py-2.5"><input id="coaAssetSelectAll" type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></th>
-          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${idx === 6 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${idx === 6 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
         </tr></thead>
         <tbody>${rows.length ? rows.map((a, i) => coaAssetRow(a, start + i + 1)).join('') : `<tr><td colspan="10" class="px-4 py-10 text-center"><p class="text-body text-muted">No assets match your filters.</p></td></tr>`}</tbody>
       </table>
@@ -3735,7 +3752,7 @@ function coaAssetsResultsHtml() {
       <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
       <div class="flex items-center gap-1.5">
         <button data-coapage="prev" ${coaAssetFilter.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
-        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coapage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaAssetFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coapage="${p}" class="w-7 h-7 rounded fs-small font-semibold ${p === coaAssetFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
         <button data-coapage="next" ${coaAssetFilter.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
       </div>
     </div>`;
@@ -3825,7 +3842,7 @@ function coaOpenNewAccountModal() {
       <form id="coaAccountForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
         <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
           <span class="text-side-accent shrink-0">${iconSvg('wallet', 'w-4 h-4')}</span>
-          <h3 class="text-[14.5px] font-semibold text-primary">New Account</h3>
+          <h3 class="fs-lead font-semibold text-primary">New Account</h3>
           <button type="button" data-close aria-label="Close"
             class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
         </div>
@@ -3919,7 +3936,7 @@ function coaOpenNewAssetModal() {
       <form id="coaAssetForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
         <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
           <span class="text-side-accent shrink-0">${iconSvg('box', 'w-4 h-4')}</span>
-          <h3 class="text-[14.5px] font-semibold text-primary">New Asset</h3>
+          <h3 class="fs-lead font-semibold text-primary">New Asset</h3>
           <button type="button" data-close aria-label="Close"
             class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
         </div>
@@ -4067,15 +4084,15 @@ function coaLiabChartParentLabel(a) {
 function coaLiabChartAccountRow(a, n) {
   return `
     <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
-      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n}</td>
-      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">
+      <td class="pl-4 pr-2 py-2 fs-base text-muted tabular">${n}</td>
+      <td class="px-3 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">
         <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#f97a4d"></span>${escapeHtml(a.name)}</span>
       </td>
-      <td class="px-3 py-2 whitespace-nowrap"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-side-active text-side-accent whitespace-nowrap">Posting</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">Credit</td>
-      <td class="px-3 py-2 whitespace-nowrap">${a.controlType ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-side-active text-side-accent whitespace-nowrap">${escapeHtml(COA_LIAB_CONTROL_TYPE_LABEL[a.controlType])}</span>` : '<span class="text-[13.5px] text-muted">—</span>'}</td>
-      <td class="px-3 py-2 text-[13.5px] text-muted whitespace-nowrap">${escapeHtml(coaLiabChartParentLabel(a))}</td>
+      <td class="px-3 py-2 whitespace-nowrap"><span class="inline-flex items-center px-2 py-0.5 rounded-full fs-small font-semibold bg-side-active text-side-accent whitespace-nowrap">Posting</span></td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">Credit</td>
+      <td class="px-3 py-2 whitespace-nowrap">${a.controlType ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full fs-small font-semibold bg-side-active text-side-accent whitespace-nowrap">${escapeHtml(COA_LIAB_CONTROL_TYPE_LABEL[a.controlType])}</span>` : '<span class="fs-base text-muted">—</span>'}</td>
+      <td class="px-3 py-2 fs-base text-muted whitespace-nowrap">${escapeHtml(coaLiabChartParentLabel(a))}</td>
       <td class="pr-4 pl-3 py-2">
         <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_KEBAB_ICON}</button>
       </td>
@@ -4094,7 +4111,7 @@ function coaLiabChartAccountsResultsHtml() {
     <div class="overflow-x-auto border-t border-side-line">
       <table class="w-full min-w-[940px]">
         <thead><tr class="border-b border-side-line">
-          ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-left whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
         </tr></thead>
         <tbody>${rows.length ? rows.map((a, i) => coaLiabChartAccountRow(a, start + i + 1)).join('') : `<tr><td colspan="8" class="px-4 py-10 text-center"><p class="text-body text-muted">No accounts match your search.</p></td></tr>`}</tbody>
       </table>
@@ -4103,7 +4120,7 @@ function coaLiabChartAccountsResultsHtml() {
       <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
       <div class="flex items-center gap-1.5">
         <button data-coaliabchartpage="prev" ${coaLiabChartState.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
-        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coaliabchartpage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaLiabChartState.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coaliabchartpage="${p}" class="w-7 h-7 rounded fs-small font-semibold ${p === coaLiabChartState.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
         <button data-coaliabchartpage="next" ${coaLiabChartState.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
       </div>
     </div>`;
@@ -4186,7 +4203,7 @@ function coaOpenNewLiabilityAccountModal() {
       <form id="coaLiabAccountForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
         <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
           <span class="text-side-accent shrink-0">${iconSvg('wallet', 'w-4 h-4')}</span>
-          <h3 class="text-[14.5px] font-semibold text-primary">New Account</h3>
+          <h3 class="fs-lead font-semibold text-primary">New Account</h3>
           <button type="button" data-close aria-label="Close"
             class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
         </div>
@@ -4272,7 +4289,7 @@ function coaOpenNewLiabilityModal() {
       <form id="coaLiabilityForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
         <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
           <span class="text-side-accent shrink-0">${COA_BANK_ICON}</span>
-          <h3 class="text-[14.5px] font-semibold text-primary">New Liability</h3>
+          <h3 class="fs-lead font-semibold text-primary">New Liability</h3>
           <button type="button" data-close aria-label="Close"
             class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
         </div>
@@ -4360,7 +4377,7 @@ function coaLiabilityStatusPill(status) {
     Active: ['successSoft', 'success'], Settled: ['neutralSoft', 'neutral'], Overdue: ['dangerSoft', 'danger'],
   };
   const [bg, fg] = map[status] || map.Active;
-  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg}">${COA_LOCK_ICON}${escapeHtml(status)}</span>`;
+  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full fs-small font-semibold bg-${bg} text-${fg}">${COA_LOCK_ICON}${escapeHtml(status)}</span>`;
 }
 
 function coaFilteredLiabilities() {
@@ -4410,14 +4427,14 @@ function coaLiabilityRow(l, n) {
   return `
     <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
       <td class="pl-4 pr-2 py-2"><input type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></td>
-      <td class="px-3 py-2 text-[13.5px] text-disabled tabular">${n}</td>
-      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(l.code)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(l.name)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_LIABILITY_CATEGORY_ICON[l.category] || ''}</span>${escapeHtml(l.category)}</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_PIN_ICON}</span>${escapeHtml(l.location)}</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CAL_ICON}</span>${escapeHtml(l.date)}</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(l.due)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${coaInt(l.balance)}</td>
+      <td class="px-3 py-2 fs-base text-muted tabular">${n}</td>
+      <td class="px-3 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(l.code)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(l.name)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_LIABILITY_CATEGORY_ICON[l.category] || ''}</span>${escapeHtml(l.category)}</span></td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_PIN_ICON}</span>${escapeHtml(l.location)}</span></td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CAL_ICON}</span>${escapeHtml(l.date)}</span></td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular">${escapeHtml(l.due)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${coaInt(l.balance)}</td>
       <td class="px-3 py-2">${coaLiabilityStatusPill(l.status)}</td>
       <td class="pr-4 pl-3 py-2">
         <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_DOTS_H_ICON}</button>
@@ -4438,7 +4455,7 @@ function coaLiabilitiesResultsHtml() {
       <table class="w-full min-w-[1080px]">
         <thead><tr class="border-b border-side-line">
           <th class="pl-4 pr-2 py-2.5"><input id="coaLiabSelectAll" type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></th>
-          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${idx === 7 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${idx === 7 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
         </tr></thead>
         <tbody>${rows.length ? rows.map((l, i) => coaLiabilityRow(l, start + i + 1)).join('') : `<tr><td colspan="11" class="px-4 py-10 text-center"><p class="text-body text-muted">No liabilities match your filters.</p></td></tr>`}</tbody>
       </table>
@@ -4447,7 +4464,7 @@ function coaLiabilitiesResultsHtml() {
       <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
       <div class="flex items-center gap-1.5">
         <button data-coapage="prev" ${coaLiabilityFilter.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
-        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coapage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaLiabilityFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coapage="${p}" class="w-7 h-7 rounded fs-small font-semibold ${p === coaLiabilityFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
         <button data-coapage="next" ${coaLiabilityFilter.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
       </div>
     </div>`;
@@ -4568,15 +4585,15 @@ function coaEqChartParentLabel(a) {
 function coaEqChartAccountRow(a, n) {
   return `
     <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
-      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n}</td>
-      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">
+      <td class="pl-4 pr-2 py-2 fs-base text-muted tabular">${n}</td>
+      <td class="px-3 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">
         <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#b07df0"></span>${escapeHtml(a.name)}</span>
       </td>
-      <td class="px-3 py-2 whitespace-nowrap"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-side-active text-side-accent whitespace-nowrap">Posting</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">Credit</td>
-      <td class="px-3 py-2 whitespace-nowrap">${a.controlType ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-side-active text-side-accent whitespace-nowrap">${escapeHtml(COA_EQ_CONTROL_TYPE_LABEL[a.controlType])}</span>` : '<span class="text-[13.5px] text-muted">—</span>'}</td>
-      <td class="px-3 py-2 text-[13.5px] text-muted whitespace-nowrap">${escapeHtml(coaEqChartParentLabel(a))}</td>
+      <td class="px-3 py-2 whitespace-nowrap"><span class="inline-flex items-center px-2 py-0.5 rounded-full fs-small font-semibold bg-side-active text-side-accent whitespace-nowrap">Posting</span></td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">Credit</td>
+      <td class="px-3 py-2 whitespace-nowrap">${a.controlType ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full fs-small font-semibold bg-side-active text-side-accent whitespace-nowrap">${escapeHtml(COA_EQ_CONTROL_TYPE_LABEL[a.controlType])}</span>` : '<span class="fs-base text-muted">—</span>'}</td>
+      <td class="px-3 py-2 fs-base text-muted whitespace-nowrap">${escapeHtml(coaEqChartParentLabel(a))}</td>
       <td class="pr-4 pl-3 py-2">
         <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_KEBAB_ICON}</button>
       </td>
@@ -4595,7 +4612,7 @@ function coaEqChartAccountsResultsHtml() {
     <div class="overflow-x-auto border-t border-side-line">
       <table class="w-full min-w-[940px]">
         <thead><tr class="border-b border-side-line">
-          ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-left whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
         </tr></thead>
         <tbody>${rows.length ? rows.map((a, i) => coaEqChartAccountRow(a, start + i + 1)).join('') : `<tr><td colspan="8" class="px-4 py-10 text-center"><p class="text-body text-muted">No accounts match your search.</p></td></tr>`}</tbody>
       </table>
@@ -4604,7 +4621,7 @@ function coaEqChartAccountsResultsHtml() {
       <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
       <div class="flex items-center gap-1.5">
         <button data-coaeqchartpage="prev" ${coaEqChartState.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
-        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coaeqchartpage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaEqChartState.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coaeqchartpage="${p}" class="w-7 h-7 rounded fs-small font-semibold ${p === coaEqChartState.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
         <button data-coaeqchartpage="next" ${coaEqChartState.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
       </div>
     </div>`;
@@ -4687,7 +4704,7 @@ function coaOpenNewEquityAccountModal() {
       <form id="coaEqAccountForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
         <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
           <span class="text-side-accent shrink-0">${iconSvg('wallet', 'w-4 h-4')}</span>
-          <h3 class="text-[14.5px] font-semibold text-primary">New Account</h3>
+          <h3 class="fs-lead font-semibold text-primary">New Account</h3>
           <button type="button" data-close aria-label="Close"
             class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
         </div>
@@ -4763,7 +4780,7 @@ const coaEquityFilter = { q: '', category: 'All Categories', party: 'All Holders
 function coaEquityStatusPill(status) {
   const map = { Active: ['successSoft', 'success'], Closed: ['neutralSoft', 'neutral'] };
   const [bg, fg] = map[status] || map.Active;
-  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg}"><span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>${escapeHtml(status)}</span>`;
+  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full fs-small font-semibold bg-${bg} text-${fg}"><span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>${escapeHtml(status)}</span>`;
 }
 
 function coaFilteredEquity() {
@@ -4810,13 +4827,13 @@ function coaEquityRow(it, n) {
   return `
     <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
       <td class="pl-4 pr-2 py-2"><input type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></td>
-      <td class="px-3 py-2 text-[13.5px] text-disabled tabular">${n}</td>
-      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(it.code)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(it.name)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(it.category)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${iconSvg('user', 'w-3.5 h-3.5')}</span>${escapeHtml(it.party)}</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CAL_ICON}</span>${escapeHtml(it.date)}</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${coaInt(it.amount)}</td>
+      <td class="px-3 py-2 fs-base text-muted tabular">${n}</td>
+      <td class="px-3 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(it.code)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(it.name)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(it.category)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${iconSvg('user', 'w-3.5 h-3.5')}</span>${escapeHtml(it.party)}</span></td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CAL_ICON}</span>${escapeHtml(it.date)}</span></td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${coaInt(it.amount)}</td>
       <td class="px-3 py-2">${coaEquityStatusPill(it.status)}</td>
       <td class="pr-4 pl-3 py-2">
         <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_KEBAB_ICON}</button>
@@ -4837,7 +4854,7 @@ function coaEquityResultsHtml() {
       <table class="w-full min-w-[980px]">
         <thead><tr class="border-b border-side-line">
           <th class="pl-4 pr-2 py-2.5"><input id="coaEquitySelectAll" type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></th>
-          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${idx === 6 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${idx === 6 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
         </tr></thead>
         <tbody>${rows.length ? rows.map((it, i) => coaEquityRow(it, start + i + 1)).join('') : `<tr><td colspan="10" class="px-4 py-10 text-center"><p class="text-body text-muted">No equity items match your filters.</p></td></tr>`}</tbody>
       </table>
@@ -4846,7 +4863,7 @@ function coaEquityResultsHtml() {
       <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
       <div class="flex items-center gap-1.5">
         <button data-coapage="prev" ${coaEquityFilter.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
-        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coapage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaEquityFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coapage="${p}" class="w-7 h-7 rounded fs-small font-semibold ${p === coaEquityFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
         <button data-coapage="next" ${coaEquityFilter.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
       </div>
     </div>`;
@@ -4936,7 +4953,7 @@ function coaOpenNewEquityModal() {
       <form id="coaEquityForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
         <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
           <span class="text-side-accent shrink-0">${iconSvg('users', 'w-4 h-4')}</span>
-          <h3 class="text-[14.5px] font-semibold text-primary">New Equity Item</h3>
+          <h3 class="fs-lead font-semibold text-primary">New Equity Item</h3>
           <button type="button" data-close aria-label="Close"
             class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
         </div>
@@ -5050,15 +5067,15 @@ function coaRevChartParentLabel(a) {
 function coaRevChartAccountRow(a, n) {
   return `
     <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
-      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n}</td>
-      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">
+      <td class="pl-4 pr-2 py-2 fs-base text-muted tabular">${n}</td>
+      <td class="px-3 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">
         <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#3ecf8e"></span>${escapeHtml(a.name)}</span>
       </td>
-      <td class="px-3 py-2 whitespace-nowrap"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-side-active text-side-accent whitespace-nowrap">Posting</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">Credit</td>
-      <td class="px-3 py-2 whitespace-nowrap"><span class="text-[13.5px] text-muted">—</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-muted whitespace-nowrap">${escapeHtml(coaRevChartParentLabel(a))}</td>
+      <td class="px-3 py-2 whitespace-nowrap"><span class="inline-flex items-center px-2 py-0.5 rounded-full fs-small font-semibold bg-side-active text-side-accent whitespace-nowrap">Posting</span></td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">Credit</td>
+      <td class="px-3 py-2 whitespace-nowrap"><span class="fs-base text-muted">—</span></td>
+      <td class="px-3 py-2 fs-base text-muted whitespace-nowrap">${escapeHtml(coaRevChartParentLabel(a))}</td>
       <td class="pr-4 pl-3 py-2">
         <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_KEBAB_ICON}</button>
       </td>
@@ -5077,7 +5094,7 @@ function coaRevChartAccountsResultsHtml() {
     <div class="overflow-x-auto border-t border-side-line">
       <table class="w-full min-w-[940px]">
         <thead><tr class="border-b border-side-line">
-          ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-left whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
         </tr></thead>
         <tbody>${rows.length ? rows.map((a, i) => coaRevChartAccountRow(a, start + i + 1)).join('') : `<tr><td colspan="8" class="px-4 py-10 text-center"><p class="text-body text-muted">No accounts match your search.</p></td></tr>`}</tbody>
       </table>
@@ -5086,7 +5103,7 @@ function coaRevChartAccountsResultsHtml() {
       <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
       <div class="flex items-center gap-1.5">
         <button data-coarevchartpage="prev" ${coaRevChartState.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
-        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coarevchartpage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaRevChartState.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coarevchartpage="${p}" class="w-7 h-7 rounded fs-small font-semibold ${p === coaRevChartState.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
         <button data-coarevchartpage="next" ${coaRevChartState.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
       </div>
     </div>`;
@@ -5169,7 +5186,7 @@ function coaOpenNewRevenueAccountModal() {
       <form id="coaRevAccountForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
         <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
           <span class="text-side-accent shrink-0">${iconSvg('wallet', 'w-4 h-4')}</span>
-          <h3 class="text-[14.5px] font-semibold text-primary">New Account</h3>
+          <h3 class="fs-lead font-semibold text-primary">New Account</h3>
           <button type="button" data-close aria-label="Close"
             class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
         </div>
@@ -5242,7 +5259,7 @@ function coaRevenueStatusPill(status) {
     Recognized: ['successSoft', 'success'], Pending: ['warningSoft', 'warning'], Cancelled: ['dangerSoft', 'danger'],
   };
   const [bg, fg] = map[status] || map.Recognized;
-  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg}"><span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>${escapeHtml(status)}</span>`;
+  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full fs-small font-semibold bg-${bg} text-${fg}"><span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>${escapeHtml(status)}</span>`;
 }
 
 function coaFilteredRevenue() {
@@ -5289,13 +5306,13 @@ function coaRevenueRow(it, n) {
   return `
     <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
       <td class="pl-4 pr-2 py-2"><input type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></td>
-      <td class="px-3 py-2 text-[13.5px] text-disabled tabular">${n}</td>
-      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(it.code)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(it.name)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(it.category)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${iconSvg('user', 'w-3.5 h-3.5')}</span>${escapeHtml(it.party)}</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CAL_ICON}</span>${escapeHtml(it.date)}</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${coaInt(it.amount)}</td>
+      <td class="px-3 py-2 fs-base text-muted tabular">${n}</td>
+      <td class="px-3 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(it.code)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(it.name)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(it.category)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${iconSvg('user', 'w-3.5 h-3.5')}</span>${escapeHtml(it.party)}</span></td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CAL_ICON}</span>${escapeHtml(it.date)}</span></td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${coaInt(it.amount)}</td>
       <td class="px-3 py-2">${coaRevenueStatusPill(it.status)}</td>
       <td class="pr-4 pl-3 py-2">
         <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_KEBAB_ICON}</button>
@@ -5316,7 +5333,7 @@ function coaRevenueResultsHtml() {
       <table class="w-full min-w-[1000px]">
         <thead><tr class="border-b border-side-line">
           <th class="pl-4 pr-2 py-2.5"><input id="coaRevenueSelectAll" type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></th>
-          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${idx === 6 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${idx === 6 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
         </tr></thead>
         <tbody>${rows.length ? rows.map((it, i) => coaRevenueRow(it, start + i + 1)).join('') : `<tr><td colspan="10" class="px-4 py-10 text-center"><p class="text-body text-muted">No revenue entries match your filters.</p></td></tr>`}</tbody>
       </table>
@@ -5325,7 +5342,7 @@ function coaRevenueResultsHtml() {
       <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
       <div class="flex items-center gap-1.5">
         <button data-coapage="prev" ${coaRevenueFilter.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
-        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coapage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaRevenueFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coapage="${p}" class="w-7 h-7 rounded fs-small font-semibold ${p === coaRevenueFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
         <button data-coapage="next" ${coaRevenueFilter.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
       </div>
     </div>`;
@@ -5415,7 +5432,7 @@ function coaOpenNewRevenueModal() {
       <form id="coaRevenueForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
         <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
           <span class="text-side-accent shrink-0">${iconSvg('chartbar', 'w-4 h-4')}</span>
-          <h3 class="text-[14.5px] font-semibold text-primary">New Revenue Entry</h3>
+          <h3 class="fs-lead font-semibold text-primary">New Revenue Entry</h3>
           <button type="button" data-close aria-label="Close"
             class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
         </div>
@@ -5538,15 +5555,15 @@ function coaExpChartParentLabel(a) {
 function coaExpChartAccountRow(a, n) {
   return `
     <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
-      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n}</td>
-      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">
+      <td class="pl-4 pr-2 py-2 fs-base text-muted tabular">${n}</td>
+      <td class="px-3 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">
         <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#f5b84f"></span>${escapeHtml(a.name)}</span>
       </td>
-      <td class="px-3 py-2 whitespace-nowrap"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-side-active text-side-accent whitespace-nowrap">Posting</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">Debit</td>
-      <td class="px-3 py-2 whitespace-nowrap"><span class="text-[13.5px] text-muted">—</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-muted whitespace-nowrap">${escapeHtml(coaExpChartParentLabel(a))}</td>
+      <td class="px-3 py-2 whitespace-nowrap"><span class="inline-flex items-center px-2 py-0.5 rounded-full fs-small font-semibold bg-side-active text-side-accent whitespace-nowrap">Posting</span></td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">Debit</td>
+      <td class="px-3 py-2 whitespace-nowrap"><span class="fs-base text-muted">—</span></td>
+      <td class="px-3 py-2 fs-base text-muted whitespace-nowrap">${escapeHtml(coaExpChartParentLabel(a))}</td>
       <td class="pr-4 pl-3 py-2">
         <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_KEBAB_ICON}</button>
       </td>
@@ -5565,7 +5582,7 @@ function coaExpChartAccountsResultsHtml() {
     <div class="overflow-x-auto border-t border-side-line">
       <table class="w-full min-w-[940px]">
         <thead><tr class="border-b border-side-line">
-          ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-left whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
         </tr></thead>
         <tbody>${rows.length ? rows.map((a, i) => coaExpChartAccountRow(a, start + i + 1)).join('') : `<tr><td colspan="8" class="px-4 py-10 text-center"><p class="text-body text-muted">No accounts match your search.</p></td></tr>`}</tbody>
       </table>
@@ -5574,7 +5591,7 @@ function coaExpChartAccountsResultsHtml() {
       <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
       <div class="flex items-center gap-1.5">
         <button data-coaexpchartpage="prev" ${coaExpChartState.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
-        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coaexpchartpage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaExpChartState.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coaexpchartpage="${p}" class="w-7 h-7 rounded fs-small font-semibold ${p === coaExpChartState.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
         <button data-coaexpchartpage="next" ${coaExpChartState.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
       </div>
     </div>`;
@@ -5657,7 +5674,7 @@ function coaOpenNewExpenseAccountModal() {
       <form id="coaExpAccountForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
         <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
           <span class="text-side-accent shrink-0">${iconSvg('wallet', 'w-4 h-4')}</span>
-          <h3 class="text-[14.5px] font-semibold text-primary">New Account</h3>
+          <h3 class="fs-lead font-semibold text-primary">New Account</h3>
           <button type="button" data-close aria-label="Close"
             class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
         </div>
@@ -5728,7 +5745,7 @@ const coaExpenseFilter = { q: '', category: 'All Categories', party: 'All Vendor
 function coaExpenseStatusPill(status) {
   const map = { Paid: ['successSoft', 'success'], Pending: ['warningSoft', 'warning'], Approved: ['infoSoft', 'info'] };
   const [bg, fg] = map[status] || map.Paid;
-  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg}"><span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>${escapeHtml(status)}</span>`;
+  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full fs-small font-semibold bg-${bg} text-${fg}"><span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>${escapeHtml(status)}</span>`;
 }
 
 function coaFilteredExpenses() {
@@ -5775,13 +5792,13 @@ function coaExpenseRow(it, n) {
   return `
     <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
       <td class="pl-4 pr-2 py-2"><input type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></td>
-      <td class="px-3 py-2 text-[13.5px] text-disabled tabular">${n}</td>
-      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(it.code)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(it.name)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(it.category)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${iconSvg('user', 'w-3.5 h-3.5')}</span>${escapeHtml(it.party)}</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CAL_ICON}</span>${escapeHtml(it.date)}</span></td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${coaInt(it.amount)}</td>
+      <td class="px-3 py-2 fs-base text-muted tabular">${n}</td>
+      <td class="px-3 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(it.code)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(it.name)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(it.category)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${iconSvg('user', 'w-3.5 h-3.5')}</span>${escapeHtml(it.party)}</span></td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular"><span class="inline-flex items-center gap-1.5"><span class="text-muted shrink-0">${COA_CAL_ICON}</span>${escapeHtml(it.date)}</span></td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${coaInt(it.amount)}</td>
       <td class="px-3 py-2">${coaExpenseStatusPill(it.status)}</td>
       <td class="pr-4 pl-3 py-2">
         <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_KEBAB_ICON}</button>
@@ -5802,7 +5819,7 @@ function coaExpenseResultsHtml() {
       <table class="w-full min-w-[1000px]">
         <thead><tr class="border-b border-side-line">
           <th class="pl-4 pr-2 py-2.5"><input id="coaExpenseSelectAll" type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></th>
-          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${idx === 6 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${idx === 6 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
         </tr></thead>
         <tbody>${rows.length ? rows.map((it, i) => coaExpenseRow(it, start + i + 1)).join('') : `<tr><td colspan="10" class="px-4 py-10 text-center"><p class="text-body text-muted">No expense entries match your filters.</p></td></tr>`}</tbody>
       </table>
@@ -5811,7 +5828,7 @@ function coaExpenseResultsHtml() {
       <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
       <div class="flex items-center gap-1.5">
         <button data-coapage="prev" ${coaExpenseFilter.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
-        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coapage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaExpenseFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coapage="${p}" class="w-7 h-7 rounded fs-small font-semibold ${p === coaExpenseFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
         <button data-coapage="next" ${coaExpenseFilter.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
       </div>
     </div>`;
@@ -5901,7 +5918,7 @@ function coaOpenNewExpenseModal() {
       <form id="coaExpenseForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
         <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
           <span class="text-side-accent shrink-0">${iconSvg('wallet', 'w-4 h-4')}</span>
-          <h3 class="text-[14.5px] font-semibold text-primary">New Expense Entry</h3>
+          <h3 class="fs-lead font-semibold text-primary">New Expense Entry</h3>
           <button type="button" data-close aria-label="Close"
             class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
         </div>
@@ -6000,13 +6017,13 @@ function coaFilteredCashBank() {
 function coaCashBankStatusPill(status) {
   const map = { Active: ['successSoft', 'success'], Inactive: ['neutralSoft', 'neutral'] };
   const [bg, fg] = map[status] || map.Active;
-  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg}"><span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>${escapeHtml(status)}</span>`;
+  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full fs-small font-semibold bg-${bg} text-${fg}"><span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>${escapeHtml(status)}</span>`;
 }
 
 function coaCashBankTypeBadge(type) {
   const map = { Cash: ['warningSoft', 'warning'], Bank: ['infoSoft', 'info'] };
   const [bg, fg] = map[type] || map.Cash;
-  return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg} whitespace-nowrap">${escapeHtml(type)}</span>`;
+  return `<span class="inline-flex items-center px-2 py-0.5 rounded-full fs-small font-semibold bg-${bg} text-${fg} whitespace-nowrap">${escapeHtml(type)}</span>`;
 }
 
 const COA_CASHBANK_STAT_CASH_ICON = '<svg viewBox="0 0 24 24" class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M16 13h.01M3 10h18"/></svg>';
@@ -6072,16 +6089,16 @@ function coaCashBankRow(a, n) {
   return `
     <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
       <td class="pl-4 pr-2 py-2"><input type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></td>
-      <td class="px-3 py-2 text-[13.5px] text-disabled tabular">${n}</td>
-      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(a.name)}</td>
+      <td class="px-3 py-2 fs-base text-muted tabular">${n}</td>
+      <td class="px-3 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(a.name)}</td>
       <td class="px-3 py-2 whitespace-nowrap">${coaCashBankTypeBadge(a.type)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${a.type === 'Bank' ? escapeHtml(`${a.bankName}${a.branch ? ' — ' + a.branch : ''}`) : '—'}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${a.type === 'Bank' ? escapeHtml(a.accountNo || '—') : '—'}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(a.currency)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular text-right">${coaInt(a.openingBalance)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary font-semibold whitespace-nowrap tabular text-right">${coaInt(a.currentBalance)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(a.openedDate)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${a.type === 'Bank' ? escapeHtml(`${a.bankName}${a.branch ? ' — ' + a.branch : ''}`) : '—'}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular">${a.type === 'Bank' ? escapeHtml(a.accountNo || '—') : '—'}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(a.currency)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular text-right">${coaInt(a.openingBalance)}</td>
+      <td class="px-3 py-2 fs-base text-primary font-semibold whitespace-nowrap tabular text-right">${coaInt(a.currentBalance)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular">${escapeHtml(a.openedDate)}</td>
       <td class="px-3 py-2">${coaCashBankStatusPill(a.status)}</td>
       <td class="pr-4 pl-3 py-2">
         <button class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover" title="More actions">${COA_KEBAB_ICON}</button>
@@ -6102,7 +6119,7 @@ function coaCashBankResultsHtml() {
       <table class="w-full min-w-[1280px]">
         <thead><tr class="border-b border-side-line">
           <th class="pl-4 pr-2 py-2.5"><input id="coaCashBankSelectAll" type="checkbox" class="w-3.5 h-3.5 rounded border-side-border" /></th>
-          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${idx === 6 || idx === 7 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          ${headers.map((h, idx) => `<th class="${idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${idx === 6 || idx === 7 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
         </tr></thead>
         <tbody>${rows.length ? rows.map((a, i) => coaCashBankRow(a, start + i + 1)).join('') : `<tr><td colspan="13" class="px-4 py-10 text-center"><p class="text-body text-muted">No accounts match your filters.</p></td></tr>`}</tbody>
       </table>
@@ -6111,7 +6128,7 @@ function coaCashBankResultsHtml() {
       <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
       <div class="flex items-center gap-1.5">
         <button data-coapage="prev" ${coaCashBankFilter.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
-        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coapage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === coaCashBankFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-coapage="${p}" class="w-7 h-7 rounded fs-small font-semibold ${p === coaCashBankFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
         <button data-coapage="next" ${coaCashBankFilter.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
       </div>
     </div>`;
@@ -6194,7 +6211,7 @@ function coaOpenNewCashBankModal() {
       <form id="coaCashBankForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
         <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
           <span class="text-side-accent shrink-0">${iconSvg('wallet', 'w-4 h-4')}</span>
-          <h3 class="text-[14.5px] font-semibold text-primary">New Cash / Bank Account</h3>
+          <h3 class="fs-lead font-semibold text-primary">New Cash / Bank Account</h3>
           <button type="button" data-close aria-label="Close"
             class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
         </div>
@@ -6504,7 +6521,7 @@ function vmHeaderCard(key, cfg) {
 function vmLineRow(l, i) {
   return `
     <tr data-vline="${i}" class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
-      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${i + 1}</td>
+      <td class="pl-4 pr-2 py-2 fs-base text-muted tabular">${i + 1}</td>
       <td class="px-3 py-2 min-w-[200px]">
         <select data-vmline="account" class="${COA_INPUT}">
           <option value="">Select account…</option>
@@ -6530,13 +6547,13 @@ function vmTotalsInner(cfg) {
     <div class="flex items-center gap-8 shrink-0">
       <div class="text-right">
         <p class="text-micro text-muted mb-0.5">Total Debit</p>
-        <p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(t.debit)}</p>
+        <p class="fs-title font-semibold text-primary tabular">BDT ${coaMoney(t.debit)}</p>
       </div>
       <div class="text-right">
         <p class="text-micro text-muted mb-0.5">Total Credit</p>
-        <p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(t.credit)}</p>
+        <p class="fs-title font-semibold text-primary tabular">BDT ${coaMoney(t.credit)}</p>
       </div>
-      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold ${t.balanced ? 'bg-successSoft text-success' : 'bg-warningSoft text-warning'}">
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full fs-small font-semibold ${t.balanced ? 'bg-successSoft text-success' : 'bg-warningSoft text-warning'}">
         ${t.balanced ? COA_CHECK_ICON : ''}${t.balanced ? 'Balanced' : 'Unbalanced'}
       </span>
     </div>`;
@@ -6552,12 +6569,12 @@ function vmEntriesCard(cfg) {
       <div class="overflow-x-auto border-t border-side-line">
         <table class="w-full min-w-[860px]">
           <thead><tr class="border-b border-side-line">
-            <th class="pl-4 pr-2 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">SL</th>
-            <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">Account (Chart of Accounts)</th>
-            <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-right whitespace-nowrap">Debit (BDT)</th>
-            <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-right whitespace-nowrap">Credit (BDT)</th>
-            <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">Description</th>
-            <th class="pr-4 pl-3 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">Action</th>
+            <th class="pl-4 pr-2 py-2.5 fs-head font-semibold text-muted text-left whitespace-nowrap">SL</th>
+            <th class="px-3 py-2.5 fs-head font-semibold text-muted text-left whitespace-nowrap">Account (Chart of Accounts)</th>
+            <th class="px-3 py-2.5 fs-head font-semibold text-muted text-right whitespace-nowrap">Debit (BDT)</th>
+            <th class="px-3 py-2.5 fs-head font-semibold text-muted text-right whitespace-nowrap">Credit (BDT)</th>
+            <th class="px-3 py-2.5 fs-head font-semibold text-muted text-left whitespace-nowrap">Description</th>
+            <th class="pr-4 pl-3 py-2.5 fs-head font-semibold text-muted text-left whitespace-nowrap">Action</th>
           </tr></thead>
           <tbody id="vmLinesBody">${vmForm.lines.map(vmLineRow).join('')}</tbody>
         </table>
@@ -6591,13 +6608,13 @@ function vmRecentCard(key, cfg) {
   const rows = list.length
     ? list.slice().reverse().map(e => `
       <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
-        <td class="pl-4 pr-2 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(e.date)}</td>
-        <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(e.voucherNo)}</td>
-        <td class="px-3 py-2 text-[13.5px] text-primary">${escapeHtml(e.party || e.memo)}</td>
-        <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${coaMoney(e.amount)}</td>
+        <td class="pl-4 pr-2 py-2 fs-base text-secondary whitespace-nowrap tabular">${escapeHtml(e.date)}</td>
+        <td class="px-3 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(e.voucherNo)}</td>
+        <td class="px-3 py-2 fs-base text-primary">${escapeHtml(e.party || e.memo)}</td>
+        <td class="px-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${coaMoney(e.amount)}</td>
         <td class="pr-4 pl-3 py-2">${coaStatusPill(e.status)}</td>
       </tr>`).join('')
-    : `<tr><td colspan="5" class="px-4 py-8 text-center text-[13.5px] text-muted">No ${cfg.title.toLowerCase()} vouchers posted yet.</td></tr>`;
+    : `<tr><td colspan="5" class="px-4 py-8 text-center fs-base text-muted">No ${cfg.title.toLowerCase()} vouchers posted yet.</td></tr>`;
   return `
     <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
       <div class="flex items-center gap-2.5 p-4">
@@ -6607,7 +6624,7 @@ function vmRecentCard(key, cfg) {
       <div class="overflow-x-auto border-t border-side-line">
         <table class="w-full min-w-[720px]">
           <thead><tr class="border-b border-side-line">
-            ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${idx === 3 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+            ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${idx === 3 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -6757,7 +6774,7 @@ function apArStatus(it) {
 function apArStatusPill(status) {
   const map = { Paid: ['successSoft', 'success'], 'Partially Paid': ['infoSoft', 'info'], Unpaid: ['warningSoft', 'warning'], Overdue: ['dangerSoft', 'danger'] };
   const [bg, fg] = map[status] || map.Unpaid;
-  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg}"><span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>${escapeHtml(status)}</span>`;
+  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full fs-small font-semibold bg-${bg} text-${fg}"><span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>${escapeHtml(status)}</span>`;
 }
 
 function apArNextCode(key) {
@@ -6830,7 +6847,7 @@ function apArFilterBar(key) {
           <span class="block text-label font-medium text-secondary mb-1">Search</span>
           <div class="relative">
             <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-            <input id="apArSearch" type="text" value="${escapeHtml(f.q)}" placeholder="Search ${cfg.noun.toLowerCase()} no., party or reference…" class="${COA_INPUT} pl-9" />
+            <input id="apArSearch" type="text" value="${escapeHtml(f.q)}" placeholder="Search ${cfg.noun.toLowerCase()} no. or party…" class="${COA_INPUT} pl-9" />
           </div>
         </div>
         ${coaField(cfg.partyLabel, `<select id="apArParty" class="${COA_INPUT}">${parties.map(p => `<option value="${escapeHtml(p)}" ${p === f.party ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('')}</select>`)}
@@ -6845,19 +6862,27 @@ function apArRow(key, it, n) {
   const bal = apArBalance(it);
   const status = apArStatus(it);
   return `
-    <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
-      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n}</td>
-      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(it.code)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(it.party)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${coaFormatDateDisplay(it.docDate)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${coaFormatDateDisplay(it.dueDate)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(it.ref || '—')}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary font-semibold whitespace-nowrap tabular text-right">${coaInt(it.amount)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular text-right">${coaInt(it.paid)}</td>
-      <td class="px-3 py-2 text-[13.5px] font-semibold whitespace-nowrap tabular text-right ${bal > 0 ? 'text-danger' : 'text-success'}">${coaInt(bal)}</td>
-      <td class="px-3 py-2">${apArStatusPill(status)}</td>
-      <td class="pr-4 pl-3 py-2 text-right whitespace-nowrap">
-        ${bal > 0 ? `<button type="button" data-apar-pay="${escapeHtml(it.code)}" class="h-7 px-2.5 rounded border border-side-accent/40 text-side-accent text-[12px] font-semibold hover:bg-side-active mr-1.5">${escapeHtml(cfg.actionLabel)}</button>` : ''}
+    <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover align-top">
+      <td class="pl-4 pr-2 py-2.5 fs-base text-muted tabular">${n}</td>
+      <td class="px-3 py-2.5 whitespace-nowrap">
+        <p class="fs-base font-medium text-primary tabular">${escapeHtml(it.code)}</p>
+        <p class="text-helper text-muted mt-0.5">${escapeHtml(it.ref || '—')}</p>
+      </td>
+      <td class="px-3 py-2.5 min-w-[190px]">
+        <p class="fs-base text-primary">${escapeHtml(it.party)}</p>
+        <div class="mt-1.5">${apArStatusPill(status)}</div>
+      </td>
+      <td class="px-3 py-2.5 whitespace-nowrap tabular">
+        <p class="fs-base text-secondary">${coaFormatDateDisplay(it.docDate)}</p>
+        <p class="text-helper text-muted mt-0.5">Due ${coaFormatDateDisplay(it.dueDate)}</p>
+      </td>
+      <td class="px-3 py-2.5 fs-base text-primary font-semibold whitespace-nowrap tabular text-right">${coaInt(it.amount)}</td>
+      <td class="px-3 py-2.5 whitespace-nowrap text-right tabular">
+        <p class="fs-base text-secondary">${coaInt(it.paid)} <span class="text-helper text-muted">paid</span></p>
+        <p class="fs-base font-semibold mt-0.5 ${bal > 0 ? 'text-danger' : 'text-success'}">${coaInt(bal)} <span class="text-helper font-normal text-muted">due</span></p>
+      </td>
+      <td class="pr-4 pl-3 py-2.5 text-right whitespace-nowrap">
+        ${bal > 0 ? `<button type="button" data-apar-pay="${escapeHtml(it.code)}" class="h-7 px-2.5 rounded border border-side-accent/40 text-side-accent fs-small font-semibold hover:bg-side-active mr-1.5">${escapeHtml(cfg.actionLabel)}</button>` : ''}
         <button type="button" data-apar-remove="${escapeHtml(it.code)}" class="w-7 h-7 rounded border border-side-border inline-flex items-center justify-center text-muted hover:text-danger hover:bg-dangerSoft" title="Remove">${COA_DELETE_ICON}</button>
       </td>
     </tr>`;
@@ -6871,21 +6896,21 @@ function apArResultsHtml(key) {
   f.page = Math.min(Math.max(1, f.page), totalPages);
   const start = (f.page - 1) * COA_PAGE_SIZE;
   const rows = all.slice(start, start + COA_PAGE_SIZE);
-  const headers = ['SL', cfg.docLabel, cfg.partyLabel, cfg.dateLabel, 'Due Date', 'Reference', 'Amount (BDT)', 'Paid (BDT)', 'Balance (BDT)', 'Status', 'Actions'];
+  const headers = ['SL', `${cfg.docLabel} / Reference`, `${cfg.partyLabel} / Status`, `${cfg.dateLabel} / Due`, 'Amount (BDT)', 'Paid / Balance (BDT)', 'Actions'];
   return `
     <div class="overflow-x-auto border-t border-side-line">
-      <table class="w-full min-w-[1200px]">
+      <table class="w-full min-w-[900px]">
         <thead><tr class="border-b border-side-line">
-          ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${idx >= 6 && idx <= 8 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          ${headers.map((h, idx) => `<th class="${idx === 0 ? 'pl-4 pr-2' : idx === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${idx >= 4 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
         </tr></thead>
-        <tbody>${rows.length ? rows.map((it, i) => apArRow(key, it, start + i + 1)).join('') : `<tr><td colspan="11" class="px-4 py-10 text-center"><p class="text-body text-muted">No ${cfg.noun.toLowerCase()}s match your filters.</p></td></tr>`}</tbody>
+        <tbody>${rows.length ? rows.map((it, i) => apArRow(key, it, start + i + 1)).join('') : `<tr><td colspan="7" class="px-4 py-10 text-center"><p class="text-body text-muted">No ${cfg.noun.toLowerCase()}s match your filters.</p></td></tr>`}</tbody>
       </table>
     </div>
     <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
       <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
       <div class="flex items-center gap-1.5">
         <button data-aparpage="prev" ${f.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
-        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-aparpage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === f.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-aparpage="${p}" class="w-7 h-7 rounded fs-small font-semibold ${p === f.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
         <button data-aparpage="next" ${f.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
       </div>
     </div>`;
@@ -6986,7 +7011,7 @@ function apArOpenNewModal(key, listContainer) {
       <form id="apArNewForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
         <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
           <span class="text-side-accent shrink-0">${iconSvg('doc', 'w-4 h-4')}</span>
-          <h3 class="text-[14.5px] font-semibold text-primary">New ${escapeHtml(cfg.noun)}</h3>
+          <h3 class="fs-lead font-semibold text-primary">New ${escapeHtml(cfg.noun)}</h3>
           <button type="button" data-close aria-label="Close" class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
         </div>
 
@@ -7072,7 +7097,7 @@ function apArOpenPayModal(key, code, listContainer) {
       <form id="apArPayForm" class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
         <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
           <span class="text-side-accent shrink-0">${iconSvg('wallet', 'w-4 h-4')}</span>
-          <h3 class="text-[14.5px] font-semibold text-primary">${escapeHtml(cfg.actionVerb)} — ${escapeHtml(it.code)}</h3>
+          <h3 class="fs-lead font-semibold text-primary">${escapeHtml(cfg.actionVerb)} — ${escapeHtml(it.code)}</h3>
           <button type="button" data-close aria-label="Close" class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
         </div>
         <div class="p-4 grid grid-cols-1 gap-3">
@@ -7201,7 +7226,7 @@ function geAccountingCard() {
   const dueBox = (id, label) => `
     <div class="flex-1 min-w-0 h-9 px-3 rounded border border-side-line bg-side-hover flex items-center justify-between gap-2">
       <span class="text-label text-secondary whitespace-nowrap">${label}</span>
-      <span id="${id}" class="text-[13px] font-medium text-muted tabular truncate">—</span>
+      <span id="${id}" class="fs-head font-medium text-muted tabular truncate">—</span>
     </div>`;
   return `
     <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
@@ -7239,15 +7264,15 @@ function geRecentCard() {
   const rows = generalEntries.length
     ? generalEntries.slice(0, 10).map(e => `
       <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
-        <td class="pl-4 pr-2 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(e.entryNo)}</td>
-        <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(biFromISO(e.date) || e.date)}</td>
-        <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(e.type)}</td>
-        <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(e.bankAccount)}</td>
-        <td class="px-3 py-2 text-[13.5px] text-primary">${escapeHtml(e.coaAccount)}</td>
-        <td class="px-3 py-2 text-[13.5px] font-semibold text-primary whitespace-nowrap tabular text-right">${coaMoney(e.amount)}</td>
-        <td class="pr-4 pl-3 py-2 text-[13.5px] text-secondary">${escapeHtml(e.description || '')}</td>
+        <td class="pl-4 pr-2 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(e.entryNo)}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular">${escapeHtml(biFromISO(e.date) || e.date)}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(e.type)}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(e.bankAccount)}</td>
+        <td class="px-3 py-2 fs-base text-primary">${escapeHtml(e.coaAccount)}</td>
+        <td class="px-3 py-2 fs-base font-semibold text-primary whitespace-nowrap tabular text-right">${coaMoney(e.amount)}</td>
+        <td class="pr-4 pl-3 py-2 fs-base text-secondary">${escapeHtml(e.description || '')}</td>
       </tr>`).join('')
-    : `<tr><td colspan="${headers.length}" class="px-4 py-8 text-center text-[13.5px] text-muted">No general entries posted yet.</td></tr>`;
+    : `<tr><td colspan="${headers.length}" class="px-4 py-8 text-center fs-base text-muted">No general entries posted yet.</td></tr>`;
   return `
     <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
       <div class="flex items-center gap-2.5 p-4">
@@ -7257,7 +7282,7 @@ function geRecentCard() {
       <div class="overflow-x-auto border-t border-side-line">
         <table class="w-full min-w-[860px]">
           <thead><tr class="border-b border-side-line">
-            ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${i === 5 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+            ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${i === 5 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -7457,7 +7482,7 @@ function vatNextChallanNo() {
 function vatStatusPill(status) {
   const map = { Issued: ['successSoft', 'success'], Cancelled: ['dangerSoft', 'danger'] };
   const [bg, fg] = map[status] || map.Issued;
-  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[12px] font-semibold bg-${bg} text-${fg}"><span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>${escapeHtml(status)}</span>`;
+  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full fs-small font-semibold bg-${bg} text-${fg}"><span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>${escapeHtml(status)}</span>`;
 }
 
 function vatFiltered() {
@@ -7495,7 +7520,7 @@ function vatFilterBar() {
           <span class="block text-label font-medium text-secondary mb-1">Search</span>
           <div class="relative">
             <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-            <input id="vatSearch" type="text" value="${escapeHtml(vatFilter.q)}" placeholder="Search challan no., buyer or BIN…" class="${COA_INPUT} pl-9" />
+            <input id="vatSearch" type="text" value="${escapeHtml(vatFilter.q)}" placeholder="Search challan or buyer…" class="${COA_INPUT} pl-9" />
           </div>
         </div>
         ${coaField('VAT Rate', `<select id="vatRateFilter" class="${COA_INPUT}">${opt(['All Rates', ...VAT_RATES.map(r => `${r}%`)], vatFilter.rate)}</select>`)}
@@ -7507,12 +7532,12 @@ function vatFilterBar() {
 function vatFormLineRow(it, i) {
   return `
     <tr data-vrow="${i}" class="border-b border-side-line last:border-b-0">
-      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${i + 1}</td>
+      <td class="pl-4 pr-2 py-2 fs-base text-muted tabular">${i + 1}</td>
       <td class="px-3 py-2 min-w-[220px]"><input data-vitem="description" type="text" autocomplete="off" value="${escapeHtml(it.description)}" placeholder="Description of goods / services" class="${COA_INPUT}" /></td>
       <td class="px-3 py-2 w-24"><input data-vitem="unit" type="text" autocomplete="off" value="${escapeHtml(it.unit)}" placeholder="Pcs" class="${COA_INPUT}" /></td>
       <td class="px-3 py-2 w-28"><input data-vitem="quantity" type="number" min="0" step="0.01" value="${escapeHtml(it.quantity)}" class="${COA_INPUT} tabular text-right" /></td>
       <td class="px-3 py-2 w-32"><input data-vitem="unitPrice" type="number" min="0" step="0.01" value="${escapeHtml(it.unitPrice)}" class="${COA_INPUT} tabular text-right" /></td>
-      <td data-vline-total class="px-3 py-2 w-32 text-[13.5px] font-semibold text-primary tabular text-right whitespace-nowrap">${coaMoney(vatLineValue(it))}</td>
+      <td data-vline-total class="px-3 py-2 w-32 fs-base font-semibold text-primary tabular text-right whitespace-nowrap">${coaMoney(vatLineValue(it))}</td>
       <td class="pr-4 pl-3 py-2 w-12">
         <button type="button" data-vitem-del="${i}" class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:text-danger hover:bg-dangerSoft disabled:opacity-40 disabled:cursor-not-allowed" title="Remove line" ${vatForm.items.length <= 1 ? 'disabled' : ''}>${COA_DELETE_ICON}</button>
       </td>
@@ -7527,9 +7552,9 @@ function vatFormTotalsInner() {
       <p class="text-body text-secondary italic">${escapeHtml(vatAmountInWords(c.total))}</p>
     </div>
     <div class="flex items-center gap-8 shrink-0">
-      <div class="text-right"><p class="text-micro text-muted mb-0.5">Taxable Value</p><p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(c.taxable)}</p></div>
-      <div class="text-right"><p class="text-micro text-muted mb-0.5">VAT @ ${vatForm.rate}%</p><p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(c.vatAmount)}</p></div>
-      <div class="text-right"><p class="text-micro text-muted mb-0.5">Total Value</p><p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(c.total)}</p></div>
+      <div class="text-right"><p class="text-micro text-muted mb-0.5">Taxable Value</p><p class="fs-title font-semibold text-primary tabular">BDT ${coaMoney(c.taxable)}</p></div>
+      <div class="text-right"><p class="text-micro text-muted mb-0.5">VAT @ ${vatForm.rate}%</p><p class="fs-title font-semibold text-primary tabular">BDT ${coaMoney(c.vatAmount)}</p></div>
+      <div class="text-right"><p class="text-micro text-muted mb-0.5">Total Value</p><p class="fs-title font-semibold text-primary tabular">BDT ${coaMoney(c.total)}</p></div>
     </div>`;
 }
 
@@ -7542,18 +7567,18 @@ function vatFormBodyHtml() {
     <div class="sm:col-span-2 space-y-4">
       <div>
         ${sub('Registered Person (Supplier)')}
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
           ${coaField('Name', readonly(vatCompanyProfile.name))}
           ${coaField('BIN', readonly(vatCompanyProfile.bin))}
-          ${coaField('Address', readonly(vatCompanyProfile.address))}
+          <div class="md:col-span-2">${coaField('Address', readonly(vatCompanyProfile.address))}</div>
         </div>
       </div>
       <div>
         ${sub('Buyer / Recipient')}
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
           ${coaField('Buyer Name', `<input data-vatf="buyerName" type="text" autocomplete="off" value="${escapeHtml(f.buyerName)}" placeholder="e.g. Everest Apparels Ltd." class="${COA_INPUT}" />`)}
           ${coaField('Buyer BIN (optional)', `<input data-vatf="buyerBin" type="text" autocomplete="off" value="${escapeHtml(f.buyerBin)}" placeholder="Blank for an unregistered buyer" class="${COA_INPUT}" />`)}
-          ${coaField('Buyer Address', `<input data-vatf="buyerAddress" type="text" autocomplete="off" value="${escapeHtml(f.buyerAddress)}" placeholder="e.g. Gulshan-1, Dhaka" class="${COA_INPUT}" />`)}
+          <div class="md:col-span-2">${coaField('Buyer Address', `<input data-vatf="buyerAddress" type="text" autocomplete="off" value="${escapeHtml(f.buyerAddress)}" placeholder="e.g. Gulshan-1, Dhaka" class="${COA_INPUT}" />`)}</div>
         </div>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -7570,12 +7595,12 @@ function vatFormBodyHtml() {
         <div class="overflow-x-auto">
           <table class="w-full min-w-[720px]">
             <thead><tr class="border-b border-side-line">
-              <th class="pl-4 pr-2 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">SL</th>
-              <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">Description</th>
-              <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-left whitespace-nowrap">Unit</th>
-              <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-right whitespace-nowrap">Quantity</th>
-              <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-right whitespace-nowrap">Unit Price</th>
-              <th class="px-3 py-2.5 text-[13px] font-semibold text-muted text-right whitespace-nowrap">Value (BDT)</th>
+              <th class="pl-4 pr-2 py-2.5 fs-head font-semibold text-muted text-left whitespace-nowrap">SL</th>
+              <th class="px-3 py-2.5 fs-head font-semibold text-muted text-left whitespace-nowrap">Description</th>
+              <th class="px-3 py-2.5 fs-head font-semibold text-muted text-left whitespace-nowrap">Unit</th>
+              <th class="px-3 py-2.5 fs-head font-semibold text-muted text-right whitespace-nowrap">Quantity</th>
+              <th class="px-3 py-2.5 fs-head font-semibold text-muted text-right whitespace-nowrap">Unit Price</th>
+              <th class="px-3 py-2.5 fs-head font-semibold text-muted text-right whitespace-nowrap">Value (BDT)</th>
               <th class="pr-4 pl-3 py-2.5"></th>
             </tr></thead>
             <tbody id="vatFormLines">${f.items.map(vatFormLineRow).join('')}</tbody>
@@ -7654,22 +7679,28 @@ function vatRow(v, n) {
   const c = vatCalc(v);
   const previewing = vatUi.previewNo === v.challanNo;
   return `
-    <tr class="group border-b border-side-line hover:bg-side-hover">
-      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n}</td>
-      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(v.challanNo)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${coaFormatDateDisplay(v.issueDate)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(v.buyerName)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(v.buyerBin || '—')}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular text-right">${coaMoney(c.taxable)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular text-right">${v.vatRate}%</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary font-semibold whitespace-nowrap tabular text-right">${coaMoney(c.vatAmount)}</td>
-      <td class="px-3 py-2">${vatStatusPill(v.status)}</td>
-      <td class="pr-4 pl-3 py-2 text-right whitespace-nowrap">
-        <button type="button" data-vat-view="${escapeHtml(v.challanNo)}" class="h-7 px-2.5 rounded border border-side-accent/40 text-side-accent text-[12px] font-semibold hover:bg-side-active ${v.status === 'Issued' ? 'mr-1.5' : ''}">${previewing ? 'Hide' : 'View'}</button>
-        ${v.status === 'Issued' ? `<button type="button" data-vat-cancel="${escapeHtml(v.challanNo)}" class="h-7 px-2.5 rounded border border-side-border text-secondary text-[12px] font-semibold hover:text-danger hover:bg-dangerSoft">Cancel</button>` : ''}
+    <tr class="group border-b border-side-line hover:bg-side-hover align-top">
+      <td class="pl-4 pr-2 py-2.5 fs-base text-muted tabular">${n}</td>
+      <td class="px-3 py-2.5 whitespace-nowrap">
+        <p class="fs-base font-medium text-primary tabular">${escapeHtml(v.challanNo)}</p>
+        <p class="text-helper text-muted mt-0.5 tabular">${coaFormatDateDisplay(v.issueDate)}</p>
+      </td>
+      <td class="px-3 py-2.5 min-w-[200px]">
+        <p class="fs-base text-primary">${escapeHtml(v.buyerName)}</p>
+        <p class="text-helper text-muted mt-0.5 tabular">BIN: ${escapeHtml(v.buyerBin || '—')}</p>
+      </td>
+      <td class="px-3 py-2.5 fs-base text-secondary whitespace-nowrap tabular text-right">${coaMoney(c.taxable)}</td>
+      <td class="px-3 py-2.5 whitespace-nowrap text-right">
+        <p class="fs-base text-primary font-semibold tabular">${coaMoney(c.vatAmount)}</p>
+        <p class="text-helper text-muted mt-0.5 tabular">@ ${v.vatRate}%</p>
+      </td>
+      <td class="px-3 py-2.5">${vatStatusPill(v.status)}</td>
+      <td class="pr-4 pl-3 py-2.5 text-right whitespace-nowrap">
+        <button type="button" data-vat-view="${escapeHtml(v.challanNo)}" class="h-7 px-2.5 rounded border border-side-accent/40 text-side-accent fs-small font-semibold hover:bg-side-active ${v.status === 'Issued' ? 'mr-1.5' : ''}">${previewing ? 'Hide' : 'View'}</button>
+        ${v.status === 'Issued' ? `<button type="button" data-vat-cancel="${escapeHtml(v.challanNo)}" class="h-7 px-2.5 rounded border border-side-border text-secondary fs-small font-semibold hover:text-danger hover:bg-dangerSoft">Cancel</button>` : ''}
       </td>
     </tr>
-    ${previewing ? `<tr class="border-b border-side-line bg-side-hover"><td colspan="10" class="p-4">${vatMushakPreview(v)}</td></tr>` : ''}`;
+    ${previewing ? `<tr class="border-b border-side-line bg-side-hover"><td colspan="7" class="p-4">${vatMushakPreview(v)}</td></tr>` : ''}`;
 }
 
 function vatResultsHtml() {
@@ -7678,21 +7709,21 @@ function vatResultsHtml() {
   vatFilter.page = Math.min(Math.max(1, vatFilter.page), totalPages);
   const start = (vatFilter.page - 1) * COA_PAGE_SIZE;
   const rows = all.slice(start, start + COA_PAGE_SIZE);
-  const headers = ['SL', 'Challan No.', 'Date', 'Buyer', 'Buyer BIN', 'Taxable Value (BDT)', 'VAT Rate', 'VAT Amount (BDT)', 'Status', 'Actions'];
+  const headers = ['SL', 'Challan No. / Date', 'Buyer / BIN', 'Taxable Value (BDT)', 'VAT Amount (BDT)', 'Status', 'Actions'];
   return `
     <div class="overflow-x-auto border-t border-side-line">
-      <table class="w-full min-w-[1100px]">
+      <table class="w-full min-w-[900px]">
         <thead><tr class="border-b border-side-line">
-          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${i >= 5 && i <= 7 ? 'right' : i === headers.length - 1 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${i === 3 || i === 4 || i === headers.length - 1 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
         </tr></thead>
-        <tbody>${rows.length ? rows.map((v, i) => vatRow(v, start + i + 1)).join('') : `<tr><td colspan="10" class="px-4 py-10 text-center"><p class="text-body text-muted">No Mushak 6.3 tax invoices match your filters.</p></td></tr>`}</tbody>
+        <tbody>${rows.length ? rows.map((v, i) => vatRow(v, start + i + 1)).join('') : `<tr><td colspan="7" class="px-4 py-10 text-center"><p class="text-body text-muted">No Mushak 6.3 tax invoices match your filters.</p></td></tr>`}</tbody>
       </table>
     </div>
     <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
       <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COA_PAGE_SIZE, all.length)} of ${all.length} entries` : 'No entries'}</p>
       <div class="flex items-center gap-1.5">
         <button data-vatpage="prev" ${vatFilter.page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
-        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-vatpage="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === vatFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-vatpage="${p}" class="w-7 h-7 rounded fs-small font-semibold ${p === vatFilter.page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
         <button data-vatpage="next" ${vatFilter.page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
       </div>
     </div>`;
@@ -7856,7 +7887,7 @@ function finOpenModal(o) {
       <form class="bg-cardBg border border-side-panel rounded-lg overflow-hidden overlay-shadow">
         <div class="flex items-center gap-2 px-4 h-12 border-b border-side-line">
           <span class="text-side-accent shrink-0">${iconSvg(o.icon || 'doc', 'w-4 h-4')}</span>
-          <h3 class="text-[14.5px] font-semibold text-primary">${escapeHtml(o.title)}</h3>
+          <h3 class="fs-lead font-semibold text-primary">${escapeHtml(o.title)}</h3>
           <button type="button" data-close aria-label="Close" class="ml-auto w-7 h-7 rounded flex items-center justify-center text-muted hover:bg-side-hover hover:text-primary">${close}</button>
         </div>
         ${o.intro ? `<p class="px-4 pt-3 text-helper text-muted">${o.intro}</p>` : ''}
@@ -7891,14 +7922,14 @@ function finFormVal(form, name) { return (form.elements[name].value || '').trim(
 
 function finPill(text, tone, dot) {
   const [bg, fg] = { success: ['successSoft', 'success'], warning: ['warningSoft', 'warning'], danger: ['dangerSoft', 'danger'], info: ['infoSoft', 'info'], neutral: ['neutralSoft', 'neutral'] }[tone] || ['neutralSoft', 'neutral'];
-  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[12px] font-semibold whitespace-nowrap bg-${bg} text-${fg}">${dot ? `<span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>` : ''}${escapeHtml(text)}</span>`;
+  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full fs-small font-semibold whitespace-nowrap bg-${bg} text-${fg}">${dot ? `<span class="w-[6px] h-[6px] rounded-full bg-${fg} shrink-0"></span>` : ''}${escapeHtml(text)}</span>`;
 }
 
 function finPager(attr, page, totalPages) {
   return `
     <div class="flex items-center gap-1.5">
       <button data-${attr}="prev" ${page <= 1 ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_LEFT}</button>
-      ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-${attr}="${p}" class="w-7 h-7 rounded text-[12px] font-semibold ${p === page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
+      ${Array.from({ length: totalPages }, (_, i) => i + 1).map(p => `<button data-${attr}="${p}" class="w-7 h-7 rounded fs-small font-semibold ${p === page ? 'bg-side-accent text-white' : 'border border-side-border text-secondary hover:bg-side-hover'}">${p}</button>`).join('')}
       <button data-${attr}="next" ${page >= totalPages ? 'disabled' : ''} class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:bg-side-hover disabled:opacity-40 disabled:cursor-not-allowed">${COA_CHEVRON_RIGHT}</button>
     </div>`;
 }
@@ -7978,7 +8009,7 @@ function budgetFilterBar() {
           <span class="block text-label font-medium text-secondary mb-1">Search</span>
           <div class="relative">
             <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-            <input id="budgetSearch" type="text" value="${escapeHtml(budgetFilter.q)}" placeholder="Search code, title or department…" class="${COA_INPUT} pl-9" />
+            <input id="budgetSearch" type="text" value="${escapeHtml(budgetFilter.q)}" placeholder="Search budget lines…" class="${COA_INPUT} pl-9" />
           </div>
         </div>
         ${coaField('Department', `<select id="budgetDept" class="${COA_INPUT}">${opt(['All Departments', ...BUDGET_DEPARTMENTS], budgetFilter.department)}</select>`)}
@@ -7994,29 +8025,32 @@ function budgetRow(b, n) {
   const status = budgetSpendStatus(b);
   const tone = status === 'Over Budget' ? 'danger' : status === 'Near Limit' ? 'warning' : 'success';
   const barColor = status === 'Over Budget' ? 'bg-danger' : status === 'Near Limit' ? 'bg-warning' : 'bg-side-accent';
-  const approvalTone = { Approved: 'success', 'Pending Approval': 'warning', Rejected: 'danger', Draft: 'neutral' }[b.approvalStatus];
+  const approvalTone = { 'Pending Approval': 'warning', Rejected: 'danger', Draft: 'neutral' }[b.approvalStatus];
   const canSpend = b.approvalStatus === 'Approved';
+  // Approved is the normal state, so only lines that are NOT approved carry an approval pill.
+  const meta = [b.department, b.budgetCode, b.fiscalYear].join(' · ');
   return `
-    <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
-      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n}</td>
-      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(b.budgetCode)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary min-w-[200px]">
-        <p class="font-medium">${escapeHtml(b.title)}</p>
+    <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover align-top">
+      <td class="pl-4 pr-2 py-2.5 fs-base text-muted tabular">${n}</td>
+      <td class="px-3 py-2.5 fs-base text-primary min-w-[240px]">
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span class="font-medium" ${canSpend && b.approvedBy ? `title="Approved by ${escapeHtml(b.approvedBy)}"` : ''}>${escapeHtml(b.title)}</span>${canSpend ? '' : finPill(b.approvalStatus, approvalTone)}
+        </div>
+        <p class="text-helper text-muted mt-0.5">${escapeHtml(meta)}</p>
         ${b.notes ? `<p class="text-helper text-muted mt-0.5">${escapeHtml(b.notes)}</p>` : ''}
       </td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(b.department)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(b.fiscalYear)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular text-right">${coaInt(b.budgetedAmount)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular text-right">${coaInt(b.actualSpent)}</td>
-      <td class="px-3 py-2 text-[13.5px] font-semibold whitespace-nowrap tabular text-right ${variance >= 0 ? 'text-success' : 'text-danger'}">${variance < 0 ? '−' : ''}${coaInt(Math.abs(variance))}</td>
-      <td class="px-3 py-2 whitespace-nowrap">
-        <div class="w-24 h-1.5 rounded-full bg-side-line overflow-hidden inline-block align-middle mr-1.5"><div class="h-full ${barColor}" style="width:${Math.min(100, Math.max(0, pct))}%"></div></div>
-        <span class="text-[13px] tabular text-secondary align-middle">${pct.toFixed(0)}%</span>
+      <td class="px-3 py-2.5 fs-base text-secondary whitespace-nowrap tabular text-right">${coaInt(b.budgetedAmount)}</td>
+      <td class="px-3 py-2.5 fs-base text-secondary whitespace-nowrap tabular text-right">${coaInt(b.actualSpent)}</td>
+      <td class="px-3 py-2.5 fs-base font-semibold whitespace-nowrap tabular text-right ${variance >= 0 ? 'text-success' : 'text-danger'}">${variance < 0 ? '−' : ''}${coaInt(Math.abs(variance))}</td>
+      <td class="px-3 py-2.5 whitespace-nowrap">
+        <div class="flex items-center gap-2">
+          <div class="w-20 h-1.5 rounded-full bg-side-line overflow-hidden"><div class="h-full ${barColor}" style="width:${Math.min(100, Math.max(0, pct))}%"></div></div>
+          <span class="fs-head tabular text-secondary">${pct.toFixed(0)}%</span>
+        </div>
+        <div class="mt-1.5">${finPill(status, tone, true)}</div>
       </td>
-      <td class="px-3 py-2">${finPill(status, tone, true)}</td>
-      <td class="px-3 py-2" title="${b.approvedBy ? `Approved by ${escapeHtml(b.approvedBy)}` : ''}">${finPill(b.approvalStatus, approvalTone)}</td>
-      <td class="pr-4 pl-3 py-2 text-right whitespace-nowrap">
-        <button type="button" data-budget-spend="${escapeHtml(b.budgetCode)}" ${canSpend ? '' : 'disabled title="Spend can only be recorded against an approved budget line"'} class="h-7 px-2.5 rounded border border-side-accent/40 text-side-accent text-[12px] font-semibold hover:bg-side-active mr-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent">Record Spend</button>
+      <td class="pr-4 pl-3 py-2.5 text-right whitespace-nowrap">
+        <button type="button" data-budget-spend="${escapeHtml(b.budgetCode)}" ${canSpend ? '' : 'disabled title="Spend can only be recorded against an approved budget line"'} class="h-7 px-2.5 rounded border border-side-accent/40 text-side-accent fs-small font-semibold hover:bg-side-active mr-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent">Record Spend</button>
         <button type="button" data-budget-remove="${escapeHtml(b.budgetCode)}" class="w-7 h-7 rounded border border-side-border inline-flex items-center justify-center text-muted hover:text-danger hover:bg-dangerSoft" title="Remove">${COA_DELETE_ICON}</button>
       </td>
     </tr>`;
@@ -8028,14 +8062,14 @@ function budgetResultsHtml() {
   budgetFilter.page = Math.min(Math.max(1, budgetFilter.page), totalPages);
   const start = (budgetFilter.page - 1) * COA_PAGE_SIZE;
   const rows = all.slice(start, start + COA_PAGE_SIZE);
-  const headers = ['SL', 'Budget Code', 'Title', 'Department', 'Fiscal Year', 'Budgeted (BDT)', 'Actual (BDT)', 'Variance (BDT)', 'Utilization', 'Spend Status', 'Approval', 'Actions'];
+  const headers = ['SL', 'Budget', 'Budgeted (BDT)', 'Actual (BDT)', 'Variance (BDT)', 'Utilization', 'Actions'];
   return `
     <div class="overflow-x-auto border-t border-side-line">
-      <table class="w-full min-w-[1400px]">
+      <table class="w-full min-w-[900px]">
         <thead><tr class="border-b border-side-line">
-          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${i >= 5 && i <= 7 || i === headers.length - 1 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${i >= 2 && i <= 4 || i === headers.length - 1 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
         </tr></thead>
-        <tbody>${rows.length ? rows.map((b, i) => budgetRow(b, start + i + 1)).join('') : `<tr><td colspan="12" class="px-4 py-10 text-center"><p class="text-body text-muted">No budget lines match your filters.</p></td></tr>`}</tbody>
+        <tbody>${rows.length ? rows.map((b, i) => budgetRow(b, start + i + 1)).join('') : `<tr><td colspan="7" class="px-4 py-10 text-center"><p class="text-body text-muted">No budget lines match your filters.</p></td></tr>`}</tbody>
       </table>
     </div>
     <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
@@ -8216,13 +8250,21 @@ function lcFiltered() {
   });
 }
 
+// Card version of the per-currency totals: the currency is a small label so long figures stay on one line.
+function lcTotalsCard(valueOf) {
+  const by = {};
+  lcRecords.forEach(l => { by[l.currency] = (by[l.currency] || 0) + valueOf(l); });
+  const keys = Object.keys(by);
+  return keys.length ? keys.map(c => `<span class="block whitespace-nowrap"><span class="fs-small font-medium text-muted mr-1.5">${escapeHtml(c)}</span>${coaInt(Math.round(by[c]))}</span>`).join('') : '0';
+}
+
 function lcSummaryCards() {
   const expiring = lcRecords.filter(l => lcBalance(l) > 0 && lcDaysToExpiry(l) >= 0 && lcDaysToExpiry(l) <= 30).length;
   return `
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, lcTotalsText(l => l.amount || 0), 'Total LC Value')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, lcTotalsText(l => l.utilized || 0), 'Total Utilized')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_CASH_ICON, lcTotalsText(lcBalance), 'Available Balance')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, lcTotalsCard(l => l.amount || 0), 'Total LC Value')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, lcTotalsCard(l => l.utilized || 0), 'Total Utilized')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_CASH_ICON, lcTotalsCard(lcBalance), 'Available Balance')}
       ${coaCashBankStatCard(AP_AR_ICON_DUESOON, expiring, 'Expiring in 30 Days')}
     </div>`;
 }
@@ -8236,7 +8278,7 @@ function lcFilterBar() {
           <span class="block text-label font-medium text-secondary mb-1">Search</span>
           <div class="relative">
             <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-            <input id="lcSearch" type="text" value="${escapeHtml(lcFilter.q)}" placeholder="Search LC no., buyer, bank or contract…" class="${COA_INPUT} pl-9" />
+            <input id="lcSearch" type="text" value="${escapeHtml(lcFilter.q)}" placeholder="Search LC no. or buyer…" class="${COA_INPUT} pl-9" />
           </div>
         </div>
         ${coaField('LC Type', `<select id="lcTypeFilter" class="${COA_INPUT}">${opt(['All Types', ...LC_TYPES], lcFilter.lcType)}</select>`)}
@@ -8250,19 +8292,27 @@ function lcRow(l, n) {
   const balance = lcBalance(l);
   const status = lcStatus(l);
   return `
-    <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover">
-      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n}</td>
-      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(l.lcNo)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(l.lcType)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(l.issuingBank)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap">${escapeHtml(l.buyer)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${coaFormatDateDisplay(l.expiryDate)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary font-semibold whitespace-nowrap tabular text-right">${coaInt(l.amount)} ${escapeHtml(l.currency)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular text-right">${coaInt(l.utilized)}</td>
-      <td class="px-3 py-2 text-[13.5px] font-semibold whitespace-nowrap tabular text-right ${balance > 0 ? 'text-success' : 'text-secondary'}">${coaInt(balance)}</td>
-      <td class="px-3 py-2">${lcStatusPill(status)}</td>
-      <td class="pr-4 pl-3 py-2 text-right whitespace-nowrap">
-        ${balance > 0 && status !== 'Expired' ? `<button type="button" data-lc-utilize="${escapeHtml(l.lcNo)}" class="h-7 px-2.5 rounded border border-side-accent/40 text-side-accent text-[12px] font-semibold hover:bg-side-active mr-1.5">Utilize</button>` : ''}
+    <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover align-top">
+      <td class="pl-4 pr-2 py-2.5 fs-base text-muted tabular">${n}</td>
+      <td class="px-3 py-2.5 whitespace-nowrap">
+        <p class="fs-base font-medium text-primary tabular">${escapeHtml(l.lcNo)}</p>
+        <p class="text-helper text-muted mt-0.5">${escapeHtml(l.lcType)}</p>
+      </td>
+      <td class="px-3 py-2.5 min-w-[180px]">
+        <p class="fs-base text-primary">${escapeHtml(l.buyer)}</p>
+        <p class="text-helper text-muted mt-0.5">${escapeHtml(l.issuingBank)}</p>
+      </td>
+      <td class="px-3 py-2.5 whitespace-nowrap">
+        <p class="fs-base text-secondary tabular">${coaFormatDateDisplay(l.expiryDate)}</p>
+        <div class="mt-1.5">${lcStatusPill(status)}</div>
+      </td>
+      <td class="px-3 py-2.5 fs-base text-primary font-semibold whitespace-nowrap tabular text-right">${coaInt(l.amount)} ${escapeHtml(l.currency)}</td>
+      <td class="px-3 py-2.5 whitespace-nowrap text-right tabular">
+        <p class="fs-base text-secondary">${coaInt(l.utilized)} <span class="text-helper text-muted">used</span></p>
+        <p class="fs-base font-semibold mt-0.5 ${balance > 0 ? 'text-success' : 'text-secondary'}">${coaInt(balance)} <span class="text-helper font-normal text-muted">left</span></p>
+      </td>
+      <td class="pr-4 pl-3 py-2.5 text-right whitespace-nowrap">
+        ${balance > 0 && status !== 'Expired' ? `<button type="button" data-lc-utilize="${escapeHtml(l.lcNo)}" class="h-7 px-2.5 rounded border border-side-accent/40 text-side-accent fs-small font-semibold hover:bg-side-active mr-1.5">Utilize</button>` : ''}
         <button type="button" data-lc-remove="${escapeHtml(l.lcNo)}" class="w-7 h-7 rounded border border-side-border inline-flex items-center justify-center text-muted hover:text-danger hover:bg-dangerSoft" title="Remove">${COA_DELETE_ICON}</button>
       </td>
     </tr>`;
@@ -8274,14 +8324,14 @@ function lcResultsHtml() {
   lcFilter.page = Math.min(Math.max(1, lcFilter.page), totalPages);
   const start = (lcFilter.page - 1) * COA_PAGE_SIZE;
   const rows = all.slice(start, start + COA_PAGE_SIZE);
-  const headers = ['SL', 'LC No.', 'Type', 'Issuing Bank', 'Buyer', 'Expiry', 'LC Value', 'Utilized', 'Balance', 'Status', 'Actions'];
+  const headers = ['SL', 'LC No. / Type', 'Buyer / Issuing Bank', 'Expiry / Status', 'LC Value', 'Utilized / Balance', 'Actions'];
   return `
     <div class="overflow-x-auto border-t border-side-line">
-      <table class="w-full min-w-[1250px]">
+      <table class="w-full min-w-[900px]">
         <thead><tr class="border-b border-side-line">
-          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${i >= 6 && i <= 8 || i === headers.length - 1 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${i >= 4 || i === headers.length - 1 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
         </tr></thead>
-        <tbody>${rows.length ? rows.map((l, i) => lcRow(l, start + i + 1)).join('') : `<tr><td colspan="11" class="px-4 py-10 text-center"><p class="text-body text-muted">No LC records match your filters.</p></td></tr>`}</tbody>
+        <tbody>${rows.length ? rows.map((l, i) => lcRow(l, start + i + 1)).join('') : `<tr><td colspan="7" class="px-4 py-10 text-center"><p class="text-body text-muted">No LC records match your filters.</p></td></tr>`}</tbody>
       </table>
     </div>
     <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
@@ -8427,7 +8477,7 @@ const AUDIT_TYPES = ['Internal Audit', 'External Audit', 'Statutory Audit', 'VAT
 const AUDIT_RISK_LEVELS = ['Low', 'Medium', 'High'];
 const AUDIT_STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed'];
 const AUDIT_REPORT_TYPES = [
-  { key: 'vat', label: 'VAT & Tax Summary (Mushak 6.3)' },
+  { key: 'vat', label: 'VAT & Tax Summary' },
   { key: 'budget', label: 'Budget Variance Summary' },
   { key: 'cashbank', label: 'Cash & Bank Position' },
   { key: 'lc', label: 'LC & Export Finance Summary' },
@@ -8485,7 +8535,7 @@ function auditSummaryCards() {
 
 // ---- Report Generator: a point-in-time summary computed from each area's live data ----
 function auditReportRow(label, value) {
-  return `<tr class="border-b border-side-line last:border-b-0"><td class="py-1.5 pr-6 text-[13.5px] text-secondary">${escapeHtml(label)}</td><td class="py-1.5 text-[13.5px] text-primary font-semibold text-right tabular whitespace-nowrap">${escapeHtml(String(value))}</td></tr>`;
+  return `<tr class="border-b border-side-line last:border-b-0"><td class="py-1.5 pr-6 fs-base text-secondary">${escapeHtml(label)}</td><td class="py-1.5 fs-base text-primary font-semibold text-right tabular whitespace-nowrap">${escapeHtml(String(value))}</td></tr>`;
 }
 
 function auditReportHtml() {
@@ -8555,7 +8605,7 @@ function auditFilterBar() {
           <span class="block text-label font-medium text-secondary mb-1">Search</span>
           <div class="relative">
             <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-            <input id="auditSearch" type="text" value="${escapeHtml(auditFilter.q)}" placeholder="Search ref., area or observation…" class="${COA_INPUT} pl-9" />
+            <input id="auditSearch" type="text" value="${escapeHtml(auditFilter.q)}" placeholder="Search findings…" class="${COA_INPUT} pl-9" />
           </div>
         </div>
         ${coaField('Area', `<select id="auditAreaFilter" class="${COA_INPUT}">${opt(['All Areas', ...AUDIT_AREAS], auditFilter.area)}</select>`)}
@@ -8569,23 +8619,29 @@ function auditRow(a, n) {
   const followUpOverdue = (a.status === 'Open' || a.status === 'In Progress') && a.followUpDate && a.followUpDate < new Date().toISOString().slice(0, 10);
   return `
     <tr class="group border-b border-side-line last:border-b-0 hover:bg-side-hover align-top">
-      <td class="pl-4 pr-2 py-2 text-[13.5px] text-disabled tabular">${n}</td>
-      <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(a.auditRef)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${coaFormatDateDisplay(a.date)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(a.area)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(a.auditType)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary min-w-[280px] max-w-md">
+      <td class="pl-4 pr-2 py-2.5 fs-base text-muted tabular">${n}</td>
+      <td class="px-3 py-2.5 whitespace-nowrap">
+        <p class="fs-base font-medium text-primary tabular">${escapeHtml(a.auditRef)}</p>
+        <p class="text-helper text-muted mt-0.5 tabular">${coaFormatDateDisplay(a.date)}</p>
+      </td>
+      <td class="px-3 py-2.5 whitespace-nowrap">
+        <p class="fs-base text-secondary">${escapeHtml(a.area)}</p>
+        <p class="text-helper text-muted mt-0.5">${escapeHtml(a.auditType)}</p>
+      </td>
+      <td class="px-3 py-2.5 fs-base text-primary min-w-[240px] max-w-[340px]">
         <p>${escapeHtml(a.observation)}</p>
         ${a.recommendation ? `<p class="text-helper text-muted mt-1"><span class="font-semibold text-secondary">Recommendation:</span> ${escapeHtml(a.recommendation)}</p>` : ''}
       </td>
-      <td class="px-3 py-2 whitespace-nowrap">${auditRiskPill(a.riskLevel)}</td>
-      <td class="px-3 py-2 text-[13.5px] whitespace-nowrap tabular ${followUpOverdue ? 'text-danger font-semibold' : 'text-secondary'}">${a.followUpDate ? coaFormatDateDisplay(a.followUpDate) : '—'}</td>
+      <td class="px-3 py-2.5 whitespace-nowrap">
+        ${auditRiskPill(a.riskLevel)}
+        <p class="text-helper mt-1.5 tabular ${followUpOverdue ? 'text-danger font-semibold' : 'text-muted'}">${a.followUpDate ? `Follow-up ${coaFormatDateDisplay(a.followUpDate)}` : 'No follow-up'}</p>
+      </td>
       <td class="px-3 py-2">
-        <select data-audit-status="${escapeHtml(a.auditRef)}" aria-label="Status of ${escapeHtml(a.auditRef)}" class="h-7 px-2 rounded border border-side-border bg-canvas text-[12px] font-semibold ${AUDIT_STATUS_TEXT[a.status]} focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent">
+        <select data-audit-status="${escapeHtml(a.auditRef)}" aria-label="Status of ${escapeHtml(a.auditRef)}" class="h-7 px-2 rounded border border-side-border bg-canvas fs-small font-semibold ${AUDIT_STATUS_TEXT[a.status]} focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent">
           ${AUDIT_STATUSES.map(s => `<option value="${s}" ${s === a.status ? 'selected' : ''}>${s}</option>`).join('')}
         </select>
       </td>
-      <td class="pr-4 pl-3 py-2 text-right whitespace-nowrap">
+      <td class="pr-4 pl-3 py-2.5 text-right whitespace-nowrap">
         <button type="button" data-audit-remove="${escapeHtml(a.auditRef)}" class="w-7 h-7 rounded border border-side-border inline-flex items-center justify-center text-muted hover:text-danger hover:bg-dangerSoft" title="Remove">${COA_DELETE_ICON}</button>
       </td>
     </tr>`;
@@ -8597,14 +8653,14 @@ function auditResultsHtml() {
   auditFilter.page = Math.min(Math.max(1, auditFilter.page), totalPages);
   const start = (auditFilter.page - 1) * COA_PAGE_SIZE;
   const rows = all.slice(start, start + COA_PAGE_SIZE);
-  const headers = ['SL', 'Audit Ref.', 'Date', 'Area', 'Audit Type', 'Observation', 'Risk', 'Follow-up', 'Status', 'Actions'];
+  const headers = ['SL', 'Audit Ref. / Date', 'Area / Type', 'Observation', 'Risk / Follow-up', 'Status', 'Actions'];
   return `
     <div class="overflow-x-auto border-t border-side-line">
-      <table class="w-full min-w-[1250px]">
+      <table class="w-full min-w-[900px]">
         <thead><tr class="border-b border-side-line">
-          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${i === headers.length - 1 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${i === headers.length - 1 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
         </tr></thead>
-        <tbody>${rows.length ? rows.map((a, i) => auditRow(a, start + i + 1)).join('') : `<tr><td colspan="10" class="px-4 py-10 text-center"><p class="text-body text-muted">No audit findings match your filters.</p></td></tr>`}</tbody>
+        <tbody>${rows.length ? rows.map((a, i) => auditRow(a, start + i + 1)).join('') : `<tr><td colspan="7" class="px-4 py-10 text-center"><p class="text-body text-muted">No audit findings match your filters.</p></td></tr>`}</tbody>
       </table>
     </div>
     <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
@@ -8760,16 +8816,16 @@ function fsEmptyCard(what) {
 }
 
 function fsTableHead(cols) {
-  return `<thead><tr class="border-b border-side-line">${cols.map(([h, right], i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === cols.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 text-[13px] font-semibold text-muted text-${right ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}</tr></thead>`;
+  return `<thead><tr class="border-b border-side-line">${cols.map(([h, right], i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === cols.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${right ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}</tr></thead>`;
 }
 
 function fsAmountRows(rows, emptyText) {
   return rows.length ? rows.map(r => `
     <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
-      <td class="pl-4 pr-2 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(r.code)}</td>
-      <td class="px-3 py-2 text-[13.5px] text-primary">${escapeHtml(r.name)}</td>
-      <td class="pr-4 pl-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${fsMoney(r.amount)}</td>
-    </tr>`).join('') : `<tr><td colspan="3" class="px-4 py-6 text-center text-[13.5px] text-muted">${emptyText}</td></tr>`;
+      <td class="pl-4 pr-2 py-2 fs-base text-secondary whitespace-nowrap tabular">${escapeHtml(r.code)}</td>
+      <td class="px-3 py-2 fs-base text-primary">${escapeHtml(r.name)}</td>
+      <td class="pr-4 pl-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${fsMoney(r.amount)}</td>
+    </tr>`).join('') : `<tr><td colspan="3" class="px-4 py-6 text-center fs-base text-muted">${emptyText}</td></tr>`;
 }
 
 function fsSectionCard(title, section, totalLabel, emptyText) {
@@ -8781,7 +8837,7 @@ function fsSectionCard(title, section, totalLabel, emptyText) {
       </div>
       <div class="flex items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
         <p class="text-body-medium text-secondary">${escapeHtml(totalLabel)}</p>
-        <p class="text-[15px] font-semibold text-primary tabular">BDT ${fsMoney(section.total)}</p>
+        <p class="fs-title font-semibold text-primary tabular">BDT ${fsMoney(section.total)}</p>
       </div>
     </section>`;
 }
@@ -8799,11 +8855,11 @@ function fsTrialHtml() {
     totalDr += dr; totalCr += cr;
     rows.push(`
       <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
-        <td class="pl-4 pr-2 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
-        <td class="px-3 py-2 text-[13.5px] text-primary">${escapeHtml(a.name)}</td>
-        <td class="px-3 py-2 text-[13.5px] text-secondary whitespace-nowrap">${escapeHtml(a.catLabel)}</td>
-        <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${dr ? coaMoney(dr) : ''}</td>
-        <td class="pr-4 pl-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${cr ? coaMoney(cr) : ''}</td>
+        <td class="pl-4 pr-2 py-2 fs-base text-secondary whitespace-nowrap tabular">${escapeHtml(a.code)}</td>
+        <td class="px-3 py-2 fs-base text-primary">${escapeHtml(a.name)}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(a.catLabel)}</td>
+        <td class="px-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${dr ? coaMoney(dr) : ''}</td>
+        <td class="pr-4 pl-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${cr ? coaMoney(cr) : ''}</td>
       </tr>`);
   });
   if (!rows.length) return fsEmptyCard('balances');
@@ -8817,8 +8873,8 @@ function fsTrialHtml() {
         <table class="w-full min-w-[640px]">${fsTableHead([['Code'], ['Account'], ['Category'], ['Debit (BDT)', true], ['Credit (BDT)', true]])}<tbody>${rows.join('')}</tbody></table>
       </div>
       <div class="flex flex-wrap items-center justify-end gap-8 px-4 py-3.5 border-t border-side-line">
-        <div class="text-right"><p class="text-micro text-muted mb-0.5">Total Debit</p><p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(totalDr)}</p></div>
-        <div class="text-right"><p class="text-micro text-muted mb-0.5">Total Credit</p><p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(totalCr)}</p></div>
+        <div class="text-right"><p class="text-micro text-muted mb-0.5">Total Debit</p><p class="fs-title font-semibold text-primary tabular">BDT ${coaMoney(totalDr)}</p></div>
+        <div class="text-right"><p class="text-micro text-muted mb-0.5">Total Credit</p><p class="fs-title font-semibold text-primary tabular">BDT ${coaMoney(totalCr)}</p></div>
         ${fsBalancedPill(Math.abs(totalDr - totalCr) < 0.005)}
       </div>
     </section>`;
@@ -8836,12 +8892,12 @@ function fsLedgerHtml() {
     totalDr += l.debit; totalCr += l.credit;
     return `
       <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
-        <td class="pl-4 pr-2 py-2 text-[13.5px] text-secondary whitespace-nowrap tabular">${coaFormatDateDisplay(e.date)}</td>
-        <td class="px-3 py-2 text-[13.5px] font-medium text-primary whitespace-nowrap tabular">${escapeHtml(e.ref)}</td>
-        <td class="px-3 py-2 text-[13.5px] text-secondary">${escapeHtml(e.memo)}</td>
-        <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${l.debit ? coaMoney(l.debit) : ''}</td>
-        <td class="px-3 py-2 text-[13.5px] text-primary whitespace-nowrap tabular text-right">${l.credit ? coaMoney(l.credit) : ''}</td>
-        <td class="pr-4 pl-3 py-2 text-[13.5px] font-semibold text-primary whitespace-nowrap tabular text-right">${fsMoney(running)}</td>
+        <td class="pl-4 pr-2 py-2 fs-base text-secondary whitespace-nowrap tabular">${coaFormatDateDisplay(e.date)}</td>
+        <td class="px-3 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(e.ref)}</td>
+        <td class="px-3 py-2 fs-base text-secondary">${escapeHtml(e.memo)}</td>
+        <td class="px-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${l.debit ? coaMoney(l.debit) : ''}</td>
+        <td class="px-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${l.credit ? coaMoney(l.credit) : ''}</td>
+        <td class="pr-4 pl-3 py-2 fs-base font-semibold text-primary whitespace-nowrap tabular text-right">${fsMoney(running)}</td>
       </tr>`;
   });
   return `
@@ -8855,14 +8911,14 @@ function fsLedgerHtml() {
       </div>
       <div class="overflow-x-auto border-t border-side-line">
         <table class="w-full min-w-[760px]">${fsTableHead([['Date'], ['Voucher'], ['Memo'], ['Debit (BDT)', true], ['Credit (BDT)', true], ['Balance (BDT)', true]])}
-          <tbody>${rows.length ? rows.join('') : `<tr><td colspan="6" class="px-4 py-10 text-center text-[13.5px] text-muted">No entries posted to ${escapeHtml(selected)} yet.</td></tr>`}</tbody>
+          <tbody>${rows.length ? rows.join('') : `<tr><td colspan="6" class="px-4 py-10 text-center fs-base text-muted">No entries posted to ${escapeHtml(selected)} yet.</td></tr>`}</tbody>
         </table>
       </div>
       ${rows.length ? `
       <div class="flex flex-wrap items-center justify-end gap-8 px-4 py-3.5 border-t border-side-line">
-        <div class="text-right"><p class="text-micro text-muted mb-0.5">Total Debit</p><p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(totalDr)}</p></div>
-        <div class="text-right"><p class="text-micro text-muted mb-0.5">Total Credit</p><p class="text-[15px] font-semibold text-primary tabular">BDT ${coaMoney(totalCr)}</p></div>
-        <div class="text-right"><p class="text-micro text-muted mb-0.5">Closing Balance</p><p class="text-[15px] font-semibold text-primary tabular">BDT ${fsMoney(running)}</p></div>
+        <div class="text-right"><p class="text-micro text-muted mb-0.5">Total Debit</p><p class="fs-title font-semibold text-primary tabular">BDT ${coaMoney(totalDr)}</p></div>
+        <div class="text-right"><p class="text-micro text-muted mb-0.5">Total Credit</p><p class="fs-title font-semibold text-primary tabular">BDT ${coaMoney(totalCr)}</p></div>
+        <div class="text-right"><p class="text-micro text-muted mb-0.5">Closing Balance</p><p class="fs-title font-semibold text-primary tabular">BDT ${fsMoney(running)}</p></div>
       </div>` : ''}
     </section>`;
 }
