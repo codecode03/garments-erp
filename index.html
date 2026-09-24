@@ -454,9 +454,8 @@ const modules = [
     { name:'Shipment Management' }, { name:'Document Management' }, { name:'Shipment Tracking' }, { name:'Reports' },
   ]},
   { key:'hr', name:'HR', icon:'users', submodules:[
-    { name:'Employee Management' }, { name:'Attendance' }, { name:'Shift Management' }, { name:'Leave Management' },
-    { name:'Holiday Calendar' }, { name:'Payroll Processing' }, { name:'Overtime' }, { name:'Bonus Management' },
-    { name:'Loan & Advance' }, { name:'Reports' },
+    { name:'Employee Management' }, { name:'Attendance' }, { name:'Holiday Management' },
+    { name:'Payroll Processing' }, { name:'Overtime' }, { name:'Bonus Management' }, { name:'Reports' },
   ]},
   { key:'admin', name:'Admin', icon:'sliders', submodules:[
     { name:'Company' }, { name:'Branch & Factory' }, { name:'All Entry' }, { name:'Users Roles & Permissions' },
@@ -626,6 +625,12 @@ const subtitles = {
   'Barcode Setup': 'Configure and generate Code 128 barcodes',
   'Activity Log': 'Operational activity: who did what, when and where',
   'Audit Trail': 'Append-only accountability view of business and administrative changes',
+  'Employee Management': 'Maintain employee master records, shift assignment and employment details',
+  'Attendance': 'Record daily attendance, including leave, against each employee',
+  'Holiday Management': 'Initialize weekly off days and manage one-off holidays, all manually',
+  'Payroll Processing': 'Calculate and finalize monthly payroll from basic salary, approved overtime and approved bonus',
+  'Overtime': 'Log employee overtime hours and route them through approval',
+  'Bonus Management': 'Log employee bonuses and route them through approval',
 };
 
 function renderContent() {
@@ -698,6 +703,12 @@ function renderContent() {
   else if (mod.key === 'admin' && sm.name === 'Barcode Setup') renderAdminBarcode(pageContent);
   else if (mod.key === 'admin' && sm.name === 'Activity Log') renderAdminActivity(pageContent);
   else if (mod.key === 'admin' && sm.name === 'Audit Trail') renderAdminAudit(pageContent);
+  else if (mod.key === 'hr' && sm.name === 'Employee Management') renderHREmployee(pageContent);
+  else if (mod.key === 'hr' && sm.name === 'Attendance') renderHRAttendance(pageContent);
+  else if (mod.key === 'hr' && sm.name === 'Holiday Management') renderHRHoliday(pageContent);
+  else if (mod.key === 'hr' && sm.name === 'Payroll Processing') renderHRPayroll(pageContent);
+  else if (mod.key === 'hr' && sm.name === 'Overtime') { state.tabIndex = 0; renderHROvertimeBonus(tabsEl, pageContent); }
+  else if (mod.key === 'hr' && sm.name === 'Bonus Management') { state.tabIndex = 1; renderHROvertimeBonus(tabsEl, pageContent); }
   else renderNotBuilt(pageContent, mod, sm, single);
 }
 
@@ -13160,6 +13171,1077 @@ function renderAdminAudit(container) {
   bindFilter('auditUserFilter', 'user', 'change');
   bindFilter('auditModuleFilter', 'module', 'change');
   bindFilter('auditActionFilter', 'action', 'change');
+}
+
+// ---------- HR ----------
+// Content ported from the reference build's HR & Payroll module (Employee, Attendance, Overtime &
+// Bonus, Payroll). Shift Management and Leave Management are not separate menus here: shift lives
+// as a field on Employee Management, and leave lives as a status + leave type on Attendance.
+// Holiday Calendar became Holiday Management: a manual weekly-off initializer plus a manual holiday
+// list. Loan & Advance is dropped entirely.
+const HR_DEPARTMENTS = ['Cutting', 'Sewing', 'Finishing', 'Quality Assurance', 'Merchandising', 'Store & Inventory', 'Maintenance', 'HR & Admin', 'Accounts & Finance', 'Security'];
+const HR_DESIGNATIONS = ['Manager', 'Executive', 'Officer', 'Supervisor', 'Line Chief', 'Operator', 'Helper'];
+const HR_EMP_TYPES = ['Permanent', 'Contract', 'Temporary', 'Daily', 'Probation'];
+const HR_SHIFTS = ['Day', 'Night'];
+const HR_ATT_STATUSES = ['Present', 'Absent', 'Late', 'Half Day', 'Leave', 'Holiday', 'Off Day'];
+const HR_LEAVE_TYPES = ['Casual Leave', 'Sick Leave', 'Earned Leave', 'Unpaid Leave'];
+const HR_APPROVAL = ['Pending', 'Approved', 'Rejected'];
+const HR_BONUS_TYPES = ['Performance Bonus', 'Festival Bonus', 'Attendance Bonus', 'Production Bonus', 'Other'];
+const HR_HOLIDAY_TYPES = ['Government', 'Religious', 'National', 'Company'];
+const HR_WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const hrEmployees = [
+  { id: 1, empNo: 'EMP-000001', name: 'Md. Aminul Islam', gender: 'Male', dob: '1992-04-12', phone: '+880 1711-100201', email: 'aminul.islam@obsidianerp.example', address: 'Mirpur-10, Dhaka', department: 'Sewing', designation: 'Line Chief', joining: '2021-03-01', employmentType: 'Permanent', shift: 'Day', basicSalary: 18000, paymentMethod: 'Bank', paymentAccount: 'DBBL-0011223344', emergencyName: 'Rahima Islam', emergencyPhone: '+880 1711-100202', status: 'Active', remarks: '' },
+  { id: 2, empNo: 'EMP-000002', name: 'Sumaiya Akter', gender: 'Female', dob: '1996-08-20', phone: '+880 1819-300402', email: 'sumaiya.akter@obsidianerp.example', address: 'Savar, Dhaka', department: 'Quality Assurance', designation: 'Supervisor', joining: '2022-06-15', employmentType: 'Permanent', shift: 'Day', basicSalary: 15500, paymentMethod: 'Bank', paymentAccount: 'IBBL-0022334455', emergencyName: 'Karim Akter', emergencyPhone: '+880 1819-300403', status: 'Active', remarks: '' },
+  { id: 3, empNo: 'EMP-000003', name: 'Rakibul Hasan', gender: 'Male', dob: '1990-01-05', phone: '+880 1911-500603', email: 'rakibul.hasan@obsidianerp.example', address: 'Gazipur', department: 'Maintenance', designation: 'Officer', joining: '2020-11-10', employmentType: 'Permanent', shift: 'Night', basicSalary: 16500, paymentMethod: 'Cash', paymentAccount: '', emergencyName: 'Salma Hasan', emergencyPhone: '+880 1911-500604', status: 'Active', remarks: 'Night shift generator & utility support' },
+];
+
+const hrAttendance = [
+  { id: 1, date: '2026-09-20', employeeId: 1, status: 'Present', leaveType: '', checkIn: '08:00', checkOut: '17:05', remarks: '' },
+  { id: 2, date: '2026-09-20', employeeId: 2, status: 'Present', leaveType: '', checkIn: '08:05', checkOut: '17:00', remarks: '' },
+  { id: 3, date: '2026-09-20', employeeId: 3, status: 'Late', leaveType: '', checkIn: '20:40', checkOut: '05:10', remarks: 'Traffic delay' },
+  { id: 4, date: '2026-09-21', employeeId: 2, status: 'Leave', leaveType: 'Sick Leave', checkIn: '', checkOut: '', remarks: 'Fever' },
+];
+
+const hrOvertime = [
+  { id: 1, otNo: 'OT-000001', date: '2026-09-18', employeeId: 1, hours: 3, rate: 120, approval: 'Approved', remarks: 'Shipment deadline' },
+  { id: 2, otNo: 'OT-000002', date: '2026-09-19', employeeId: 3, hours: 2, rate: 110, approval: 'Pending', remarks: '' },
+];
+
+const hrBonuses = [
+  { id: 1, bonusNo: 'BON-000001', date: '2026-09-10', employeeId: 2, type: 'Festival Bonus', amount: 15500, approval: 'Approved', remarks: 'Eid bonus' },
+];
+
+let hrPayrolls = [];
+
+const hrHolidays = [
+  { id: 1, date: '2026-02-21', name: 'International Mother Language Day', type: 'National', remarks: '' },
+  { id: 2, date: '2026-03-26', name: 'Independence Day', type: 'National', remarks: '' },
+  { id: 3, date: '2026-12-16', name: 'Victory Day', type: 'National', remarks: '' },
+];
+let hrWeeklyOffs = [5]; // Friday — everything else is initialized manually below
+
+function hrEmp(id) { return hrEmployees.find(e => e.id === +id) || null; }
+function hrEmpLabel(e) { return e ? `${e.empNo}  ${e.name}` : '—'; }
+function hrActiveEmployees() { return hrEmployees.filter(e => e.status === 'Active'); }
+function hrNextEmpNo() {
+  const max = hrEmployees.reduce((m, e) => Math.max(m, parseInt(e.empNo.split('-').pop(), 10) || 0), 0);
+  return `EMP-${String(max + 1).padStart(6, '0')}`;
+}
+function hrNextNo(prefix, arr, field) {
+  const max = arr.reduce((m, x) => Math.max(m, parseInt((x[field] || '').split('-').pop(), 10) || 0), 0);
+  return `${prefix}-${String(max + 1).padStart(6, '0')}`;
+}
+function hrWorkedHours(inT, outT) {
+  if (!inT || !outT) return 0;
+  const [ih, im] = inT.split(':').map(Number), [oh, om] = outT.split(':').map(Number);
+  let mins = (oh * 60 + om) - (ih * 60 + im);
+  if (mins < 0) mins += 24 * 60;
+  return Math.round((mins / 60) * 100) / 100;
+}
+function hrHours(n) { return `${(n || 0).toFixed(2)} hrs`; }
+function hrAttStatusTone(s) { return { Present: 'success', Absent: 'danger', Late: 'warning', 'Half Day': 'warning', Leave: 'info', Holiday: 'info', 'Off Day': 'neutral' }[s] || 'neutral'; }
+function hrApprovalTone(a) { return { Pending: 'warning', Approved: 'success', Rejected: 'danger' }[a] || 'neutral'; }
+
+// ---------- HR: Employee Management ----------
+const hrEmpForm = {
+  editId: null, empNo: '', name: '', gender: 'Male', dob: '', phone: '', email: '', address: '',
+  department: HR_DEPARTMENTS[0], designation: HR_DESIGNATIONS[0], joining: '', employmentType: HR_EMP_TYPES[0],
+  shift: HR_SHIFTS[0], basicSalary: '', paymentMethod: 'Bank', paymentAccount: '',
+  emergencyName: '', emergencyPhone: '', status: 'Active', remarks: '', msg: '', msgTone: 'muted',
+};
+const hrEmpFilter = { q: '', department: 'All Departments', status: 'All Statuses' };
+
+function hrEmpResetForm() {
+  Object.assign(hrEmpForm, {
+    editId: null, empNo: '', name: '', gender: 'Male', dob: '', phone: '', email: '', address: '',
+    department: HR_DEPARTMENTS[0], designation: HR_DESIGNATIONS[0], joining: '', employmentType: HR_EMP_TYPES[0],
+    shift: HR_SHIFTS[0], basicSalary: '', paymentMethod: 'Bank', paymentAccount: '',
+    emergencyName: '', emergencyPhone: '', status: 'Active', remarks: '', msg: '', msgTone: 'muted',
+  });
+}
+function hrEmpSetMsg(text, tone) {
+  hrEmpForm.msg = text || ''; hrEmpForm.msgTone = tone || 'muted';
+  const el = document.getElementById('hrEmpFormMsg');
+  if (el) { el.textContent = hrEmpForm.msg; el.className = `${hrEmpForm.msg ? '' : 'hidden '}text-helper text-${hrEmpForm.msgTone} mr-auto`; }
+}
+function hrEmpFormCard() {
+  const f = hrEmpForm;
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+      <h3 class="text-section-title text-primary mb-3.5">${f.editId ? 'Edit Employee' : 'Add Employee'}</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-3.5">
+        ${coaField('Employee ID', `<input type="text" value="${escapeHtml(f.editId ? f.empNo : hrNextEmpNo())}" readonly class="${COA_AUTO} tabular" />`)}
+        ${coaField('Employee Name', `<input data-hrempf="name" type="text" autocomplete="off" value="${escapeHtml(f.name)}" class="${COA_INPUT}" />`)}
+        ${coaField('Gender', `<select data-hrempf="gender" class="${COA_INPUT}">${['Male', 'Female', 'Other'].map(g => `<option value="${g}" ${g === f.gender ? 'selected' : ''}>${g}</option>`).join('')}</select>`)}
+        ${coaField('Date of Birth', `<input data-hrempf="dob" type="date" value="${escapeHtml(f.dob)}" class="${COA_INPUT} tabular" />`)}
+        ${coaField('Phone', `<input data-hrempf="phone" type="tel" autocomplete="off" value="${escapeHtml(f.phone)}" class="${COA_INPUT}" />`)}
+        ${coaField('Email', `<input data-hrempf="email" type="email" autocomplete="off" value="${escapeHtml(f.email)}" class="${COA_INPUT}" />`)}
+        <div class="sm:col-span-2">${coaField('Address', `<input data-hrempf="address" type="text" autocomplete="off" value="${escapeHtml(f.address)}" class="${COA_INPUT}" />`)}</div>
+        ${coaField('Department', `<select data-hrempf="department" class="${COA_INPUT}">${HR_DEPARTMENTS.map(d => `<option value="${escapeHtml(d)}" ${d === f.department ? 'selected' : ''}>${escapeHtml(d)}</option>`).join('')}</select>`)}
+        ${coaField('Designation', `<select data-hrempf="designation" class="${COA_INPUT}">${HR_DESIGNATIONS.map(d => `<option value="${escapeHtml(d)}" ${d === f.designation ? 'selected' : ''}>${escapeHtml(d)}</option>`).join('')}</select>`)}
+        ${coaField('Joining Date', `<input data-hrempf="joining" type="date" value="${escapeHtml(f.joining)}" class="${COA_INPUT} tabular" />`)}
+        ${coaField('Employment Type', `<select data-hrempf="employmentType" class="${COA_INPUT}">${HR_EMP_TYPES.map(t => `<option value="${t}" ${t === f.employmentType ? 'selected' : ''}>${t}</option>`).join('')}</select>`)}
+        ${coaField('Shift', `<select data-hrempf="shift" class="${COA_INPUT}">${HR_SHIFTS.map(s => `<option value="${s}" ${s === f.shift ? 'selected' : ''}>${s}</option>`).join('')}</select>`)}
+        ${coaField('Basic Salary', `<input data-hrempf="basicSalary" type="number" min="0" step="0.01" value="${escapeHtml(String(f.basicSalary))}" class="${COA_INPUT} tabular" />`)}
+        ${coaField('Payment Method', `<select data-hrempf="paymentMethod" class="${COA_INPUT}">${['Cash', 'Bank', 'Other'].map(p => `<option value="${p}" ${p === f.paymentMethod ? 'selected' : ''}>${p}</option>`).join('')}</select>`)}
+        ${coaField('Bank / Payment Account', `<input data-hrempf="paymentAccount" type="text" autocomplete="off" value="${escapeHtml(f.paymentAccount)}" class="${COA_INPUT}" />`)}
+        ${coaField('Emergency Contact Name', `<input data-hrempf="emergencyName" type="text" autocomplete="off" value="${escapeHtml(f.emergencyName)}" class="${COA_INPUT}" />`)}
+        ${coaField('Emergency Contact Number', `<input data-hrempf="emergencyPhone" type="tel" autocomplete="off" value="${escapeHtml(f.emergencyPhone)}" class="${COA_INPUT}" />`)}
+        ${coaField('Status', `<select data-hrempf="status" class="${COA_INPUT}"><option value="Active" ${f.status === 'Active' ? 'selected' : ''}>Active</option><option value="Inactive" ${f.status === 'Inactive' ? 'selected' : ''}>Inactive</option></select>`)}
+        <div class="sm:col-span-2 lg:col-span-4">${coaField('Remarks', `<input data-hrempf="remarks" type="text" autocomplete="off" value="${escapeHtml(f.remarks)}" class="${COA_INPUT}" />`)}</div>
+      </div>
+      <div class="flex items-center justify-end gap-3 mt-4">
+        <p id="hrEmpFormMsg" class="${f.msg ? '' : 'hidden '}text-helper text-${f.msgTone} mr-auto">${escapeHtml(f.msg)}</p>
+        <button type="button" id="hrEmpResetBtn" class="${COA_BTN}">Reset</button>
+        <button type="button" id="hrEmpSaveBtn" class="${COA_BTN_PRIMARY}">${BI_SAVE_ICON}${f.editId ? 'Update Employee' : 'Save Employee'}</button>
+      </div>
+    </section>`;
+}
+function hrEmpFilterBar() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="sm:col-span-2">
+          <span class="block text-label font-medium text-secondary mb-1">Search</span>
+          <div class="relative">
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input id="hrEmpSearch" type="text" value="${escapeHtml(hrEmpFilter.q)}" placeholder="Search employee ID, name, phone…" class="${COA_INPUT} pl-9" />
+          </div>
+        </div>
+        ${coaField('Department', `<select id="hrEmpDeptFilter" class="${COA_INPUT}"><option ${hrEmpFilter.department === 'All Departments' ? 'selected' : ''}>All Departments</option>${HR_DEPARTMENTS.map(d => `<option ${hrEmpFilter.department === d ? 'selected' : ''}>${escapeHtml(d)}</option>`).join('')}</select>`)}
+        ${coaField('Status', `<select id="hrEmpStatusFilter" class="${COA_INPUT}"><option ${hrEmpFilter.status === 'All Statuses' ? 'selected' : ''}>All Statuses</option><option ${hrEmpFilter.status === 'Active' ? 'selected' : ''}>Active</option><option ${hrEmpFilter.status === 'Inactive' ? 'selected' : ''}>Inactive</option></select>`)}
+      </div>
+    </section>`;
+}
+function hrEmpFiltered() {
+  const q = hrEmpFilter.q.trim().toLowerCase();
+  return hrEmployees.filter(e => {
+    if (q && !(e.empNo.toLowerCase().includes(q) || e.name.toLowerCase().includes(q) || (e.phone || '').toLowerCase().includes(q))) return false;
+    if (hrEmpFilter.department !== 'All Departments' && e.department !== hrEmpFilter.department) return false;
+    if (hrEmpFilter.status !== 'All Statuses' && e.status !== hrEmpFilter.status) return false;
+    return true;
+  });
+}
+function hrEmpCounterText() { return `${hrEmpFiltered().length} of ${hrEmployees.length} employee${hrEmployees.length === 1 ? '' : 's'}`; }
+function hrEmpResultsHtml() {
+  const headers = ['Employee ID', 'Name', 'Department', 'Designation', 'Shift', 'Employment Type', 'Phone', 'Status', 'Actions'];
+  const rows = hrEmpFiltered();
+  const body = rows.length
+    ? rows.map(e => `
+      <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
+        <td class="pl-4 pr-2 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(e.empNo)}</td>
+        <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(e.name)}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(e.department)}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(e.designation)}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(e.shift)}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(e.employmentType)}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(e.phone || '—')}</td>
+        <td class="px-3 py-2">${finPill(e.status, e.status === 'Active' ? 'success' : 'neutral', true)}</td>
+        <td class="pr-4 pl-3 py-2 whitespace-nowrap"><button type="button" data-hremp-edit="${e.id}" class="h-7 px-2.5 rounded border border-side-border text-secondary fs-small font-semibold hover:bg-side-hover mr-1.5">Edit</button><button type="button" data-hremp-toggle="${e.id}" class="h-7 px-2.5 rounded border border-side-border text-secondary fs-small font-semibold hover:bg-side-hover">${e.status === 'Active' ? 'Deactivate' : 'Activate'}</button></td>
+      </tr>`).join('')
+    : `<tr><td colspan="${headers.length}" class="px-4 py-8 text-center fs-base text-muted">${hrEmployees.length ? 'No employees match your filters.' : 'No employees yet.'}</td></tr>`;
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[960px]">
+        <thead><tr class="border-b border-side-line">
+          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-left whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>`;
+}
+function hrEmpRecentCard() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex items-center justify-between gap-3 p-4">
+        <h3 class="text-section-title text-primary">Employees</h3>
+        <p id="hrEmpCounter" class="text-helper text-muted">${hrEmpCounterText()}</p>
+      </div>
+      <div id="hrEmpResults">${hrEmpResultsHtml()}</div>
+    </section>`;
+}
+function renderHREmployee(container) {
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      ${hrEmpFormCard()}
+      ${hrEmpFilterBar()}
+      ${hrEmpRecentCard()}
+    </div>`;
+  hrEmpBindEvents(container);
+}
+function hrEmpRefreshResults(container) {
+  container.querySelector('#hrEmpResults').innerHTML = hrEmpResultsHtml();
+  container.querySelector('#hrEmpCounter').textContent = hrEmpCounterText();
+}
+function hrEmpBindEvents(container) {
+  container.querySelectorAll('[data-hrempf]').forEach(el => {
+    const handler = () => { hrEmpForm[el.dataset.hrempf] = el.value; };
+    el.addEventListener('change', handler);
+    if (el.tagName !== 'SELECT') el.addEventListener('input', handler);
+  });
+  container.querySelector('#hrEmpResetBtn').addEventListener('click', () => { hrEmpResetForm(); renderHREmployee(container); });
+  container.querySelector('#hrEmpSaveBtn').addEventListener('click', () => {
+    const f = hrEmpForm;
+    if (!f.name.trim()) return hrEmpSetMsg('Employee name is required.', 'danger');
+    if (!f.joining) return hrEmpSetMsg('Joining date is required.', 'danger');
+    const rec = {
+      name: f.name.trim(), gender: f.gender, dob: f.dob, phone: f.phone.trim(), email: f.email.trim(), address: f.address.trim(),
+      department: f.department, designation: f.designation, joining: f.joining, employmentType: f.employmentType, shift: f.shift,
+      basicSalary: coaNum(f.basicSalary), paymentMethod: f.paymentMethod, paymentAccount: f.paymentAccount.trim(),
+      emergencyName: f.emergencyName.trim(), emergencyPhone: f.emergencyPhone.trim(), status: f.status, remarks: f.remarks.trim(),
+    };
+    if (f.editId) {
+      Object.assign(hrEmp(f.editId), rec);
+      hrEmpResetForm();
+      renderHREmployee(container);
+      hrEmpSetMsg('Employee updated.', 'success');
+    } else {
+      const empNo = hrNextEmpNo();
+      hrEmployees.push({ id: hrEmployees.reduce((m, e) => Math.max(m, e.id), 0) + 1, empNo, ...rec });
+      hrEmpResetForm();
+      renderHREmployee(container);
+      hrEmpSetMsg(`Employee ${empNo} saved.`, 'success');
+    }
+  });
+  const bindFilter = (id, key, ev) => container.querySelector('#' + id).addEventListener(ev, (e) => { hrEmpFilter[key] = e.target.value; hrEmpRefreshResults(container); });
+  bindFilter('hrEmpSearch', 'q', 'input');
+  bindFilter('hrEmpDeptFilter', 'department', 'change');
+  bindFilter('hrEmpStatusFilter', 'status', 'change');
+  container.querySelector('#hrEmpResults').addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-hremp-edit]');
+    if (editBtn) {
+      const emp = hrEmp(+editBtn.dataset.hrempEdit);
+      if (emp) {
+        Object.assign(hrEmpForm, { editId: emp.id, empNo: emp.empNo, name: emp.name, gender: emp.gender, dob: emp.dob, phone: emp.phone, email: emp.email, address: emp.address, department: emp.department, designation: emp.designation, joining: emp.joining, employmentType: emp.employmentType, shift: emp.shift, basicSalary: emp.basicSalary, paymentMethod: emp.paymentMethod, paymentAccount: emp.paymentAccount, emergencyName: emp.emergencyName, emergencyPhone: emp.emergencyPhone, status: emp.status, remarks: emp.remarks, msg: '', msgTone: 'muted' });
+        renderHREmployee(container);
+      }
+      return;
+    }
+    const toggleBtn = e.target.closest('[data-hremp-toggle]');
+    if (toggleBtn) {
+      const emp = hrEmp(+toggleBtn.dataset.hrempToggle);
+      if (emp) { emp.status = emp.status === 'Active' ? 'Inactive' : 'Active'; hrEmpRefreshResults(container); }
+    }
+  });
+}
+
+// ---------- HR: Attendance (leave lives here as a status + leave type, not a separate menu) ----------
+const hrAttForm = {
+  editId: null, date: new Date().toISOString().slice(0, 10), employeeId: '', status: HR_ATT_STATUSES[0], leaveType: '',
+  checkIn: '', checkOut: '', remarks: '', msg: '', msgTone: 'muted',
+};
+const hrAttFilter = { q: '', employeeId: 'All Employees', status: 'All Statuses' };
+
+function hrAttResetForm() {
+  Object.assign(hrAttForm, { editId: null, date: new Date().toISOString().slice(0, 10), employeeId: '', status: HR_ATT_STATUSES[0], leaveType: '', checkIn: '', checkOut: '', remarks: '', msg: '', msgTone: 'muted' });
+}
+function hrAttSetMsg(text, tone) {
+  hrAttForm.msg = text || ''; hrAttForm.msgTone = tone || 'muted';
+  const el = document.getElementById('hrAttFormMsg');
+  if (el) { el.textContent = hrAttForm.msg; el.className = `${hrAttForm.msg ? '' : 'hidden '}text-helper text-${hrAttForm.msgTone} mr-auto`; }
+}
+function hrAttFormCard() {
+  const f = hrAttForm, emp = f.employeeId ? hrEmp(f.employeeId) : null, wh = hrWorkedHours(f.checkIn, f.checkOut);
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+      <h3 class="text-section-title text-primary mb-3.5">${f.editId ? 'Edit Attendance' : 'Daily Attendance'}</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-3.5">
+        ${coaField('Attendance Date', `<input data-hrattf="date" type="date" value="${escapeHtml(f.date)}" class="${COA_INPUT} tabular" />`)}
+        ${coaField('Employee', `<select data-hrattf="employeeId" class="${COA_INPUT}"><option value="">Select employee…</option>${hrActiveEmployees().map(e => `<option value="${e.id}" ${String(e.id) === String(f.employeeId) ? 'selected' : ''}>${escapeHtml(hrEmpLabel(e))}</option>`).join('')}</select>`)}
+        ${coaField('Department', `<input type="text" value="${escapeHtml(emp ? emp.department : '—')}" readonly class="${COA_AUTO}" />`)}
+        ${coaField('Shift', `<input type="text" value="${escapeHtml(emp ? emp.shift : '—')}" readonly class="${COA_AUTO}" />`)}
+        ${coaField('Attendance Status', `<select data-hrattf="status" class="${COA_INPUT}">${HR_ATT_STATUSES.map(s => `<option value="${s}" ${s === f.status ? 'selected' : ''}>${s}</option>`).join('')}</select>`)}
+        ${coaField('Leave Type', `<select data-hrattf="leaveType" class="${COA_INPUT}" ${f.status === 'Leave' ? '' : 'disabled'}><option value="">${f.status === 'Leave' ? 'Select leave type…' : 'Not applicable'}</option>${HR_LEAVE_TYPES.map(t => `<option value="${t}" ${t === f.leaveType ? 'selected' : ''}>${t}</option>`).join('')}</select>`)}
+        ${coaField('Check In', `<input data-hrattf="checkIn" type="time" value="${escapeHtml(f.checkIn)}" class="${COA_INPUT} tabular" />`)}
+        ${coaField('Check Out', `<input data-hrattf="checkOut" type="time" value="${escapeHtml(f.checkOut)}" class="${COA_INPUT} tabular" />`)}
+        ${coaField('Worked Hours', `<input type="text" value="${escapeHtml(hrHours(wh))}" readonly class="${COA_AUTO} tabular" />`)}
+        <div class="sm:col-span-2 lg:col-span-4">${coaField('Remarks', `<input data-hrattf="remarks" type="text" autocomplete="off" value="${escapeHtml(f.remarks)}" class="${COA_INPUT}" />`)}</div>
+      </div>
+      <div class="flex items-center justify-end gap-3 mt-4">
+        <p id="hrAttFormMsg" class="${f.msg ? '' : 'hidden '}text-helper text-${f.msgTone} mr-auto">${escapeHtml(f.msg)}</p>
+        <button type="button" id="hrAttResetBtn" class="${COA_BTN}">Reset</button>
+        <button type="button" id="hrAttSaveBtn" class="${COA_BTN_PRIMARY}">${BI_SAVE_ICON}${f.editId ? 'Update Attendance' : 'Save Attendance'}</button>
+      </div>
+    </section>`;
+}
+function hrAttFilterBar() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="sm:col-span-2">
+          <span class="block text-label font-medium text-secondary mb-1">Search</span>
+          <div class="relative">
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input id="hrAttSearch" type="text" value="${escapeHtml(hrAttFilter.q)}" placeholder="Search employee name, ID…" class="${COA_INPUT} pl-9" />
+          </div>
+        </div>
+        ${coaField('Employee', `<select id="hrAttEmpFilter" class="${COA_INPUT}"><option ${hrAttFilter.employeeId === 'All Employees' ? 'selected' : ''}>All Employees</option>${hrEmployees.map(e => `<option value="${e.id}" ${String(hrAttFilter.employeeId) === String(e.id) ? 'selected' : ''}>${escapeHtml(hrEmpLabel(e))}</option>`).join('')}</select>`)}
+        ${coaField('Status', `<select id="hrAttStatusFilter" class="${COA_INPUT}"><option ${hrAttFilter.status === 'All Statuses' ? 'selected' : ''}>All Statuses</option>${HR_ATT_STATUSES.map(s => `<option ${hrAttFilter.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select>`)}
+      </div>
+    </section>`;
+}
+function hrAttFiltered() {
+  const q = hrAttFilter.q.trim().toLowerCase();
+  return hrAttendance.filter(a => {
+    const e = hrEmp(a.employeeId);
+    if (q && !(e && (e.name.toLowerCase().includes(q) || e.empNo.toLowerCase().includes(q)))) return false;
+    if (hrAttFilter.employeeId !== 'All Employees' && String(a.employeeId) !== String(hrAttFilter.employeeId)) return false;
+    if (hrAttFilter.status !== 'All Statuses' && a.status !== hrAttFilter.status) return false;
+    return true;
+  }).sort((a, b) => b.date.localeCompare(a.date));
+}
+function hrAttCounterText() { return `${hrAttFiltered().length} of ${hrAttendance.length} record${hrAttendance.length === 1 ? '' : 's'}`; }
+function hrAttResultsHtml() {
+  const headers = ['Date', 'Employee', 'Department', 'Status', 'Leave Type', 'Check In', 'Check Out', 'Worked Hours', 'Remarks', 'Actions'];
+  const rows = hrAttFiltered();
+  const body = rows.length
+    ? rows.map(a => { const e = hrEmp(a.employeeId); return `
+      <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
+        <td class="pl-4 pr-2 py-2 fs-base text-primary whitespace-nowrap tabular">${escapeHtml(a.date)}</td>
+        <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(e ? hrEmpLabel(e) : '—')}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(e ? e.department : '—')}</td>
+        <td class="px-3 py-2">${finPill(a.status, hrAttStatusTone(a.status), true)}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(a.leaveType || '—')}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular">${escapeHtml(a.checkIn || '—')}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular">${escapeHtml(a.checkOut || '—')}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular">${hrHours(hrWorkedHours(a.checkIn, a.checkOut))}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(a.remarks || '—')}</td>
+        <td class="pr-4 pl-3 py-2 whitespace-nowrap"><button type="button" data-hratt-edit="${a.id}" class="h-7 px-2.5 rounded border border-side-border text-secondary fs-small font-semibold hover:bg-side-hover mr-1.5">Edit</button><button type="button" data-hratt-delete="${a.id}" class="h-7 px-2.5 rounded border border-side-border text-danger fs-small font-semibold hover:bg-side-hover">Delete</button></td>
+      </tr>`; }).join('')
+    : `<tr><td colspan="${headers.length}" class="px-4 py-8 text-center fs-base text-muted">${hrAttendance.length ? 'No attendance records match your filters.' : 'No attendance recorded yet.'}</td></tr>`;
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[980px]">
+        <thead><tr class="border-b border-side-line">
+          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-left whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>`;
+}
+function hrAttMonthlySummary() {
+  const now = new Date(), y = now.getFullYear(), m = now.getMonth() + 1;
+  const inMonth = (d) => { const dt = new Date(d); return dt.getFullYear() === y && dt.getMonth() + 1 === m; };
+  const byEmp = {};
+  hrAttendance.filter(a => inMonth(a.date)).forEach(a => {
+    byEmp[a.employeeId] = byEmp[a.employeeId] || { present: 0, absent: 0, late: 0, half: 0, leave: 0, working: 0, hours: 0 };
+    const s = byEmp[a.employeeId];
+    if (!['Holiday', 'Off Day'].includes(a.status)) s.working++;
+    if (a.status === 'Present') s.present++;
+    else if (a.status === 'Absent') s.absent++;
+    else if (a.status === 'Late') s.late++;
+    else if (a.status === 'Half Day') s.half++;
+    else if (a.status === 'Leave') s.leave++;
+    s.hours += hrWorkedHours(a.checkIn, a.checkOut);
+  });
+  return Object.keys(byEmp).map(id => ({ e: hrEmp(id), s: byEmp[id] })).filter(x => x.e);
+}
+function hrAttSummaryCard() {
+  const rows = hrAttMonthlySummary();
+  const label = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  const headers = ['Employee', 'Working Days', 'Present', 'Absent', 'Late', 'Half Day', 'Leave', 'Total Worked Hours'];
+  const body = rows.length
+    ? rows.map(x => `
+      <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
+        <td class="pl-4 pr-2 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(hrEmpLabel(x.e))}</td>
+        <td class="px-3 py-2 fs-base text-secondary text-right tabular">${x.s.working}</td>
+        <td class="px-3 py-2 fs-base text-secondary text-right tabular">${x.s.present}</td>
+        <td class="px-3 py-2 fs-base text-secondary text-right tabular">${x.s.absent}</td>
+        <td class="px-3 py-2 fs-base text-secondary text-right tabular">${x.s.late}</td>
+        <td class="px-3 py-2 fs-base text-secondary text-right tabular">${x.s.half}</td>
+        <td class="px-3 py-2 fs-base text-secondary text-right tabular">${x.s.leave}</td>
+        <td class="pr-4 pl-3 py-2 fs-base text-secondary text-right tabular">${hrHours(x.s.hours)}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="${headers.length}" class="px-4 py-8 text-center fs-base text-muted">No attendance summary for this month.</td></tr>`;
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex items-center justify-between gap-3 p-4">
+        <h3 class="text-section-title text-primary">Monthly Attendance Summary</h3>
+        <p class="text-helper text-muted">${escapeHtml(label)}</p>
+      </div>
+      <div class="overflow-x-auto border-t border-side-line">
+        <table class="w-full min-w-[860px]">
+          <thead><tr class="border-b border-side-line">
+            ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${i === 0 ? 'left' : 'right'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          </tr></thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>
+    </section>`;
+}
+function hrAttRecentCard() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex items-center justify-between gap-3 p-4">
+        <h3 class="text-section-title text-primary">Attendance Records</h3>
+        <p id="hrAttCounter" class="text-helper text-muted">${hrAttCounterText()}</p>
+      </div>
+      <div id="hrAttResults">${hrAttResultsHtml()}</div>
+    </section>`;
+}
+function renderHRAttendance(container) {
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      ${hrAttFormCard()}
+      ${hrAttFilterBar()}
+      ${hrAttRecentCard()}
+      ${hrAttSummaryCard()}
+    </div>`;
+  hrAttBindEvents(container);
+}
+function hrAttRefreshResults(container) {
+  container.querySelector('#hrAttResults').innerHTML = hrAttResultsHtml();
+  container.querySelector('#hrAttCounter').textContent = hrAttCounterText();
+}
+function hrAttBindEvents(container) {
+  const liveFields = ['employeeId', 'status', 'checkIn', 'checkOut'];
+  container.querySelectorAll('[data-hrattf]').forEach(el => {
+    const update = () => { hrAttForm[el.dataset.hrattf] = el.value; };
+    if (liveFields.includes(el.dataset.hrattf)) {
+      el.addEventListener('change', () => { update(); renderHRAttendance(container); });
+      if (el.type === 'time') el.addEventListener('input', () => { update(); renderHRAttendance(container); });
+    } else {
+      el.addEventListener('change', update);
+      if (el.tagName !== 'SELECT') el.addEventListener('input', update);
+    }
+  });
+  container.querySelector('#hrAttResetBtn').addEventListener('click', () => { hrAttResetForm(); renderHRAttendance(container); });
+  container.querySelector('#hrAttSaveBtn').addEventListener('click', () => {
+    const f = hrAttForm;
+    if (!f.date) return hrAttSetMsg('Attendance date is required.', 'danger');
+    if (!f.employeeId) return hrAttSetMsg('Select an employee.', 'danger');
+    if (f.status === 'Leave' && !f.leaveType) return hrAttSetMsg('Select a leave type.', 'danger');
+    const dup = hrAttendance.find(a => a.employeeId === +f.employeeId && a.date === f.date && a.id !== f.editId);
+    if (dup) return hrAttSetMsg('An attendance record already exists for this employee on this date.', 'danger');
+    const rec = { date: f.date, employeeId: +f.employeeId, status: f.status, leaveType: f.status === 'Leave' ? f.leaveType : '', checkIn: f.checkIn, checkOut: f.checkOut, remarks: f.remarks.trim() };
+    if (f.editId) {
+      Object.assign(hrAttendance.find(a => a.id === f.editId), rec);
+      hrAttSetMsg('Attendance updated.', 'success');
+    } else {
+      hrAttendance.push({ id: hrAttendance.reduce((m, a) => Math.max(m, a.id), 0) + 1, ...rec });
+      hrAttSetMsg('Attendance saved.', 'success');
+    }
+    hrAttResetForm();
+    renderHRAttendance(container);
+  });
+  const bindFilter = (id, key, ev) => container.querySelector('#' + id).addEventListener(ev, (e) => { hrAttFilter[key] = e.target.value; hrAttRefreshResults(container); });
+  bindFilter('hrAttSearch', 'q', 'input');
+  bindFilter('hrAttEmpFilter', 'employeeId', 'change');
+  bindFilter('hrAttStatusFilter', 'status', 'change');
+  container.querySelector('#hrAttResults').addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-hratt-edit]');
+    if (editBtn) {
+      const a = hrAttendance.find(x => x.id === +editBtn.dataset.hrattEdit);
+      if (a) { Object.assign(hrAttForm, { editId: a.id, date: a.date, employeeId: String(a.employeeId), status: a.status, leaveType: a.leaveType || '', checkIn: a.checkIn, checkOut: a.checkOut, remarks: a.remarks, msg: '', msgTone: 'muted' }); renderHRAttendance(container); }
+      return;
+    }
+    const delBtn = e.target.closest('[data-hratt-delete]');
+    if (delBtn) {
+      const idx = hrAttendance.findIndex(x => x.id === +delBtn.dataset.hrattDelete);
+      if (idx > -1) { hrAttendance.splice(idx, 1); renderHRAttendance(container); }
+    }
+  });
+}
+
+// ---------- HR: Holiday Management (was Holiday Calendar) — manual weekly-off + manual holiday list ----------
+function hrWeeklyOffCard() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+      <h3 class="text-section-title text-primary mb-1">Weekly Off Days</h3>
+      <p class="text-helper text-muted mb-3.5">Mark which weekdays are a standing weekly holiday for every week. Changes apply immediately.</p>
+      <div class="flex flex-wrap gap-2">
+        ${HR_WEEKDAYS.map((d, i) => `
+          <label class="inline-flex items-center gap-2 h-9 px-3 rounded border ${hrWeeklyOffs.includes(i) ? 'border-side-accent bg-side-active text-side-accent' : 'border-side-border text-secondary'} cursor-pointer fs-head font-medium">
+            <input type="checkbox" data-hrweekoff="${i}" ${hrWeeklyOffs.includes(i) ? 'checked' : ''} />${d}
+          </label>`).join('')}
+      </div>
+    </section>`;
+}
+const hrHolidayForm = { editId: null, date: '', name: '', type: HR_HOLIDAY_TYPES[0], remarks: '', msg: '', msgTone: 'muted' };
+function hrHolidayResetForm() { Object.assign(hrHolidayForm, { editId: null, date: '', name: '', type: HR_HOLIDAY_TYPES[0], remarks: '', msg: '', msgTone: 'muted' }); }
+function hrHolidaySetMsg(text, tone) {
+  hrHolidayForm.msg = text || ''; hrHolidayForm.msgTone = tone || 'muted';
+  const el = document.getElementById('hrHolidayFormMsg');
+  if (el) { el.textContent = hrHolidayForm.msg; el.className = `${hrHolidayForm.msg ? '' : 'hidden '}text-helper text-${hrHolidayForm.msgTone} mr-auto`; }
+}
+function hrHolidayFormCard() {
+  const f = hrHolidayForm;
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+      <h3 class="text-section-title text-primary mb-3.5">${f.editId ? 'Edit Holiday' : 'Add Holiday'}</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-3.5">
+        ${coaField('Date', `<input data-hrholf="date" type="date" value="${escapeHtml(f.date)}" class="${COA_INPUT} tabular" />`)}
+        ${coaField('Holiday Name', `<input data-hrholf="name" type="text" autocomplete="off" value="${escapeHtml(f.name)}" class="${COA_INPUT}" />`)}
+        ${coaField('Type', `<select data-hrholf="type" class="${COA_INPUT}">${HR_HOLIDAY_TYPES.map(t => `<option value="${t}" ${t === f.type ? 'selected' : ''}>${t}</option>`).join('')}</select>`)}
+        ${coaField('Remarks', `<input data-hrholf="remarks" type="text" autocomplete="off" value="${escapeHtml(f.remarks)}" class="${COA_INPUT}" />`)}
+      </div>
+      <div class="flex items-center justify-end gap-3 mt-4">
+        <p id="hrHolidayFormMsg" class="${f.msg ? '' : 'hidden '}text-helper text-${f.msgTone} mr-auto">${escapeHtml(f.msg)}</p>
+        <button type="button" id="hrHolidayResetBtn" class="${COA_BTN}">Reset</button>
+        <button type="button" id="hrHolidaySaveBtn" class="${COA_BTN_PRIMARY}">${BI_SAVE_ICON}${f.editId ? 'Update Holiday' : 'Save Holiday'}</button>
+      </div>
+    </section>`;
+}
+function hrHolidaySorted() { return [...hrHolidays].sort((a, b) => a.date.localeCompare(b.date)); }
+function hrHolidayResultsHtml() {
+  const headers = ['Date', 'Holiday Name', 'Type', 'Remarks', 'Actions'];
+  const rows = hrHolidaySorted();
+  const body = rows.length
+    ? rows.map(h => `
+      <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
+        <td class="pl-4 pr-2 py-2 fs-base text-primary whitespace-nowrap tabular">${escapeHtml(h.date)}</td>
+        <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(h.name)}</td>
+        <td class="px-3 py-2">${finPill(h.type, 'info', false)}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(h.remarks || '—')}</td>
+        <td class="pr-4 pl-3 py-2 whitespace-nowrap"><button type="button" data-hrhol-edit="${h.id}" class="h-7 px-2.5 rounded border border-side-border text-secondary fs-small font-semibold hover:bg-side-hover mr-1.5">Edit</button><button type="button" data-hrhol-delete="${h.id}" class="h-7 px-2.5 rounded border border-side-border text-danger fs-small font-semibold hover:bg-side-hover">Delete</button></td>
+      </tr>`).join('')
+    : `<tr><td colspan="${headers.length}" class="px-4 py-8 text-center fs-base text-muted">No holidays added yet.</td></tr>`;
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[700px]">
+        <thead><tr class="border-b border-side-line">
+          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-left whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>`;
+}
+function hrHolidayListCard() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex items-center justify-between gap-3 p-4">
+        <h3 class="text-section-title text-primary">Holidays</h3>
+        <p id="hrHolidayCounter" class="text-helper text-muted">${hrHolidays.length} holiday${hrHolidays.length === 1 ? '' : 's'}</p>
+      </div>
+      <div id="hrHolidayResults">${hrHolidayResultsHtml()}</div>
+    </section>`;
+}
+function renderHRHoliday(container) {
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      ${hrWeeklyOffCard()}
+      ${hrHolidayFormCard()}
+      ${hrHolidayListCard()}
+    </div>`;
+  hrHolidayBindEvents(container);
+}
+function hrHolidayBindEvents(container) {
+  container.querySelectorAll('[data-hrweekoff]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const day = +cb.dataset.hrweekoff;
+      if (cb.checked) { if (!hrWeeklyOffs.includes(day)) hrWeeklyOffs.push(day); }
+      else { hrWeeklyOffs = hrWeeklyOffs.filter(d => d !== day); }
+      hrWeeklyOffs.sort();
+      renderHRHoliday(container);
+    });
+  });
+  container.querySelectorAll('[data-hrholf]').forEach(el => {
+    const handler = () => { hrHolidayForm[el.dataset.hrholf] = el.value; };
+    el.addEventListener('change', handler);
+    if (el.tagName !== 'SELECT') el.addEventListener('input', handler);
+  });
+  container.querySelector('#hrHolidayResetBtn').addEventListener('click', () => { hrHolidayResetForm(); renderHRHoliday(container); });
+  container.querySelector('#hrHolidaySaveBtn').addEventListener('click', () => {
+    const f = hrHolidayForm;
+    if (!f.date) return hrHolidaySetMsg('Date is required.', 'danger');
+    if (!f.name.trim()) return hrHolidaySetMsg('Holiday name is required.', 'danger');
+    const rec = { date: f.date, name: f.name.trim(), type: f.type, remarks: f.remarks.trim() };
+    if (f.editId) {
+      Object.assign(hrHolidays.find(h => h.id === f.editId), rec);
+      hrHolidaySetMsg('Holiday updated.', 'success');
+    } else {
+      hrHolidays.push({ id: hrHolidays.reduce((m, h) => Math.max(m, h.id), 0) + 1, ...rec });
+      hrHolidaySetMsg('Holiday saved.', 'success');
+    }
+    hrHolidayResetForm();
+    renderHRHoliday(container);
+  });
+  container.querySelector('#hrHolidayResults').addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-hrhol-edit]');
+    if (editBtn) {
+      const h = hrHolidays.find(x => x.id === +editBtn.dataset.hrholEdit);
+      if (h) { Object.assign(hrHolidayForm, { editId: h.id, date: h.date, name: h.name, type: h.type, remarks: h.remarks, msg: '', msgTone: 'muted' }); renderHRHoliday(container); }
+      return;
+    }
+    const delBtn = e.target.closest('[data-hrhol-delete]');
+    if (delBtn) {
+      const idx = hrHolidays.findIndex(x => x.id === +delBtn.dataset.hrholDelete);
+      if (idx > -1) { hrHolidays.splice(idx, 1); renderHRHoliday(container); }
+    }
+  });
+}
+
+// ---------- HR: Overtime & Bonus Management (two nav entries, one shared tabbed page) ----------
+const HR_OT_BONUS_TABS = ['Overtime', 'Bonus Management'];
+function renderHROvertimeBonus(tabsEl, container) {
+  tabsEl.classList.remove('hidden');
+  tabsEl.innerHTML = `
+    <div class="flex items-center gap-1 -mb-px pb-px overflow-x-auto overflow-y-hidden">
+      ${HR_OT_BONUS_TABS.map((t, i) => `
+        <button type="button" data-hrotbtab="${i}" class="px-3.5 py-2.5 text-label font-semibold border-b-2 whitespace-nowrap -mb-px ${i === state.tabIndex ? 'border-side-accent text-side-accent' : 'border-transparent text-muted hover:text-secondary'}">${escapeHtml(t)}</button>
+      `).join('')}
+    </div>`;
+  tabsEl.querySelectorAll('[data-hrotbtab]').forEach(btn => {
+    btn.addEventListener('click', () => { state.tabIndex = +btn.dataset.hrotbtab; renderHROvertimeBonus(tabsEl, container); });
+  });
+  document.getElementById('page-actions').innerHTML = '';
+  if (state.tabIndex === 1) renderHRBonus(container);
+  else renderHROvertime(container);
+}
+
+const hrOtForm = { editId: null, date: new Date().toISOString().slice(0, 10), employeeId: '', hours: '', rate: '', approval: 'Pending', remarks: '', msg: '', msgTone: 'muted' };
+const hrOtFilter = { q: '', employeeId: 'All Employees', approval: 'All Approvals' };
+function hrOtResetForm() { Object.assign(hrOtForm, { editId: null, date: new Date().toISOString().slice(0, 10), employeeId: '', hours: '', rate: '', approval: 'Pending', remarks: '', msg: '', msgTone: 'muted' }); }
+function hrOtSetMsg(text, tone) {
+  hrOtForm.msg = text || ''; hrOtForm.msgTone = tone || 'muted';
+  const el = document.getElementById('hrOtFormMsg');
+  if (el) { el.textContent = hrOtForm.msg; el.className = `${hrOtForm.msg ? '' : 'hidden '}text-helper text-${hrOtForm.msgTone} mr-auto`; }
+}
+function hrOtFormCard() {
+  const f = hrOtForm, e = f.employeeId ? hrEmp(f.employeeId) : null, amount = coaNum(f.hours) * coaNum(f.rate);
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+      <h3 class="text-section-title text-primary mb-3.5">${f.editId ? 'Edit Overtime' : 'Overtime'}</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-3.5">
+        ${coaField('Overtime ID', `<input type="text" value="${escapeHtml(f.editId ? hrOvertime.find(o => o.id === f.editId).otNo : 'Auto')}" readonly class="${COA_AUTO} tabular" />`)}
+        ${coaField('Date', `<input data-hrotf="date" type="date" value="${escapeHtml(f.date)}" class="${COA_INPUT} tabular" />`)}
+        ${coaField('Employee', `<select data-hrotf="employeeId" class="${COA_INPUT}"><option value="">Select employee…</option>${hrActiveEmployees().map(x => `<option value="${x.id}" ${String(x.id) === String(f.employeeId) ? 'selected' : ''}>${escapeHtml(hrEmpLabel(x))}</option>`).join('')}</select>`)}
+        ${coaField('Department', `<input type="text" value="${escapeHtml(e ? e.department : '—')}" readonly class="${COA_AUTO}" />`)}
+        ${coaField('Overtime Hours', `<input data-hrotf="hours" type="number" min="0" step="0.25" value="${escapeHtml(String(f.hours))}" class="${COA_INPUT} tabular" />`)}
+        ${coaField('Overtime Rate (BDT/hr)', `<input data-hrotf="rate" type="number" min="0" step="0.01" value="${escapeHtml(String(f.rate))}" class="${COA_INPUT} tabular" />`)}
+        ${coaField('Overtime Amount', `<input type="text" value="BDT ${coaMoney(amount)}" readonly class="${COA_AUTO} tabular" />`)}
+        ${coaField('Approval Status', `<select data-hrotf="approval" class="${COA_INPUT}">${HR_APPROVAL.map(a => `<option value="${a}" ${a === f.approval ? 'selected' : ''}>${a}</option>`).join('')}</select>`)}
+        <div class="sm:col-span-2 lg:col-span-4">${coaField('Remarks', `<input data-hrotf="remarks" type="text" autocomplete="off" value="${escapeHtml(f.remarks)}" class="${COA_INPUT}" />`)}</div>
+      </div>
+      <div class="flex items-center justify-end gap-3 mt-4">
+        <p id="hrOtFormMsg" class="${f.msg ? '' : 'hidden '}text-helper text-${f.msgTone} mr-auto">${escapeHtml(f.msg)}</p>
+        <button type="button" id="hrOtResetBtn" class="${COA_BTN}">Reset</button>
+        <button type="button" id="hrOtSaveBtn" class="${COA_BTN_PRIMARY}">${BI_SAVE_ICON}${f.editId ? 'Update Overtime' : 'Save Overtime'}</button>
+      </div>
+    </section>`;
+}
+function hrOtFilterBar() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="sm:col-span-2">
+          <span class="block text-label font-medium text-secondary mb-1">Search</span>
+          <div class="relative">
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input id="hrOtSearch" type="text" value="${escapeHtml(hrOtFilter.q)}" placeholder="Search overtime ID, employee…" class="${COA_INPUT} pl-9" />
+          </div>
+        </div>
+        ${coaField('Employee', `<select id="hrOtEmpFilter" class="${COA_INPUT}"><option ${hrOtFilter.employeeId === 'All Employees' ? 'selected' : ''}>All Employees</option>${hrEmployees.map(e => `<option value="${e.id}" ${String(hrOtFilter.employeeId) === String(e.id) ? 'selected' : ''}>${escapeHtml(hrEmpLabel(e))}</option>`).join('')}</select>`)}
+        ${coaField('Approval', `<select id="hrOtApprovalFilter" class="${COA_INPUT}"><option ${hrOtFilter.approval === 'All Approvals' ? 'selected' : ''}>All Approvals</option>${HR_APPROVAL.map(a => `<option ${hrOtFilter.approval === a ? 'selected' : ''}>${a}</option>`).join('')}</select>`)}
+      </div>
+    </section>`;
+}
+function hrOtFiltered() {
+  const q = hrOtFilter.q.trim().toLowerCase();
+  return hrOvertime.filter(o => {
+    const e = hrEmp(o.employeeId);
+    if (q && !(o.otNo.toLowerCase().includes(q) || (e && (e.name.toLowerCase().includes(q) || e.empNo.toLowerCase().includes(q))))) return false;
+    if (hrOtFilter.employeeId !== 'All Employees' && String(o.employeeId) !== String(hrOtFilter.employeeId)) return false;
+    if (hrOtFilter.approval !== 'All Approvals' && o.approval !== hrOtFilter.approval) return false;
+    return true;
+  }).sort((a, b) => b.date.localeCompare(a.date));
+}
+function hrOtCounterText() { return `${hrOtFiltered().length} of ${hrOvertime.length} record${hrOvertime.length === 1 ? '' : 's'}`; }
+function hrOtResultsHtml() {
+  const headers = ['Overtime ID', 'Date', 'Employee', 'Department', 'Hours', 'Rate', 'Amount', 'Approval', 'Actions'];
+  const rows = hrOtFiltered();
+  const body = rows.length
+    ? rows.map(o => { const e = hrEmp(o.employeeId); return `
+      <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
+        <td class="pl-4 pr-2 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(o.otNo)}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular">${escapeHtml(o.date)}</td>
+        <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(e ? hrEmpLabel(e) : '—')}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(e ? e.department : '—')}</td>
+        <td class="px-3 py-2 fs-base text-secondary text-right tabular">${coaMoney(o.hours)}</td>
+        <td class="px-3 py-2 fs-base text-secondary text-right tabular">${coaMoney(o.rate)}</td>
+        <td class="px-3 py-2 fs-base text-secondary text-right tabular">BDT ${coaMoney(o.hours * o.rate)}</td>
+        <td class="px-3 py-2">${finPill(o.approval, hrApprovalTone(o.approval), true)}</td>
+        <td class="pr-4 pl-3 py-2 whitespace-nowrap">
+          <button type="button" data-hrot-edit="${o.id}" class="h-7 px-2.5 rounded border border-side-border text-secondary fs-small font-semibold hover:bg-side-hover mr-1.5">Edit</button>
+          ${o.approval === 'Pending' ? `<button type="button" data-hrot-approve="${o.id}" class="h-7 px-2.5 rounded border border-side-border text-success fs-small font-semibold hover:bg-side-hover mr-1.5">Approve</button><button type="button" data-hrot-reject="${o.id}" class="h-7 px-2.5 rounded border border-side-border text-danger fs-small font-semibold hover:bg-side-hover">Reject</button>` : ''}
+        </td>
+      </tr>`; }).join('')
+    : `<tr><td colspan="${headers.length}" class="px-4 py-8 text-center fs-base text-muted">${hrOvertime.length ? 'No overtime records match your filters.' : 'No overtime records yet.'}</td></tr>`;
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[940px]">
+        <thead><tr class="border-b border-side-line">
+          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${i >= 4 && i <= 6 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>`;
+}
+function hrOtRecentCard() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex items-center justify-between gap-3 p-4">
+        <h3 class="text-section-title text-primary">Overtime Records</h3>
+        <p id="hrOtCounter" class="text-helper text-muted">${hrOtCounterText()}</p>
+      </div>
+      <div id="hrOtResults">${hrOtResultsHtml()}</div>
+    </section>`;
+}
+function renderHROvertime(container) {
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      ${hrOtFormCard()}
+      ${hrOtFilterBar()}
+      ${hrOtRecentCard()}
+    </div>`;
+  hrOtBindEvents(container);
+}
+function hrOtRefreshResults(container) {
+  container.querySelector('#hrOtResults').innerHTML = hrOtResultsHtml();
+  container.querySelector('#hrOtCounter').textContent = hrOtCounterText();
+}
+function hrOtBindEvents(container) {
+  const liveFields = ['employeeId', 'hours', 'rate'];
+  container.querySelectorAll('[data-hrotf]').forEach(el => {
+    const update = () => { hrOtForm[el.dataset.hrotf] = el.value; };
+    if (liveFields.includes(el.dataset.hrotf)) {
+      el.addEventListener('change', () => { update(); renderHROvertime(container); });
+      if (el.tagName !== 'SELECT') el.addEventListener('input', () => { update(); renderHROvertime(container); });
+    } else {
+      el.addEventListener('change', update);
+      if (el.tagName !== 'SELECT') el.addEventListener('input', update);
+    }
+  });
+  container.querySelector('#hrOtResetBtn').addEventListener('click', () => { hrOtResetForm(); renderHROvertime(container); });
+  container.querySelector('#hrOtSaveBtn').addEventListener('click', () => {
+    const f = hrOtForm;
+    if (!f.employeeId) return hrOtSetMsg('Select an employee.', 'danger');
+    if (!f.date) return hrOtSetMsg('Date is required.', 'danger');
+    if (coaNum(f.hours) <= 0) return hrOtSetMsg('Overtime hours must be greater than zero.', 'danger');
+    const rec = { date: f.date, employeeId: +f.employeeId, hours: coaNum(f.hours), rate: coaNum(f.rate), approval: f.approval, remarks: f.remarks.trim() };
+    if (f.editId) {
+      Object.assign(hrOvertime.find(o => o.id === f.editId), rec);
+      hrOtSetMsg('Overtime updated.', 'success');
+    } else {
+      const otNo = hrNextNo('OT', hrOvertime, 'otNo');
+      hrOvertime.push({ id: hrOvertime.reduce((m, o) => Math.max(m, o.id), 0) + 1, otNo, ...rec });
+      hrOtSetMsg(`Overtime ${otNo} saved.`, 'success');
+    }
+    hrOtResetForm();
+    renderHROvertime(container);
+  });
+  const bindFilter = (id, key, ev) => container.querySelector('#' + id).addEventListener(ev, (e) => { hrOtFilter[key] = e.target.value; hrOtRefreshResults(container); });
+  bindFilter('hrOtSearch', 'q', 'input');
+  bindFilter('hrOtEmpFilter', 'employeeId', 'change');
+  bindFilter('hrOtApprovalFilter', 'approval', 'change');
+  container.querySelector('#hrOtResults').addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-hrot-edit]');
+    if (editBtn) {
+      const o = hrOvertime.find(x => x.id === +editBtn.dataset.hrotEdit);
+      if (o) { Object.assign(hrOtForm, { editId: o.id, date: o.date, employeeId: String(o.employeeId), hours: o.hours, rate: o.rate, approval: o.approval, remarks: o.remarks, msg: '', msgTone: 'muted' }); renderHROvertime(container); }
+      return;
+    }
+    const apBtn = e.target.closest('[data-hrot-approve]'), rjBtn = e.target.closest('[data-hrot-reject]');
+    if (apBtn) { const o = hrOvertime.find(x => x.id === +apBtn.dataset.hrotApprove); if (o) { o.approval = 'Approved'; hrOtRefreshResults(container); } return; }
+    if (rjBtn) { const o = hrOvertime.find(x => x.id === +rjBtn.dataset.hrotReject); if (o) { o.approval = 'Rejected'; hrOtRefreshResults(container); } }
+  });
+}
+
+const hrBonusForm = { editId: null, date: new Date().toISOString().slice(0, 10), employeeId: '', type: HR_BONUS_TYPES[0], amount: '', approval: 'Pending', remarks: '', msg: '', msgTone: 'muted' };
+const hrBonusFilter = { q: '', employeeId: 'All Employees', type: 'All Bonus Types', approval: 'All Approvals' };
+function hrBonusResetForm() { Object.assign(hrBonusForm, { editId: null, date: new Date().toISOString().slice(0, 10), employeeId: '', type: HR_BONUS_TYPES[0], amount: '', approval: 'Pending', remarks: '', msg: '', msgTone: 'muted' }); }
+function hrBonusSetMsg(text, tone) {
+  hrBonusForm.msg = text || ''; hrBonusForm.msgTone = tone || 'muted';
+  const el = document.getElementById('hrBonusFormMsg');
+  if (el) { el.textContent = hrBonusForm.msg; el.className = `${hrBonusForm.msg ? '' : 'hidden '}text-helper text-${hrBonusForm.msgTone} mr-auto`; }
+}
+function hrBonusFormCard() {
+  const f = hrBonusForm, e = f.employeeId ? hrEmp(f.employeeId) : null;
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+      <h3 class="text-section-title text-primary mb-3.5">${f.editId ? 'Edit Bonus' : 'Bonus'}</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-3.5">
+        ${coaField('Bonus ID', `<input type="text" value="${escapeHtml(f.editId ? hrBonuses.find(b => b.id === f.editId).bonusNo : 'Auto')}" readonly class="${COA_AUTO} tabular" />`)}
+        ${coaField('Date', `<input data-hrbonf="date" type="date" value="${escapeHtml(f.date)}" class="${COA_INPUT} tabular" />`)}
+        ${coaField('Employee', `<select data-hrbonf="employeeId" class="${COA_INPUT}"><option value="">Select employee…</option>${hrActiveEmployees().map(x => `<option value="${x.id}" ${String(x.id) === String(f.employeeId) ? 'selected' : ''}>${escapeHtml(hrEmpLabel(x))}</option>`).join('')}</select>`)}
+        ${coaField('Department', `<input type="text" value="${escapeHtml(e ? e.department : '—')}" readonly class="${COA_AUTO}" />`)}
+        ${coaField('Bonus Type', `<select data-hrbonf="type" class="${COA_INPUT}">${HR_BONUS_TYPES.map(t => `<option value="${t}" ${t === f.type ? 'selected' : ''}>${t}</option>`).join('')}</select>`)}
+        ${coaField('Amount', `<input data-hrbonf="amount" type="number" min="0" step="0.01" value="${escapeHtml(String(f.amount))}" class="${COA_INPUT} tabular" />`)}
+        ${coaField('Approval Status', `<select data-hrbonf="approval" class="${COA_INPUT}">${HR_APPROVAL.map(a => `<option value="${a}" ${a === f.approval ? 'selected' : ''}>${a}</option>`).join('')}</select>`)}
+        <div class="sm:col-span-2 lg:col-span-4">${coaField('Remarks', `<input data-hrbonf="remarks" type="text" autocomplete="off" value="${escapeHtml(f.remarks)}" class="${COA_INPUT}" />`)}</div>
+      </div>
+      <div class="flex items-center justify-end gap-3 mt-4">
+        <p id="hrBonusFormMsg" class="${f.msg ? '' : 'hidden '}text-helper text-${f.msgTone} mr-auto">${escapeHtml(f.msg)}</p>
+        <button type="button" id="hrBonusResetBtn" class="${COA_BTN}">Reset</button>
+        <button type="button" id="hrBonusSaveBtn" class="${COA_BTN_PRIMARY}">${BI_SAVE_ICON}${f.editId ? 'Update Bonus' : 'Save Bonus'}</button>
+      </div>
+    </section>`;
+}
+function hrBonusFilterBar() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div>
+          <span class="block text-label font-medium text-secondary mb-1">Search</span>
+          <div class="relative">
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input id="hrBonusSearch" type="text" value="${escapeHtml(hrBonusFilter.q)}" placeholder="Search bonus ID, employee…" class="${COA_INPUT} pl-9" />
+          </div>
+        </div>
+        ${coaField('Employee', `<select id="hrBonusEmpFilter" class="${COA_INPUT}"><option ${hrBonusFilter.employeeId === 'All Employees' ? 'selected' : ''}>All Employees</option>${hrEmployees.map(e => `<option value="${e.id}" ${String(hrBonusFilter.employeeId) === String(e.id) ? 'selected' : ''}>${escapeHtml(hrEmpLabel(e))}</option>`).join('')}</select>`)}
+        ${coaField('Bonus Type', `<select id="hrBonusTypeFilter" class="${COA_INPUT}"><option ${hrBonusFilter.type === 'All Bonus Types' ? 'selected' : ''}>All Bonus Types</option>${HR_BONUS_TYPES.map(t => `<option ${hrBonusFilter.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select>`)}
+        ${coaField('Approval', `<select id="hrBonusApprovalFilter" class="${COA_INPUT}"><option ${hrBonusFilter.approval === 'All Approvals' ? 'selected' : ''}>All Approvals</option>${HR_APPROVAL.map(a => `<option ${hrBonusFilter.approval === a ? 'selected' : ''}>${a}</option>`).join('')}</select>`)}
+      </div>
+    </section>`;
+}
+function hrBonusFiltered() {
+  const q = hrBonusFilter.q.trim().toLowerCase();
+  return hrBonuses.filter(b => {
+    const e = hrEmp(b.employeeId);
+    if (q && !(b.bonusNo.toLowerCase().includes(q) || (e && (e.name.toLowerCase().includes(q) || e.empNo.toLowerCase().includes(q))))) return false;
+    if (hrBonusFilter.employeeId !== 'All Employees' && String(b.employeeId) !== String(hrBonusFilter.employeeId)) return false;
+    if (hrBonusFilter.type !== 'All Bonus Types' && b.type !== hrBonusFilter.type) return false;
+    if (hrBonusFilter.approval !== 'All Approvals' && b.approval !== hrBonusFilter.approval) return false;
+    return true;
+  }).sort((a, b) => b.date.localeCompare(a.date));
+}
+function hrBonusCounterText() { return `${hrBonusFiltered().length} of ${hrBonuses.length} record${hrBonuses.length === 1 ? '' : 's'}`; }
+function hrBonusResultsHtml() {
+  const headers = ['Bonus ID', 'Date', 'Employee', 'Department', 'Bonus Type', 'Amount', 'Approval', 'Actions'];
+  const rows = hrBonusFiltered();
+  const body = rows.length
+    ? rows.map(b => { const e = hrEmp(b.employeeId); return `
+      <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
+        <td class="pl-4 pr-2 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(b.bonusNo)}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular">${escapeHtml(b.date)}</td>
+        <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(e ? hrEmpLabel(e) : '—')}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(e ? e.department : '—')}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(b.type)}</td>
+        <td class="px-3 py-2 fs-base text-secondary text-right tabular">BDT ${coaMoney(b.amount)}</td>
+        <td class="px-3 py-2">${finPill(b.approval, hrApprovalTone(b.approval), true)}</td>
+        <td class="pr-4 pl-3 py-2 whitespace-nowrap">
+          <button type="button" data-hrbon-edit="${b.id}" class="h-7 px-2.5 rounded border border-side-border text-secondary fs-small font-semibold hover:bg-side-hover mr-1.5">Edit</button>
+          ${b.approval === 'Pending' ? `<button type="button" data-hrbon-approve="${b.id}" class="h-7 px-2.5 rounded border border-side-border text-success fs-small font-semibold hover:bg-side-hover mr-1.5">Approve</button><button type="button" data-hrbon-reject="${b.id}" class="h-7 px-2.5 rounded border border-side-border text-danger fs-small font-semibold hover:bg-side-hover">Reject</button>` : ''}
+        </td>
+      </tr>`; }).join('')
+    : `<tr><td colspan="${headers.length}" class="px-4 py-8 text-center fs-base text-muted">${hrBonuses.length ? 'No bonus records match your filters.' : 'No bonus records yet.'}</td></tr>`;
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[920px]">
+        <thead><tr class="border-b border-side-line">
+          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${i === 5 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>`;
+}
+function hrBonusRecentCard() {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex items-center justify-between gap-3 p-4">
+        <h3 class="text-section-title text-primary">Bonus Records</h3>
+        <p id="hrBonusCounter" class="text-helper text-muted">${hrBonusCounterText()}</p>
+      </div>
+      <div id="hrBonusResults">${hrBonusResultsHtml()}</div>
+    </section>`;
+}
+function renderHRBonus(container) {
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      ${hrBonusFormCard()}
+      ${hrBonusFilterBar()}
+      ${hrBonusRecentCard()}
+    </div>`;
+  hrBonusBindEvents(container);
+}
+function hrBonusRefreshResults(container) {
+  container.querySelector('#hrBonusResults').innerHTML = hrBonusResultsHtml();
+  container.querySelector('#hrBonusCounter').textContent = hrBonusCounterText();
+}
+function hrBonusBindEvents(container) {
+  container.querySelectorAll('[data-hrbonf]').forEach(el => {
+    const live = el.dataset.hrbonf === 'employeeId';
+    const update = () => { hrBonusForm[el.dataset.hrbonf] = el.value; };
+    if (live) { el.addEventListener('change', () => { update(); renderHRBonus(container); }); }
+    else { el.addEventListener('change', update); if (el.tagName !== 'SELECT') el.addEventListener('input', update); }
+  });
+  container.querySelector('#hrBonusResetBtn').addEventListener('click', () => { hrBonusResetForm(); renderHRBonus(container); });
+  container.querySelector('#hrBonusSaveBtn').addEventListener('click', () => {
+    const f = hrBonusForm;
+    if (!f.employeeId) return hrBonusSetMsg('Select an employee.', 'danger');
+    if (!f.date) return hrBonusSetMsg('Date is required.', 'danger');
+    if (coaNum(f.amount) <= 0) return hrBonusSetMsg('Bonus amount must be greater than zero.', 'danger');
+    const rec = { date: f.date, employeeId: +f.employeeId, type: f.type, amount: coaNum(f.amount), approval: f.approval, remarks: f.remarks.trim() };
+    if (f.editId) {
+      Object.assign(hrBonuses.find(b => b.id === f.editId), rec);
+      hrBonusSetMsg('Bonus updated.', 'success');
+    } else {
+      const bonusNo = hrNextNo('BON', hrBonuses, 'bonusNo');
+      hrBonuses.push({ id: hrBonuses.reduce((m, b) => Math.max(m, b.id), 0) + 1, bonusNo, ...rec });
+      hrBonusSetMsg(`Bonus ${bonusNo} saved.`, 'success');
+    }
+    hrBonusResetForm();
+    renderHRBonus(container);
+  });
+  const bindFilter = (id, key, ev) => container.querySelector('#' + id).addEventListener(ev, (e) => { hrBonusFilter[key] = e.target.value; hrBonusRefreshResults(container); });
+  bindFilter('hrBonusSearch', 'q', 'input');
+  bindFilter('hrBonusEmpFilter', 'employeeId', 'change');
+  bindFilter('hrBonusTypeFilter', 'type', 'change');
+  bindFilter('hrBonusApprovalFilter', 'approval', 'change');
+  container.querySelector('#hrBonusResults').addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-hrbon-edit]');
+    if (editBtn) {
+      const b = hrBonuses.find(x => x.id === +editBtn.dataset.hrbonEdit);
+      if (b) { Object.assign(hrBonusForm, { editId: b.id, date: b.date, employeeId: String(b.employeeId), type: b.type, amount: b.amount, approval: b.approval, remarks: b.remarks, msg: '', msgTone: 'muted' }); renderHRBonus(container); }
+      return;
+    }
+    const apBtn = e.target.closest('[data-hrbon-approve]'), rjBtn = e.target.closest('[data-hrbon-reject]');
+    if (apBtn) { const b = hrBonuses.find(x => x.id === +apBtn.dataset.hrbonApprove); if (b) { b.approval = 'Approved'; hrBonusRefreshResults(container); } return; }
+    if (rjBtn) { const b = hrBonuses.find(x => x.id === +rjBtn.dataset.hrbonReject); if (b) { b.approval = 'Rejected'; hrBonusRefreshResults(container); } }
+  });
+}
+
+// ---------- HR: Payroll Processing ----------
+const hrPayForm = { year: String(new Date().getFullYear()), month: String(new Date().getMonth() + 1) };
+function hrMonthKey(y, m) { return `${y}-${String(m).padStart(2, '0')}`; }
+function hrApprovedOT(empId, y, m) {
+  const period = hrMonthKey(y, m);
+  return hrOvertime.filter(o => o.employeeId === +empId && o.approval === 'Approved' && o.date.startsWith(period))
+    .reduce((acc, o) => ({ hours: acc.hours + o.hours, amount: acc.amount + o.hours * o.rate }), { hours: 0, amount: 0 });
+}
+function hrApprovedBonus(empId, y, m) {
+  const period = hrMonthKey(y, m);
+  return hrBonuses.filter(b => b.employeeId === +empId && b.approval === 'Approved' && b.date.startsWith(period)).reduce((s, b) => s + b.amount, 0);
+}
+function hrPayFor(empId, period) { return hrPayrolls.find(p => p.employeeId === +empId && p.period === period) || null; }
+function hrCalcPayroll(emp, y, m, existingDeduction) {
+  const ot = hrApprovedOT(emp.id, y, m), bonus = hrApprovedBonus(emp.id, y, m), basic = coaNum(emp.basicSalary);
+  const gross = basic + ot.amount + bonus, deduction = existingDeduction || 0;
+  return { basic, otHours: ot.hours, overtime: ot.amount, bonus, gross, deduction, net: gross - deduction };
+}
+function hrPayLoadEmployees() {
+  const y = +hrPayForm.year, m = +hrPayForm.month, period = hrMonthKey(y, m);
+  hrActiveEmployees().forEach(emp => {
+    if (hrPayFor(emp.id, period)) return;
+    const c = hrCalcPayroll(emp, y, m, 0);
+    hrPayrolls.push({
+      id: hrPayrolls.reduce((mx, p) => Math.max(mx, p.id), 0) + 1, payrollNo: hrNextNo('PAY', hrPayrolls, 'payrollNo'),
+      employeeId: emp.id, period, year: y, month: m, basic: c.basic, otHours: c.otHours, overtime: c.overtime,
+      bonus: c.bonus, gross: c.gross, deduction: 0, net: c.net, status: 'Draft', paymentStatus: 'Unpaid',
+    });
+  });
+}
+function hrPayRecalc() {
+  const y = +hrPayForm.year, m = +hrPayForm.month, period = hrMonthKey(y, m);
+  hrPayrolls.filter(p => p.period === period && p.status !== 'Paid').forEach(p => {
+    const emp = hrEmp(p.employeeId); if (!emp) return;
+    const c = hrCalcPayroll(emp, y, m, p.deduction);
+    Object.assign(p, { basic: c.basic, otHours: c.otHours, overtime: c.overtime, bonus: c.bonus, gross: c.gross, net: c.net });
+  });
+}
+function hrPayRows() { return hrPayrolls.filter(p => p.period === hrMonthKey(+hrPayForm.year, +hrPayForm.month)); }
+function hrPayPeriodStatus() {
+  const rows = hrPayRows();
+  if (!rows.length) return 'Draft';
+  if (rows.every(r => r.status === 'Paid')) return 'Paid';
+  if (rows.some(r => r.status === 'Finalized')) return 'Finalized';
+  return 'Draft';
+}
+function hrPayFormCard() {
+  const status = hrPayPeriodStatus();
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+      <div class="flex items-center gap-2 mb-3.5">
+        <h3 class="text-section-title text-primary">Payroll Period</h3>
+        ${finPill(status, status === 'Paid' ? 'success' : status === 'Finalized' ? 'info' : 'neutral', true)}
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-3.5 mb-4">
+        ${coaField('Payroll Month', `<select id="hrPayMonth" class="${COA_INPUT}">${Array.from({ length: 12 }, (_, i) => i + 1).map(mo => `<option value="${mo}" ${mo === +hrPayForm.month ? 'selected' : ''}>${new Date(2000, mo - 1, 1).toLocaleString('en-US', { month: 'long' })}</option>`).join('')}</select>`)}
+        ${coaField('Payroll Year', `<input id="hrPayYear" type="number" min="2000" max="2100" value="${escapeHtml(hrPayForm.year)}" class="${COA_INPUT} tabular" />`)}
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <button type="button" id="hrPayLoadBtn" class="${COA_BTN}">Load Employees</button>
+        <button type="button" id="hrPayCalcBtn" class="${COA_BTN}">Calculate Payroll</button>
+        <button type="button" id="hrPayFinalizeBtn" class="${COA_BTN_PRIMARY}">Finalize Payroll</button>
+        <button type="button" id="hrPayPaidBtn" class="${COA_BTN}">Mark as Paid</button>
+      </div>
+    </section>`;
+}
+function hrPayResultsHtml() {
+  const headers = ['Employee', 'Department', 'Basic', 'Overtime', 'Bonus', 'Gross', 'Deduction', 'Net', 'Status', 'Payment'];
+  const rows = hrPayRows();
+  const body = rows.length
+    ? rows.map(p => { const e = hrEmp(p.employeeId); return `
+      <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
+        <td class="pl-4 pr-2 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(e ? hrEmpLabel(e) : '—')}</td>
+        <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(e ? e.department : '—')}</td>
+        <td class="px-3 py-2 fs-base text-secondary text-right tabular">${coaMoney(p.basic)}</td>
+        <td class="px-3 py-2 fs-base text-secondary text-right tabular">${coaMoney(p.overtime)}</td>
+        <td class="px-3 py-2 fs-base text-secondary text-right tabular">${coaMoney(p.bonus)}</td>
+        <td class="px-3 py-2 fs-base text-primary text-right tabular font-medium">${coaMoney(p.gross)}</td>
+        <td class="px-3 py-2 text-right">${p.status === 'Paid' ? `<span class="tabular">${coaMoney(p.deduction)}</span>` : `<input type="number" min="0" step="0.01" data-hrpay-deduction="${p.id}" value="${p.deduction}" class="${COA_INPUT} tabular text-right w-24 h-8 ml-auto" />`}</td>
+        <td class="px-3 py-2 fs-base text-primary text-right tabular font-semibold">${coaMoney(p.net)}</td>
+        <td class="px-3 py-2">${finPill(p.status, p.status === 'Finalized' ? 'info' : p.status === 'Paid' ? 'success' : 'neutral', true)}</td>
+        <td class="pr-4 pl-3 py-2">${finPill(p.paymentStatus, p.paymentStatus === 'Paid' ? 'success' : 'neutral', true)}</td>
+      </tr>`; }).join('')
+    : `<tr><td colspan="${headers.length}" class="px-4 py-8 text-center fs-base text-muted">No payroll rows for this period yet. Load employees to begin.</td></tr>`;
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[980px]">
+        <thead><tr class="border-b border-side-line">
+          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${i >= 2 && i <= 7 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+        </tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>`;
+}
+function hrPayTableCard() {
+  const period = hrMonthKey(+hrPayForm.year, +hrPayForm.month);
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex items-center justify-between gap-3 p-4">
+        <h3 class="text-section-title text-primary">Payroll ${escapeHtml(period)}</h3>
+        <p id="hrPayCounter" class="text-helper text-muted">${hrPayRows().length} employee${hrPayRows().length === 1 ? '' : 's'}</p>
+      </div>
+      <div id="hrPayResults">${hrPayResultsHtml()}</div>
+    </section>`;
+}
+function renderHRPayroll(container) {
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      ${hrPayFormCard()}
+      ${hrPayTableCard()}
+    </div>`;
+  hrPayBindEvents(container);
+}
+function hrPayRefresh(container) {
+  container.querySelector('#hrPayResults').innerHTML = hrPayResultsHtml();
+  container.querySelector('#hrPayCounter').textContent = `${hrPayRows().length} employee${hrPayRows().length === 1 ? '' : 's'}`;
+}
+function hrPayBindEvents(container) {
+  container.querySelector('#hrPayMonth').addEventListener('change', (e) => { hrPayForm.month = e.target.value; renderHRPayroll(container); });
+  container.querySelector('#hrPayYear').addEventListener('change', (e) => { hrPayForm.year = e.target.value; renderHRPayroll(container); });
+  container.querySelector('#hrPayLoadBtn').addEventListener('click', () => { hrPayLoadEmployees(); renderHRPayroll(container); });
+  container.querySelector('#hrPayCalcBtn').addEventListener('click', () => { hrPayRecalc(); renderHRPayroll(container); });
+  container.querySelector('#hrPayFinalizeBtn').addEventListener('click', () => {
+    const rows = hrPayRows();
+    if (!rows.length) return;
+    rows.forEach(p => { if (p.status === 'Draft') p.status = 'Finalized'; });
+    renderHRPayroll(container);
+  });
+  container.querySelector('#hrPayPaidBtn').addEventListener('click', () => {
+    const rows = hrPayRows();
+    if (!rows.length) return;
+    rows.forEach(p => { if (p.status === 'Finalized') { p.status = 'Paid'; p.paymentStatus = 'Paid'; } });
+    renderHRPayroll(container);
+  });
+  container.querySelector('#hrPayResults').addEventListener('change', (e) => {
+    const ded = e.target.closest('[data-hrpay-deduction]');
+    if (!ded) return;
+    const p = hrPayrolls.find(x => x.id === +ded.dataset.hrpayDeduction);
+    if (p) { p.deduction = coaNum(ded.value); p.net = p.gross - p.deduction; hrPayRefresh(container); }
+  });
 }
 
 // ---------- Command palette ----------
