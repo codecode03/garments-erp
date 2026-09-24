@@ -445,9 +445,8 @@ const modules = [
     { name:'QC Hold Stock' }, { name:'Stock Transfer' }, { name:'Reports' },
   ]},
   { key:'production', name:'Production', icon:'gear', submodules:[
-    { name:'Production Planning/Capacity Planning' }, { name:'Production Schedule' }, { name:'Production Order' },
-    { name:'Production Stage' }, { name:'Production Tracking' }, { name:'Quality Control' }, { name:'Defect & Rework' },
-    { name:'Efficiency & KPI' }, { name:'Production Costing' }, { name:'Reports' },
+    { name:'Production Planning' }, { name:'Production Stage' }, { name:'Daily Production' },
+    { name:'Quality Control' }, { name:'Defect & Rework' }, { name:'Efficiency & KPI' }, { name:'Other Production Cost' },
   ]},
   { key:'commercial', name:'Commercial', icon:'ship', submodules:[
     { name:'Export Management' }, { name:'LC Management' }, { name:'Commercial Invoice' }, { name:'Packing List' },
@@ -631,6 +630,13 @@ const subtitles = {
   'Payroll Processing': 'Calculate and finalize monthly payroll from basic salary, approved overtime and approved bonus',
   'Overtime': 'Log employee overtime hours and route them through approval',
   'Bonus Management': 'Log employee bonuses and route them through approval',
+  'Production Planning': 'Plan order quantity against line capacity and see the days needed',
+  'Production Stage': 'Record stage-wise employee production from knitting through delivery',
+  'Daily Production': 'Stage-wise daily production report built from recorded stage entries',
+  'Quality Control': 'Record inspections and track pass rate, rework and rejects',
+  'Defect & Rework': 'Log defects by stage and follow rework through to completion',
+  'Efficiency & KPI': 'Line efficiency from SAM, plus production KPIs across every stage',
+  'Other Production Cost': 'Record production costs by cost head against a style or order',
 };
 
 function renderContent() {
@@ -709,6 +715,13 @@ function renderContent() {
   else if (mod.key === 'hr' && sm.name === 'Payroll Processing') renderHRPayroll(pageContent);
   else if (mod.key === 'hr' && sm.name === 'Overtime') { state.tabIndex = 0; renderHROvertimeBonus(tabsEl, pageContent); }
   else if (mod.key === 'hr' && sm.name === 'Bonus Management') { state.tabIndex = 1; renderHROvertimeBonus(tabsEl, pageContent); }
+  else if (mod.key === 'production' && sm.name === 'Production Planning') renderProdScreen(pageContent, 'planning');
+  else if (mod.key === 'production' && sm.name === 'Production Stage') renderProductionStage(tabsEl, pageContent);
+  else if (mod.key === 'production' && sm.name === 'Daily Production') renderProdDaily(pageContent);
+  else if (mod.key === 'production' && sm.name === 'Quality Control') renderProdScreen(pageContent, 'qc');
+  else if (mod.key === 'production' && sm.name === 'Defect & Rework') renderProdScreen(pageContent, 'defect');
+  else if (mod.key === 'production' && sm.name === 'Efficiency & KPI') renderProdEfficiency(tabsEl, pageContent);
+  else if (mod.key === 'production' && sm.name === 'Other Production Cost') renderProdScreen(pageContent, 'cost');
   else renderNotBuilt(pageContent, mod, sm, single);
 }
 
@@ -14242,6 +14255,1012 @@ function hrPayBindEvents(container) {
     const p = hrPayrolls.find(x => x.id === +ded.dataset.hrpayDeduction);
     if (p) { p.deduction = coaNum(ded.value); p.net = p.gross - p.deduction; hrPayRefresh(container); }
   });
+}
+
+// ---------- Production ----------
+// Content ported from the Production reference build (Production.html); every style below is
+// index.html's own. Only the reference's screens exist. The sidebar is one level deep, so the seven
+// Production Stage screens are tabs, and so are Efficiency & KPI's Data / Chart views.
+// UI-only prototype: records live in the in-memory arrays below, seeded relative to today.
+const PROD_STAGES = [
+  { id: 'knitting', name: 'Knitting', prefix: 'KN' },
+  { id: 'linking', name: 'Linking', prefix: 'LK' },
+  { id: 'mending', name: 'Mending', prefix: 'MD' },
+  { id: 'wash', name: 'Wash', prefix: 'WS', extra: { label: 'Wash Type' } },
+  { id: 'iron', name: 'Iron', prefix: 'IR' },
+  { id: 'packing', name: 'Packing', prefix: 'PK', extra: { label: 'Carton Qty', type: 'number' } },
+  { id: 'delivery', name: 'Delivery', prefix: 'DL', extra: { label: 'Challan No.' } },
+];
+const PROD_STAGE_NAMES = PROD_STAGES.map(s => s.name);
+const PROD_SHIFTS = ['General', 'Morning', 'Evening', 'Night'];
+const PROD_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const PROD_TONES = { Completed: 'success', Accepted: 'success', 'In progress': 'info', 'Rework required': 'warning', Pending: 'warning', 'On hold': 'neutral', Rejected: 'danger' };
+const PROD_SEARCH_ICON = '<svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>';
+
+function prodISO(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function prodDaysAgo(n) { const d = new Date(); d.setDate(d.getDate() - n); return prodISO(d); }
+function prodToday() { return prodDaysAgo(0); }
+function prodShortDate(iso) { const p = String(iso || '').split('-'); return p.length === 3 ? `${+p[2]} ${PROD_MONTHS[+p[1] - 1]}` : iso; }
+function prodN(v) { const x = parseFloat(v); return isFinite(x) ? x : 0; }
+function prodHas(v) { return v !== '' && v != null && isFinite(parseFloat(v)); }
+function prodFmt(n) { return (Math.round((+n || 0) * 100) / 100).toLocaleString('en-US'); }
+function prodPct(v) { return v == null || !isFinite(v) ? '—' : `${v.toFixed(1)}%`; }
+function prodIsNum(f) { return f.type === 'number' || f.type === 'money'; }
+function prodTh(label, i, n, right) {
+  return `<th class="${i === 0 ? 'pl-4 pr-2' : i === n - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${right ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(label)}</th>`;
+}
+function prodTile(label, value, note) {
+  return `<div class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+    <p class="text-micro text-muted mb-1">${escapeHtml(label)}</p>
+    <p class="fs-title font-semibold text-primary tabular">${value}</p>
+    ${note ? `<p class="text-helper text-muted mt-1">${escapeHtml(note)}</p>` : ''}
+  </div>`;
+}
+function prodMsgClass(msg, tone) { return `${msg ? '' : 'hidden '}text-helper text-${tone} mr-auto`; }
+
+/* One control renderer for every Production form. Style / Buyer / Employee pickers read the
+   Merchandising and HR masters instead of free text, so a style means the same thing everywhere. */
+function prodControl(f, val, attr) {
+  const v = val == null ? '' : String(val);
+  if (f.type === 'auto') return `<input type="text" readonly id="prodAuto-${f.k}" value="${escapeHtml(v)}" class="${COA_AUTO} tabular" />`;
+  if (f.type === 'employee') {
+    const list = hrEmployees.filter(e => e.status === 'Active' || String(e.id) === v);
+    return `<select ${attr} class="${COA_INPUT}"><option value="">Select employee…</option>${list.map(e => `<option value="${e.id}" ${String(e.id) === v ? 'selected' : ''}>${escapeHtml(hrEmpLabel(e))}</option>`).join('')}</select>`;
+  }
+  const opts = f.type === 'style' ? styStyles.map(s => s.style) : f.type === 'buyer' ? biBuyers.map(b => b.name) : f.options;
+  if (opts) {
+    const all = v && !opts.includes(v) ? [v, ...opts] : opts;
+    return `<select ${attr} class="${COA_INPUT}"><option value="">Select…</option>${all.map(o => `<option value="${escapeHtml(o)}" ${o === v ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('')}</select>`;
+  }
+  if (prodIsNum(f)) return `<input ${attr} type="number" min="0" step="any" inputmode="decimal" value="${escapeHtml(v)}" class="${COA_INPUT} tabular" />`;
+  if (f.type === 'date') return `<input ${attr} type="date" value="${escapeHtml(v)}" class="${COA_INPUT} tabular" />`;
+  return `<input ${attr} type="text" autocomplete="off" value="${escapeHtml(v)}" placeholder="${escapeHtml(f.placeholder || '')}" class="${COA_INPUT}" />`;
+}
+function prodFieldHtml(f, val, attr) {
+  return `<label class="block min-w-0${f.type === 'textarea' ? ' sm:col-span-2 lg:col-span-4' : ''}">${biLabel(f.label, { req: f.req })}${prodControl(f, val, attr)}</label>`;
+}
+
+/* ---------- Record screens: Planning, Quality Control, Defect & Rework, Efficiency data, Cost ---------- */
+const PROD_SCREENS = {
+  planning: {
+    noun: 'Production Plan', title: 'Production Plans', minW: 'min-w-[980px]',
+    fields: [
+      { k: 'planNo', label: 'Plan No.', type: 'text', req: true },
+      { k: 'buyer', label: 'Buyer', type: 'buyer' },
+      { k: 'style', label: 'Style No.', type: 'style' },
+      { k: 'order', label: 'Order No.', type: 'text' },
+      { k: 'qty', label: 'Order Qty', type: 'number' },
+      { k: 'section', label: 'Section / Line', type: 'text' },
+      { k: 'cap', label: 'Daily Capacity', type: 'number' },
+      { k: 'start', label: 'Start Date', type: 'date' },
+      { k: 'end', label: 'End Date', type: 'date' },
+      { k: 'remarks', label: 'Remarks', type: 'textarea' },
+    ],
+    cols: ['planNo', 'buyer', 'style', 'order', 'qty', 'section', 'cap', 'start', 'end'],
+    computed: [{ label: 'Days Needed', formula: 'order qty ÷ daily capacity, rounded up', fmt: 'int',
+      fn: r => prodN(r.qty) > 0 && prodN(r.cap) > 0 ? Math.ceil(prodN(r.qty) / prodN(r.cap)) : null }],
+    validate: v => (v.start && v.end && v.end < v.start ? 'End date can’t be before the start date.' : ''),
+  },
+  qc: {
+    noun: 'Inspection', title: 'Inspections', minW: 'min-w-[960px]',
+    fields: [
+      { k: 'date', label: 'Date', type: 'date', req: true },
+      { k: 'stage', label: 'Stage', type: 'select', options: PROD_STAGE_NAMES, req: true },
+      { k: 'line', label: 'Production Line', type: 'text' },
+      { k: 'shift', label: 'Shift', type: 'select', options: ['Morning', 'Evening', 'Night'] },
+      { k: 'buyer', label: 'Buyer', type: 'buyer' },
+      { k: 'style', label: 'Style No.', type: 'style', req: true },
+      { k: 'order', label: 'Order No.', type: 'text' },
+      { k: 'lot', label: 'Lot / Batch No.', type: 'text' },
+      { k: 'inspector', label: 'Inspector', type: 'text', req: true },
+      { k: 'inspectionType', label: 'Inspection Type', type: 'select', options: ['In-line', 'End-line', 'Final'], req: true },
+      { k: 'inspected', label: 'Inspected Qty', type: 'number', req: true },
+      { k: 'passed', label: 'Passed Qty', type: 'number', req: true },
+      { k: 'rework', label: 'Rework Qty', type: 'number' },
+      { k: 'rejected', label: 'Rejected Qty', type: 'number' },
+      { k: 'defect', label: 'Defect Category', type: 'select', options: ['None', 'Measurement', 'Stitching', 'Fabric', 'Color / shade', 'Finishing', 'Other'] },
+      { k: 'disposition', label: 'Disposition', type: 'select', options: ['Accepted', 'Rework required', 'Rejected', 'On hold'], pill: true },
+      { k: 'remarks', label: 'Remarks', type: 'textarea' },
+    ],
+    cols: ['date', 'stage', 'style', 'inspectionType', 'inspected', 'passed', 'rework', 'rejected', 'disposition'],
+    computed: [
+      { label: 'Failed Qty', formula: 'inspected − passed', fmt: 'int', formOnly: true,
+        fn: r => prodHas(r.inspected) && prodHas(r.passed) ? Math.max(0, prodN(r.inspected) - prodN(r.passed)) : null },
+      { label: 'Unaccounted Qty', formula: 'inspected − passed − rework − rejected', fmt: 'int', formOnly: true,
+        fn: r => prodHas(r.inspected) && prodHas(r.passed) ? Math.max(0, prodN(r.inspected) - prodN(r.passed) - prodN(r.rework) - prodN(r.rejected)) : null },
+      { label: 'Pass Rate', formula: 'passed ÷ inspected × 100', fmt: 'pct',
+        fn: r => prodN(r.inspected) > 0 && prodHas(r.passed) ? prodN(r.passed) / prodN(r.inspected) * 100 : null },
+    ],
+    validate: v => {
+      if (prodHas(v.inspected) && prodN(v.inspected) <= 0) return 'Inspected qty must be greater than zero.';
+      if (prodHas(v.inspected) && prodHas(v.passed) && prodN(v.passed) > prodN(v.inspected)) return 'Passed qty can’t be more than inspected qty.';
+      if (prodHas(v.inspected) && prodN(v.passed) + prodN(v.rework) + prodN(v.rejected) > prodN(v.inspected)) return 'Passed, rework and rejected quantities exceed inspected qty.';
+      return '';
+    },
+  },
+  defect: {
+    noun: 'Defect Record', title: 'Defect Records', minW: 'min-w-[940px]',
+    fields: [
+      { k: 'date', label: 'Date', type: 'date', req: true },
+      { k: 'stage', label: 'Stage', type: 'select', options: PROD_STAGE_NAMES },
+      { k: 'style', label: 'Style No.', type: 'style', req: true },
+      { k: 'order', label: 'Order No.', type: 'text' },
+      { k: 'type', label: 'Defect Type', type: 'text' },
+      { k: 'defect', label: 'Defect Qty', type: 'number' },
+      { k: 'reworked', label: 'Reworked Qty', type: 'number' },
+      { k: 'status', label: 'Rework Status', type: 'select', options: ['Pending', 'In progress', 'Completed'], pill: true },
+      { k: 'remarks', label: 'Remarks', type: 'textarea' },
+    ],
+    cols: ['date', 'stage', 'style', 'order', 'type', 'defect', 'reworked', 'status'],
+    computed: [{ label: 'Pending Rework', formula: 'defect qty − reworked qty', fmt: 'int',
+      fn: r => prodHas(r.defect) ? Math.max(0, prodN(r.defect) - prodN(r.reworked)) : null }],
+    validate: v => (prodHas(v.defect) && prodHas(v.reworked) && prodN(v.reworked) > prodN(v.defect) ? 'Reworked qty can’t be more than defect qty.' : ''),
+  },
+  kpi: {
+    noun: 'Efficiency Entry', title: 'Efficiency Entries', minW: 'min-w-[900px]',
+    fields: [
+      { k: 'date', label: 'Date', type: 'date', req: true },
+      { k: 'section', label: 'Section / Line', type: 'text', req: true },
+      { k: 'style', label: 'Style No.', type: 'style' },
+      { k: 'manpower', label: 'Manpower', type: 'number' },
+      { k: 'hours', label: 'Working Hours', type: 'number' },
+      { k: 'produced', label: 'Produced Qty', type: 'number' },
+      { k: 'sam', label: 'SAM (min per piece)', type: 'number' },
+      { k: 'remarks', label: 'Remarks', type: 'textarea' },
+    ],
+    cols: ['date', 'section', 'style', 'manpower', 'hours', 'produced', 'sam'],
+    computed: [{ label: 'Efficiency', formula: 'produced × SAM ÷ (manpower × working hours × 60) × 100', fmt: 'pct',
+      fn: r => prodN(r.manpower) > 0 && prodN(r.hours) > 0 && prodN(r.sam) > 0 && prodHas(r.produced) ? prodN(r.produced) * prodN(r.sam) / (prodN(r.manpower) * prodN(r.hours) * 60) * 100 : null }],
+  },
+  cost: {
+    noun: 'Cost Entry', title: 'Cost Entries', minW: 'min-w-[760px]', total: 'amount',
+    fields: [
+      { k: 'date', label: 'Date', type: 'date', req: true },
+      { k: 'ref', label: 'Style / Order No.', type: 'text' },
+      { k: 'head', label: 'Cost Head', type: 'text', req: true },
+      { k: 'amount', label: 'Amount (BDT)', type: 'money' },
+      { k: 'remarks', label: 'Remarks', type: 'textarea' },
+    ],
+    cols: ['date', 'ref', 'head', 'amount', 'remarks'],
+    computed: [],
+  },
+};
+
+const prodRecords = {
+  planning: [
+    { id: 1, planNo: 'PLN-0001', buyer: 'ABC Fashion Ltd.', style: 'AB-4587', order: 'ORD-2031', qty: 12000, section: 'Knitting Line K-04', cap: 1500, start: prodDaysAgo(6), end: prodDaysAgo(-4), remarks: '' },
+    { id: 2, planNo: 'PLN-0002', buyer: 'XYZ Garments Ltd.', style: 'AB-4587', order: 'ORD-2044', qty: 6000, section: 'Knitting Line K-01', cap: 1000, start: prodDaysAgo(1), end: prodDaysAgo(-6), remarks: 'Second colourway' },
+  ],
+  qc: [
+    { id: 1, date: prodDaysAgo(1), stage: 'Knitting', line: 'K-04', shift: 'Morning', buyer: 'ABC Fashion Ltd.', style: 'AB-4587', order: 'ORD-2031', lot: 'B-2031', inspector: 'Sumaiya Akter', inspectionType: 'In-line', inspected: 600, passed: 572, rework: 20, rejected: 8, defect: 'Stitching', disposition: 'Rework required', remarks: '' },
+    { id: 2, date: prodDaysAgo(0), stage: 'Linking', line: 'L-02', shift: 'Morning', buyer: 'ABC Fashion Ltd.', style: 'AB-4587', order: 'ORD-2031', lot: 'B-2031', inspector: 'Sumaiya Akter', inspectionType: 'End-line', inspected: 400, passed: 388, rework: 9, rejected: 3, defect: 'Measurement', disposition: 'Accepted', remarks: '' },
+  ],
+  defect: [
+    { id: 1, date: prodDaysAgo(1), stage: 'Knitting', style: 'AB-4587', order: 'ORD-2031', type: 'Broken stitch', defect: 28, reworked: 20, status: 'In progress', remarks: '' },
+    { id: 2, date: prodDaysAgo(0), stage: 'Linking', style: 'AB-4587', order: 'ORD-2031', type: 'Uneven linking', defect: 12, reworked: 12, status: 'Completed', remarks: '' },
+  ],
+  kpi: [
+    { id: 1, date: prodDaysAgo(1), section: 'Line K-04', style: 'AB-4587', manpower: 24, hours: 8, produced: 1380, sam: 6.5, remarks: '' },
+    { id: 2, date: prodDaysAgo(1), section: 'Line L-02', style: 'AB-4587', manpower: 18, hours: 8, produced: 1150, sam: 5.8, remarks: '' },
+    { id: 3, date: prodDaysAgo(0), section: 'Line K-01', style: 'AB-4587', manpower: 20, hours: 8, produced: 900, sam: 7.2, remarks: '' },
+  ],
+  cost: [
+    { id: 1, date: prodDaysAgo(3), ref: 'AB-4587 / ORD-2031', head: 'Needles & spare parts', amount: 18500, remarks: '' },
+    { id: 2, date: prodDaysAgo(1), ref: 'AB-4587 / ORD-2031', head: 'Washing chemicals', amount: 9200, remarks: 'Softener + enzyme' },
+  ],
+};
+
+const prodUi = {};
+function prodBlank(key) { const v = {}; PROD_SCREENS[key].fields.forEach(f => { v[f.k] = f.k === 'date' ? prodToday() : ''; }); return v; }
+function prodUiFor(key) { return prodUi[key] || (prodUi[key] = { editId: null, v: prodBlank(key), msg: '', tone: 'muted', q: '' }); }
+function prodFormValues(key, row) { const v = {}; PROD_SCREENS[key].fields.forEach(f => { v[f.k] = row[f.k] == null ? '' : String(row[f.k]); }); return v; }
+function prodCompText(c, v) { return v == null || !isFinite(v) ? '—' : c.fmt === 'pct' ? prodPct(v) : prodFmt(v); }
+function prodSetMsg(key, text, tone) {
+  const u = prodUiFor(key);
+  u.msg = text || ''; u.tone = tone || 'muted';
+  const el = document.getElementById('prodFormMsg');
+  if (el) { el.textContent = u.msg; el.className = prodMsgClass(u.msg, u.tone); }
+}
+function prodValidate(key, v) {
+  const sc = PROD_SCREENS[key];
+  for (const f of sc.fields) {
+    const val = String(v[f.k] == null ? '' : v[f.k]).trim();
+    if (f.req && !val) return `${f.label} is required.`;
+    if (prodIsNum(f) && val !== '' && (!isFinite(parseFloat(val)) || parseFloat(val) < 0)) return `${f.label} must be 0 or more.`;
+  }
+  return sc.validate ? sc.validate(v) : '';
+}
+
+function prodFormCard(key) {
+  const sc = PROD_SCREENS[key], u = prodUiFor(key);
+  const main = sc.fields.filter(f => f.type !== 'textarea'), wide = sc.fields.filter(f => f.type === 'textarea');
+  const comp = sc.computed.map((c, i) => `<label class="block min-w-0">${biLabel(c.label)}<input type="text" readonly data-prodcomp="${i}" value="${escapeHtml(prodCompText(c, c.fn(u.v)))}" class="${COA_AUTO} tabular" /></label>`).join('');
+  return `
+    <section id="prodFormCard" class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+      <div class="flex items-center justify-between gap-3 mb-3.5">
+        <h3 class="text-section-title text-primary">${u.editId ? 'Edit' : 'New'} ${escapeHtml(sc.noun)}</h3>
+        <p class="text-helper text-muted"><span class="text-danger">*</span> Required</p>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-3.5">
+        ${main.map(f => prodFieldHtml(f, u.v[f.k], `data-prodf="${f.k}"`)).join('')}
+        ${comp}
+        ${wide.map(f => prodFieldHtml(f, u.v[f.k], `data-prodf="${f.k}"`)).join('')}
+      </div>
+      ${sc.computed.length ? `<p class="text-helper text-muted mt-3">${sc.computed.map(c => `${escapeHtml(c.label)} = ${escapeHtml(c.formula)}`).join(' · ')}</p>` : ''}
+      <div class="flex items-center justify-end gap-3 mt-4">
+        <p id="prodFormMsg" class="${prodMsgClass(u.msg, u.tone)}">${escapeHtml(u.msg)}</p>
+        ${u.editId ? `<button type="button" id="prodCancelBtn" class="${COA_BTN}">Cancel</button>` : ''}
+        <button type="button" id="prodResetBtn" class="${COA_BTN}">Reset</button>
+        <button type="button" id="prodSaveBtn" class="${COA_BTN_PRIMARY}">${BI_SAVE_ICON}${u.editId ? 'Update' : 'Save'} ${escapeHtml(sc.noun)}</button>
+      </div>
+    </section>`;
+}
+function prodFiltered(key) {
+  const sc = PROD_SCREENS[key], q = prodUiFor(key).q.trim().toLowerCase();
+  return prodRecords[key]
+    .filter(r => !q || sc.fields.some(f => String(r[f.k] == null ? '' : r[f.k]).toLowerCase().includes(q)))
+    .sort((a, b) => String(b.date || b.start || '').localeCompare(String(a.date || a.start || '')) || b.id - a.id);
+}
+function prodCounterText(key) { const n = prodRecords[key].length; return `${prodFiltered(key).length} of ${n} record${n === 1 ? '' : 's'}`; }
+function prodResultsHtml(key) {
+  const sc = PROD_SCREENS[key], rows = prodFiltered(key);
+  const cols = sc.cols.map(k => sc.fields.find(f => f.k === k)), comps = sc.computed.filter(c => !c.formOnly);
+  const heads = [...cols.map(f => [f.label, prodIsNum(f)]), ...comps.map(c => [c.label, true]), ['Actions', false]];
+  const n = heads.length;
+  const body = rows.length ? rows.map(r => {
+    const cells = cols.map((f, i) => {
+      const v = r[f.k];
+      if (f.pill && v) return `<td class="px-3 py-2">${finPill(v, PROD_TONES[v] || 'neutral', true)}</td>`;
+      const text = v === '' || v == null ? '—' : f.type === 'money' ? coaMoney(prodN(v)) : f.type === 'number' ? prodFmt(v) : escapeHtml(v);
+      const cls = [i === 0 ? 'pl-4 pr-2 font-medium text-primary' : 'px-3 text-secondary', prodIsNum(f) ? 'text-right' : '', prodIsNum(f) || f.type === 'date' ? 'tabular' : '', f.type === 'textarea' ? 'max-w-[240px] truncate' : 'whitespace-nowrap'].join(' ');
+      return `<td class="${cls} py-2 fs-base"${f.type === 'textarea' && v ? ` title="${escapeHtml(v)}"` : ''}>${text}</td>`;
+    }).join('') + comps.map(c => `<td class="px-3 py-2 fs-base font-medium text-primary text-right tabular whitespace-nowrap">${prodCompText(c, c.fn(r))}</td>`).join('');
+    return `<tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">${cells}
+      <td class="pr-4 pl-3 py-2 whitespace-nowrap"><button type="button" data-prod-edit="${r.id}" class="h-7 px-2.5 rounded border border-side-border text-secondary fs-small font-semibold hover:bg-side-hover mr-1.5">Edit</button><button type="button" data-prod-delete="${r.id}" class="h-7 px-2.5 rounded border border-side-border text-danger fs-small font-semibold hover:bg-side-hover">Delete</button></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="${n}" class="px-4 py-8 text-center fs-base text-muted">${prodRecords[key].length ? 'No records match the filter.' : 'No records yet. Fill in the form above and save the first one.'}</td></tr>`;
+  let foot = '';
+  if (sc.total && rows.length) {
+    const sum = rows.reduce((s, r) => s + prodN(r[sc.total]), 0);
+    foot = `<tfoot><tr class="border-t border-side-line bg-side-hover">${cols.map((f, i) => f.k === sc.total
+      ? `<td class="px-3 py-2.5 fs-base font-semibold text-primary text-right tabular whitespace-nowrap">${coaMoney(sum)}</td>`
+      : `<td class="${i === 0 ? 'pl-4 pr-2' : 'px-3'} py-2.5 fs-base font-semibold text-primary">${i === 0 ? 'Total' : ''}</td>`).join('')}<td></td></tr></tfoot>`;
+  }
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full ${sc.minW}">
+        <thead><tr class="border-b border-side-line">${heads.map((h, i) => prodTh(h[0], i, n, h[1])).join('')}</tr></thead>
+        <tbody>${body}</tbody>${foot}
+      </table>
+    </div>`;
+}
+function prodRecordsCard(key) {
+  const sc = PROD_SCREENS[key];
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex flex-wrap items-center justify-between gap-3 p-4">
+        <div>
+          <h3 class="text-section-title text-primary">${escapeHtml(sc.title)}</h3>
+          <p id="prodCounter" class="text-helper text-muted">${prodCounterText(key)}</p>
+        </div>
+        <div class="relative w-full sm:w-72">${PROD_SEARCH_ICON}<input id="prodSearch" type="text" value="${escapeHtml(prodUiFor(key).q)}" placeholder="Filter records…" aria-label="Filter records" class="${COA_INPUT} pl-9" /></div>
+      </div>
+      <div id="prodResults">${prodResultsHtml(key)}</div>
+    </section>`;
+}
+function prodTopHtml(key) { return key === 'qc' ? prodQcSummary() : key === 'kpi' ? prodKpiCards() : ''; }
+function renderProdScreen(container, key) {
+  const top = prodTopHtml(key);
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      ${top ? `<div id="prodTop">${top}</div>` : ''}
+      ${prodFormCard(key)}
+      ${prodRecordsCard(key)}
+    </div>`;
+  prodBindScreen(container, key);
+}
+function prodRefreshResults(container, key) {
+  container.querySelector('#prodResults').innerHTML = prodResultsHtml(key);
+  container.querySelector('#prodCounter').textContent = prodCounterText(key);
+  const top = container.querySelector('#prodTop');
+  if (top) top.innerHTML = prodTopHtml(key);
+}
+function prodBindScreen(container, key) {
+  const sc = PROD_SCREENS[key], u = prodUiFor(key), rerender = () => renderProdScreen(container, key);
+  container.querySelectorAll('[data-prodf]').forEach(el => {
+    const handler = () => {
+      u.v[el.dataset.prodf] = el.value;
+      sc.computed.forEach((c, i) => { const out = container.querySelector(`[data-prodcomp="${i}"]`); if (out) out.value = prodCompText(c, c.fn(u.v)); });
+    };
+    el.addEventListener('change', handler);
+    if (el.tagName !== 'SELECT') el.addEventListener('input', handler);
+  });
+  container.querySelector('#prodResetBtn').addEventListener('click', () => {
+    const row = u.editId ? prodRecords[key].find(r => r.id === u.editId) : null;
+    u.v = row ? prodFormValues(key, row) : prodBlank(key); u.msg = '';
+    rerender();
+  });
+  const cancel = container.querySelector('#prodCancelBtn');
+  if (cancel) cancel.addEventListener('click', () => { u.editId = null; u.v = prodBlank(key); u.msg = ''; rerender(); });
+  container.querySelector('#prodSaveBtn').addEventListener('click', () => {
+    const err = prodValidate(key, u.v);
+    if (err) return prodSetMsg(key, err, 'danger');
+    const rec = {};
+    sc.fields.forEach(f => { rec[f.k] = String(u.v[f.k] == null ? '' : u.v[f.k]).trim(); });
+    const list = prodRecords[key], wasEdit = !!u.editId;
+    if (wasEdit) Object.assign(list.find(r => r.id === u.editId), rec);
+    else list.push({ id: list.reduce((m, r) => Math.max(m, r.id), 0) + 1, ...rec });
+    u.editId = null; u.v = prodBlank(key);
+    rerender();
+    prodSetMsg(key, `${sc.noun} ${wasEdit ? 'updated' : 'saved'}.`, 'success');
+  });
+  container.querySelector('#prodSearch').addEventListener('input', (e) => { u.q = e.target.value; prodRefreshResults(container, key); });
+  container.querySelector('#prodResults').addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-prod-edit]');
+    if (editBtn) {
+      const row = prodRecords[key].find(r => r.id === +editBtn.dataset.prodEdit);
+      if (row) { u.editId = row.id; u.v = prodFormValues(key, row); u.msg = ''; rerender(); container.querySelector('#prodFormCard').scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+      return;
+    }
+    const delBtn = e.target.closest('[data-prod-delete]');
+    if (delBtn) {
+      const id = +delBtn.dataset.prodDelete, idx = prodRecords[key].findIndex(r => r.id === id);
+      if (idx > -1) {
+        prodRecords[key].splice(idx, 1);
+        if (u.editId === id) { u.editId = null; u.v = prodBlank(key); }
+        rerender();
+        prodSetMsg(key, `${sc.noun} deleted.`, 'muted');
+      }
+    }
+  });
+}
+
+function prodQcSummary() {
+  const rows = prodFiltered('qc'), t = k => rows.reduce((s, r) => s + prodN(r[k]), 0), inspected = t('inspected'), passed = t('passed');
+  return `<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+    ${prodTile('Inspections', prodFmt(rows.length))}
+    ${prodTile('Inspected Pieces', prodFmt(inspected))}
+    ${prodTile('Passed', prodFmt(passed))}
+    ${prodTile('Rework', prodFmt(t('rework')))}
+    ${prodTile('Rejected', prodFmt(t('rejected')))}
+    ${prodTile('Pass Rate', inspected ? prodPct(passed / inspected * 100) : '—')}
+  </div>`;
+}
+
+/* ---------- Production Stage (seven tabs) ---------- */
+function prodSeedStage(stage, n, daysAgo, header, rows) {
+  return {
+    id: n,
+    header: { entryNo: `${stage.prefix}-${String(n).padStart(6, '0')}`, date: prodDaysAgo(daysAgo), styleNo: 'AB-4587', orderNo: 'ORD-2031', poNo: 'PO-2031', buyer: 'ABC Fashion Ltd.', color: 'Navy', shift: 'Morning', orderQuantity: 12000, shippingDate: '2027-02-15', supervisor: 'Md. Aminul Islam', ...header },
+    rows: rows.map(([employeeId, target, actual, qcFail]) => ({ employeeId: String(employeeId), target, actual, qcFail })),
+  };
+}
+const prodStageRecords = (() => {
+  const s = id => PROD_STAGES.find(x => x.id === id);
+  return {
+    knitting: [
+      prodSeedStage(s('knitting'), 1, 1, { employeeId: '1', machineNo: 'K-04', gauge: '12', yarnReq: 5200, yarnRec: 4800 }, [[1, 700, 650, 12], [3, 700, 690, 8]]),
+      prodSeedStage(s('knitting'), 2, 0, { employeeId: '3', machineNo: 'K-01', gauge: '12', yarnReq: 5200, yarnRec: 4800 }, [[1, 700, 672, 10], [3, 700, 640, 15]]),
+    ],
+    linking: [
+      prodSeedStage(s('linking'), 1, 1, { inputQty: 1300 }, [[1, 650, 610, 6], [2, 650, 580, 9]]),
+      prodSeedStage(s('linking'), 2, 0, { inputQty: 1312 }, [[1, 700, 640, 5]]),
+    ],
+    mending: [prodSeedStage(s('mending'), 1, 0, { inputQty: 1100 }, [[2, 550, 520, 4], [3, 550, 500, 6]])],
+    wash: [prodSeedStage(s('wash'), 1, 0, { inputQty: 800, extra: 'Enzyme wash' }, [[3, 800, 760, 4]])],
+    iron: [prodSeedStage(s('iron'), 1, 0, { inputQty: 700 }, [[1, 700, 650, 3]])],
+    packing: [prodSeedStage(s('packing'), 1, 0, { inputQty: 600, extra: 25 }, [[2, 600, 560, 0]])],
+    delivery: [prodSeedStage(s('delivery'), 1, 0, { inputQty: 500, extra: 'CH-1001' }, [[3, 500, 480, 0]])],
+  };
+})();
+
+const PROD_KNIT_HEADER = [
+  { k: 'entryNo', label: 'Entry No.', type: 'text', placeholder: 'Auto on save' },
+  { k: 'date', label: 'Date', type: 'date', req: true },
+  { k: 'employeeId', label: 'Employee Name', type: 'employee' },
+  { k: 'shift', label: 'Shift', type: 'select', options: PROD_SHIFTS },
+  { k: 'machineNo', label: 'Machine No.', type: 'text' },
+  { k: 'styleNo', label: 'Style No.', type: 'style', req: true },
+  { k: 'orderNo', label: 'Order No.', type: 'text', req: true },
+  { k: 'poNo', label: 'PO No.', type: 'text' },
+  { k: 'gauge', label: 'Gauge', type: 'text' },
+  { k: 'color', label: 'Color', type: 'text' },
+  { k: 'orderQuantity', label: 'Order Quantity', type: 'number' },
+  { k: 'shippingDate', label: 'Shipping Date', type: 'date' },
+  { k: 'supervisor', label: 'Supervisor', type: 'text' },
+  { k: 'yarnReq', label: 'Yarn Req', type: 'number' },
+  { k: 'yarnRec', label: 'Yarn Rec.', type: 'number' },
+  { k: 'yarnRemaining', label: 'Yarn Remaining', type: 'auto', fn: h => (prodHas(h.yarnReq) || prodHas(h.yarnRec) ? prodFmt(Math.max(0, prodN(h.yarnReq) - prodN(h.yarnRec))) : '—') },
+];
+function prodStageHeader(stage) {
+  if (stage.id === 'knitting') return PROD_KNIT_HEADER;
+  const f = [
+    { k: 'entryNo', label: 'Entry No.', type: 'text', placeholder: 'Auto on save' },
+    { k: 'date', label: 'Date', type: 'date', req: true },
+    { k: 'styleNo', label: 'Style No.', type: 'style', req: true },
+    { k: 'orderNo', label: 'Order No.', type: 'text', req: true },
+    { k: 'poNo', label: 'PO No.', type: 'text' },
+    { k: 'buyer', label: 'Buyer', type: 'buyer' },
+    { k: 'color', label: 'Color', type: 'text' },
+    { k: 'shift', label: 'Shift', type: 'select', options: PROD_SHIFTS },
+    { k: 'orderQuantity', label: 'Order Quantity', type: 'number' },
+    { k: 'inputQty', label: 'Input Qty', type: 'number' },
+    { k: 'shippingDate', label: 'Shipping Date', type: 'date' },
+    { k: 'supervisor', label: 'Supervisor', type: 'text' },
+  ];
+  if (stage.extra) f.push({ k: 'extra', label: stage.extra.label, type: stage.extra.type || 'text' });
+  return f;
+}
+/* Knitting is the first stage and has no Input Qty field, so its input is the order quantity. */
+function prodStageSums(stageId, rec) {
+  const h = rec.header || {}, rows = rec.rows || [];
+  const sum = k => rows.reduce((s, r) => s + Math.max(0, prodN(r[k])), 0);
+  const produced = sum('actual'), fail = sum('qcFail'), target = sum('target');
+  const input = Math.max(0, prodN(stageId === 'knitting' ? h.orderQuantity : h.inputQty));
+  return { produced, fail, target, input, balance: Math.max(0, input - produced - fail) };
+}
+function prodEmpCalc(r) {
+  const t = Math.max(0, prodN(r.target)), a = Math.max(0, prodN(r.actual)), f = Math.max(0, prodN(r.qcFail));
+  return { rem: Math.max(0, t - a - f), eff: t ? `${Math.round(a / t * 100)}%` : '—', prod: a };
+}
+
+const prodStageDrafts = {};
+function prodBlankDraft() { return { editId: null, header: { date: prodToday() }, rows: [], msg: '', tone: 'muted' }; }
+function prodDraft(id) { return prodStageDrafts[id] || (prodStageDrafts[id] = prodBlankDraft()); }
+function prodCurStage() { return PROD_STAGES[state.tabIndex] || PROD_STAGES[0]; }
+function prodStageSetMsg(st, text, tone) {
+  const d = prodDraft(st.id);
+  d.msg = text || ''; d.tone = tone || 'muted';
+  const el = document.getElementById('prodStageMsg');
+  if (el) { el.textContent = d.msg; el.className = prodMsgClass(d.msg, d.tone); }
+}
+function prodNextEntryNo(st) {
+  const n = prodStageRecords[st.id].reduce((m, r) => Math.max(m, parseInt(String(r.header.entryNo || '').split('-')[1], 10) || 0), 0) + 1;
+  return `${st.prefix}-${String(n).padStart(6, '0')}`;
+}
+
+function renderProductionStage(tabsEl, container) {
+  tabsEl.classList.remove('hidden');
+  tabsEl.innerHTML = `
+    <div class="flex items-center gap-1 -mb-px pb-px overflow-x-auto overflow-y-hidden">
+      ${PROD_STAGE_NAMES.map((t, i) => `
+        <button type="button" data-prodstagetab="${i}" class="px-3.5 py-2.5 text-label font-semibold border-b-2 whitespace-nowrap -mb-px ${i === state.tabIndex ? 'border-side-accent text-side-accent' : 'border-transparent text-muted hover:text-secondary'}">${escapeHtml(t)}</button>
+      `).join('')}
+    </div>`;
+  tabsEl.querySelectorAll('[data-prodstagetab]').forEach(btn => {
+    btn.addEventListener('click', () => { state.tabIndex = +btn.dataset.prodstagetab; renderProductionStage(tabsEl, container); });
+  });
+  document.getElementById('page-actions').innerHTML = '';
+  prodStageRender(container);
+}
+function prodStageStatsHtml(st, d) {
+  const s = prodStageSums(st.id, d), knit = st.id === 'knitting';
+  const tiles = [
+    prodTile('Employee Rows', prodFmt(d.rows.length)),
+    prodTile('Total Produced', prodFmt(s.produced)),
+    prodTile('Input Qty', prodFmt(s.input), knit ? 'From order quantity' : ''),
+    prodTile('Balance', prodFmt(s.balance), 'Input − produced − QC fail'),
+  ];
+  tiles.push(prodTile('Total QC Fail', prodFmt(s.fail)));
+  return tiles.join('');
+}
+function prodEmpRowsHtml(d) {
+  if (!d.rows.length) return `<tr><td colspan="9" class="px-4 py-8 text-center fs-base text-muted">Add an employee to record production.</td></tr>`;
+  return d.rows.map((r, i) => {
+    const c = prodEmpCalc(r);
+    const numIn = (k, label) => `<td class="px-2 py-1.5 min-w-[110px]"><input data-prodrow="${i}" data-col="${k}" type="number" min="0" step="any" inputmode="decimal" value="${escapeHtml(r[k] == null ? '' : r[k])}" aria-label="${label}" class="${COA_INPUT} tabular text-right" /></td>`;
+    return `<tr data-prodrowtr="${i}" class="border-b border-side-line last:border-b-0">
+      <td class="pl-4 pr-2 py-1.5 fs-base text-muted tabular">${String(i + 1).padStart(2, '0')}</td>
+      <td class="px-2 py-1.5 min-w-[230px]">${prodControl({ type: 'employee' }, r.employeeId, `data-prodrow="${i}" data-col="employeeId" aria-label="Employee"`)}</td>
+      ${numIn('target', 'Target')}${numIn('actual', 'Actual')}${numIn('qcFail', 'QC fail')}
+      <td data-calc="rem" class="px-3 py-1.5 fs-base text-secondary text-right tabular whitespace-nowrap">${prodFmt(c.rem)}</td>
+      <td data-calc="eff" class="px-3 py-1.5 fs-base text-secondary text-right tabular whitespace-nowrap">${c.eff}</td>
+      <td data-calc="prod" class="px-3 py-1.5 fs-base font-medium text-primary text-right tabular whitespace-nowrap">${prodFmt(c.prod)} pcs</td>
+      <td class="pr-4 pl-2 py-1.5 text-right"><button type="button" data-prodrowdel="${i}" aria-label="Remove employee" class="w-7 h-7 rounded border border-side-border text-danger inline-flex items-center justify-center hover:bg-side-hover">${COA_DELETE_ICON}</button></td>
+    </tr>`;
+  }).join('');
+}
+function prodStageRecordsHtml(st) {
+  const list = prodStageRecords[st.id].slice().sort((a, b) => String(b.header.date).localeCompare(String(a.header.date)) || b.id - a.id);
+  const heads = ['Date', 'Entry No.', 'Style No.', 'Order No.', 'Employees', 'Input Qty', 'Produced Qty', 'QC Fail', 'Balance', 'Actions'];
+  const body = list.length ? list.map(rec => {
+    const h = rec.header, s = prodStageSums(st.id, rec);
+    const num = v => `<td class="px-3 py-2 fs-base text-secondary text-right tabular whitespace-nowrap">${prodFmt(v)}</td>`;
+    return `<tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
+      <td class="pl-4 pr-2 py-2 fs-base text-primary tabular whitespace-nowrap">${escapeHtml(h.date || '—')}</td>
+      <td class="px-3 py-2 fs-base font-medium text-primary tabular whitespace-nowrap">${escapeHtml(h.entryNo || '—')}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(h.styleNo || '—')}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(h.orderNo || '—')}</td>
+      ${num(rec.rows.length)}${num(s.input)}${num(s.produced)}${num(s.fail)}${num(s.balance)}
+      <td class="pr-4 pl-3 py-2 whitespace-nowrap"><button type="button" data-prodst-edit="${rec.id}" class="h-7 px-2.5 rounded border border-side-border text-secondary fs-small font-semibold hover:bg-side-hover mr-1.5">Edit</button><button type="button" data-prodst-delete="${rec.id}" class="h-7 px-2.5 rounded border border-side-border text-danger fs-small font-semibold hover:bg-side-hover">Delete</button></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="${heads.length}" class="px-4 py-8 text-center fs-base text-muted">No records yet. Save an entry to see it here.</td></tr>`;
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[940px]">
+        <thead><tr class="border-b border-side-line">${heads.map((h, i) => prodTh(h, i, heads.length, i >= 4 && i <= 8)).join('')}</tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>`;
+}
+function prodStageRender(container) {
+  const st = prodCurStage(), d = prodDraft(st.id), hdr = prodStageHeader(st), n = prodStageRecords[st.id].length;
+  const empHeads = ['#', 'Employee Name', 'Target', 'Actual', 'QC Fail', 'Remaining', 'Efficiency', 'Produced Qty', ''];
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      <section id="prodStageForm" class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+        <div class="flex items-start justify-between gap-3 mb-3.5">
+          <div>
+            <h3 class="text-section-title text-primary">${d.editId ? `Edit ${escapeHtml(st.name)} Entry` : `${escapeHtml(st.name)} Production Entry`}</h3>
+            <p class="text-helper text-muted">Order and plan information for ${escapeHtml(st.name.toLowerCase())}</p>
+          </div>
+          <p class="text-helper text-muted shrink-0"><span class="text-danger">*</span> Required</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-3.5">
+          ${hdr.map(f => prodFieldHtml(f, f.type === 'auto' ? f.fn(d.header) : d.header[f.k], `data-prodh="${f.k}"`)).join('')}
+        </div>
+      </section>
+      <div id="prodStageStats" class="grid grid-cols-2 lg:grid-cols-5 gap-4">${prodStageStatsHtml(st, d)}</div>
+      <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+        <div class="flex items-center justify-between gap-3 p-4">
+          <h3 class="text-section-title text-primary">Employee Work Entry</h3>
+          <button type="button" id="prodLoadEmpBtn" class="${COA_BTN}">Load All Employee</button>
+        </div>
+        <div class="overflow-x-auto border-t border-side-line">
+          <table class="w-full min-w-[920px]">
+            <thead><tr class="border-b border-side-line">${empHeads.map((h, i) => prodTh(h, i, empHeads.length, i >= 2 && i <= 7)).join('')}</tr></thead>
+            <tbody id="prodEmpRows">${prodEmpRowsHtml(d)}</tbody>
+          </table>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
+          <button type="button" id="prodAddEmpBtn" class="${COA_BTN}">${COA_PLUS_ICON}Add Employee</button>
+          <p class="text-label text-secondary">Total Employee Produced Qty <span id="prodEmpTotal" class="fs-title font-semibold text-side-accent tabular ml-2">${prodFmt(prodStageSums(st.id, d).produced)} pcs</span></p>
+        </div>
+      </section>
+      <div class="flex items-center justify-end gap-3">
+        <p id="prodStageMsg" class="${prodMsgClass(d.msg, d.tone)}">${escapeHtml(d.msg)}</p>
+        ${d.editId ? `<button type="button" id="prodStageCancelBtn" class="${COA_BTN}">Cancel</button>` : ''}
+        <button type="button" id="prodStageResetBtn" class="${COA_BTN}">Reset</button>
+        <button type="button" id="prodStageSaveBtn" class="${COA_BTN_PRIMARY}">${BI_SAVE_ICON}${d.editId ? 'Update Production Entry' : 'Save Production Entry'}</button>
+      </div>
+      <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+        <div class="flex items-center justify-between gap-3 p-4">
+          <h3 class="text-section-title text-primary">${escapeHtml(st.name)} Records</h3>
+          <p class="text-helper text-muted">${n} record${n === 1 ? '' : 's'}</p>
+        </div>
+        <div id="prodStageRecords">${prodStageRecordsHtml(st)}</div>
+      </section>
+    </div>`;
+  prodStageBind(container, st);
+}
+function prodStageLive(container, st) {
+  const d = prodDraft(st.id);
+  d.rows.forEach((r, i) => {
+    const tr = container.querySelector(`[data-prodrowtr="${i}"]`);
+    if (!tr) return;
+    const c = prodEmpCalc(r);
+    tr.querySelector('[data-calc="rem"]').textContent = prodFmt(c.rem);
+    tr.querySelector('[data-calc="eff"]').textContent = c.eff;
+    tr.querySelector('[data-calc="prod"]').textContent = `${prodFmt(c.prod)} pcs`;
+  });
+  container.querySelector('#prodStageStats').innerHTML = prodStageStatsHtml(st, d);
+  container.querySelector('#prodEmpTotal').textContent = `${prodFmt(prodStageSums(st.id, d).produced)} pcs`;
+  prodStageHeader(st).filter(f => f.type === 'auto').forEach(f => { const el = container.querySelector(`#prodAuto-${f.k}`); if (el) el.value = f.fn(d.header); });
+}
+function prodStageBind(container, st) {
+  const d = prodDraft(st.id), rerender = () => prodStageRender(container);
+  container.querySelectorAll('[data-prodh]').forEach(el => {
+    const handler = () => { d.header[el.dataset.prodh] = el.value; prodStageLive(container, st); };
+    el.addEventListener('change', handler);
+    if (el.tagName !== 'SELECT') el.addEventListener('input', handler);
+  });
+  const rowsEl = container.querySelector('#prodEmpRows');
+  const onRow = (e) => { const el = e.target.closest('[data-prodrow]'); if (!el) return; d.rows[+el.dataset.prodrow][el.dataset.col] = el.value; prodStageLive(container, st); };
+  rowsEl.addEventListener('input', onRow);
+  rowsEl.addEventListener('change', onRow);
+  rowsEl.addEventListener('click', (e) => { const b = e.target.closest('[data-prodrowdel]'); if (b) { d.rows.splice(+b.dataset.prodrowdel, 1); rerender(); } });
+  container.querySelector('#prodAddEmpBtn').addEventListener('click', () => { d.rows.push({ employeeId: '', target: '', actual: '', qcFail: '' }); rerender(); });
+  container.querySelector('#prodLoadEmpBtn').addEventListener('click', () => {
+    const have = new Set(d.rows.map(r => String(r.employeeId)));
+    const add = hrActiveEmployees().filter(e => !have.has(String(e.id)));
+    if (!add.length) return prodStageSetMsg(st, 'Every active employee is already listed.', 'muted');
+    d.rows = d.rows.filter(r => r.employeeId || prodHas(r.target) || prodHas(r.actual) || prodHas(r.qcFail));
+    add.forEach(e => d.rows.push({ employeeId: String(e.id), target: '', actual: '', qcFail: '' }));
+    rerender();
+    prodStageSetMsg(st, `Loaded ${add.length} active employee${add.length === 1 ? '' : 's'} from HR.`, 'success');
+  });
+  container.querySelector('#prodStageResetBtn').addEventListener('click', () => {
+    const rec = d.editId ? prodStageRecords[st.id].find(r => r.id === d.editId) : null;
+    prodStageDrafts[st.id] = rec ? { editId: rec.id, header: { ...rec.header }, rows: rec.rows.map(r => ({ ...r })), msg: '', tone: 'muted' } : prodBlankDraft();
+    rerender();
+  });
+  const cancel = container.querySelector('#prodStageCancelBtn');
+  if (cancel) cancel.addEventListener('click', () => { prodStageDrafts[st.id] = prodBlankDraft(); rerender(); });
+  container.querySelector('#prodStageSaveBtn').addEventListener('click', () => {
+    const h = d.header;
+    for (const f of prodStageHeader(st)) if (f.req && !String(h[f.k] || '').trim()) return prodStageSetMsg(st, `${f.label} is required.`, 'danger');
+    if (!d.rows.length) return prodStageSetMsg(st, 'Add at least one employee to the work entry.', 'danger');
+    if (d.rows.some(r => !r.employeeId)) return prodStageSetMsg(st, 'Select an employee on every work-entry row.', 'danger');
+    if (new Set(d.rows.map(r => String(r.employeeId))).size !== d.rows.length) return prodStageSetMsg(st, 'Each employee can appear only once per entry.', 'danger');
+    const header = { ...h };
+    header.entryNo = String(header.entryNo || '').trim() || prodNextEntryNo(st);
+    const rec = { header, rows: d.rows.map(r => ({ ...r })) }, list = prodStageRecords[st.id], wasEdit = !!d.editId;
+    if (wasEdit) Object.assign(list.find(r => r.id === d.editId), rec);
+    else list.push({ id: list.reduce((m, r) => Math.max(m, r.id), 0) + 1, ...rec });
+    prodStageDrafts[st.id] = prodBlankDraft();
+    rerender();
+    prodStageSetMsg(st, `Entry ${header.entryNo} ${wasEdit ? 'updated' : 'saved'}.`, 'success');
+  });
+  container.querySelector('#prodStageRecords').addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-prodst-edit]');
+    if (editBtn) {
+      const rec = prodStageRecords[st.id].find(r => r.id === +editBtn.dataset.prodstEdit);
+      if (rec) {
+        prodStageDrafts[st.id] = { editId: rec.id, header: { ...rec.header }, rows: rec.rows.map(r => ({ ...r })), msg: '', tone: 'muted' };
+        rerender();
+        container.querySelector('#prodStageForm').scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }
+      return;
+    }
+    const delBtn = e.target.closest('[data-prodst-delete]');
+    if (delBtn) {
+      const id = +delBtn.dataset.prodstDelete, list = prodStageRecords[st.id], idx = list.findIndex(r => r.id === id);
+      if (idx > -1) {
+        list.splice(idx, 1);
+        if (d.editId === id) prodStageDrafts[st.id] = prodBlankDraft();
+        rerender();
+        prodStageSetMsg(st, 'Production record deleted.', 'muted');
+      }
+    }
+  });
+}
+
+/* ---------- Charts (shared by Daily Production and Efficiency & KPI › Chart) ---------- */
+function prodNiceScale(max) {
+  const raw = max / 4, mag = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / mag;
+  const step = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag;
+  return { top: step * Math.ceil(max / step), step };
+}
+function prodShortNum(v) { return v >= 1e6 ? `${+(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${+(v / 1e3).toFixed(1)}k` : String(+v.toFixed(2)); }
+function prodBarPath(x, y, w, h) {
+  const r = Math.min(4, w / 2, h);
+  return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+}
+/* Grouped vertical bars: thin marks, 4px rounded data ends on the baseline, 2px gap between
+   series, recessive grid. Each band is one hover target whose tooltip names every series. */
+function prodBarChart(labels, series, opts) {
+  opts = opts || {};
+  const max = Math.max(0, ...series.flatMap(s => s.values));
+  if (!labels.length || max <= 0) return `<div class="h-[220px] flex items-center justify-center text-center fs-base text-muted px-4">${escapeHtml(opts.empty || 'No data for the selected filters.')}</div>`;
+  const W = 520, H = 230, L = 44, R = 6, T = 22, B = 30, iw = W - L - R, ih = H - T - B;
+  const { top, step } = prodNiceScale(max);
+  let g = '';
+  for (let v = 0; v <= top + step / 1000; v += step) {
+    const y = T + ih * (1 - v / top);
+    g += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="var(--border-inner)" stroke-width="1"/><text x="${L - 8}" y="${y + 4}" text-anchor="end" font-size="13" fill="var(--text-muted)">${prodShortNum(v)}</text>`;
+  }
+  const band = iw / labels.length, n = series.length, gap = 2;
+  const bw = Math.max(4, Math.min(24, (band * 0.62 - gap * (n - 1)) / n)), groupW = bw * n + gap * (n - 1);
+  const every = Math.max(1, Math.ceil(labels.length / Math.max(1, Math.floor(iw / 58))));
+  labels.forEach((lab, i) => {
+    const x0 = L + band * i + (band - groupW) / 2;
+    g += `<g><title>${escapeHtml(`${lab}: ${series.map(s => `${s.name} ${prodFmt(s.values[i])}`).join(', ')}`)}</title><rect x="${L + band * i}" y="${T}" width="${band}" height="${ih}" fill="transparent"/>`;
+    series.forEach((s, j) => {
+      const v = s.values[i] || 0, h = ih * v / top, x = x0 + j * (bw + gap);
+      if (h > 0) g += `<path d="${prodBarPath(x, T + ih - h, bw, h)}" fill="var(${s.color})"/>`;
+      if (opts.values && v > 0) g += `<text x="${x + bw / 2}" y="${T + ih - h - 6}" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-secondary)">${prodFmt(v)}</text>`;
+    });
+    g += '</g>';
+    if (i % every === 0) g += `<text x="${L + band * (i + 0.5)}" y="${H - 9}" text-anchor="middle" font-size="13" fill="var(--text-muted)">${escapeHtml(lab)}</text>`;
+  });
+  g += `<line x1="${L}" x2="${W - R}" y1="${T + ih}" y2="${T + ih}" stroke="var(--border)" stroke-width="1"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="w-full h-auto" role="img" aria-label="${escapeHtml(opts.label || 'Bar chart')}">${g}</svg>`;
+}
+function prodLegend(items) {
+  return `<div class="flex flex-wrap items-center gap-3">${items.map(([name, color]) => `<span class="inline-flex items-center gap-1.5 text-helper text-secondary"><span class="w-2.5 h-2.5 rounded-sm shrink-0" style="background:var(${color})"></span>${escapeHtml(name)}</span>`).join('')}</div>`;
+}
+function prodChartCard(title, sub, legend, body) {
+  return `
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5 min-w-0">
+      <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+        <div><h3 class="text-section-title text-primary">${escapeHtml(title)}</h3>${sub ? `<p class="text-helper text-muted">${escapeHtml(sub)}</p>` : ''}</div>
+        ${legend ? prodLegend(legend) : ''}
+      </div>
+      ${body}
+    </section>`;
+}
+
+/* ---------- Daily Production (report built from the stage entries) ---------- */
+const prodDrFilter = { date: prodToday(), buyer: '', style: '', q: '', zero: true };
+function prodReportRows() {
+  const sel = prodDrFilter.date || prodToday(), groups = {};
+  PROD_STAGES.forEach((st, si) => prodStageRecords[st.id].forEach(rec => {
+    const h = rec.header || {};
+    if (!h.date || h.date > sel) return;
+    const key = `${h.styleNo}||${h.orderNo}`;
+    const g = groups[key] || (groups[key] = { style: h.styleNo || '—', order: h.orderNo || '—', buyer: '', gauge: '', ship: '', qty: 0, yarnReq: 0, yarnRec: 0, yarnDate: '', machines: new Set(), stages: PROD_STAGES.map(() => ({ today: 0, total: 0 })) });
+    if (h.buyer && !g.buyer) g.buyer = h.buyer;
+    if (h.shippingDate && !g.ship) g.ship = h.shippingDate;
+    g.qty = Math.max(g.qty, prodN(h.orderQuantity));
+    if (st.id === 'knitting') {
+      if (h.gauge && !g.gauge) g.gauge = h.gauge;
+      if (h.date >= g.yarnDate) { g.yarnDate = h.date; g.yarnReq = prodN(h.yarnReq); g.yarnRec = prodN(h.yarnRec); }
+      if (h.date === sel && h.machineNo) g.machines.add(h.machineNo);
+    }
+    const produced = prodStageSums(st.id, rec).produced;
+    g.stages[si].total += produced;
+    if (h.date === sel) g.stages[si].today += produced;
+  }));
+  return Object.values(groups).map(g => ({
+    ...g, buyer: g.buyer || '—', yarnRem: Math.max(0, g.yarnReq - g.yarnRec),
+    stages: g.stages.map(s => ({ ...s, balance: Math.max(0, g.qty - s.total) })),
+  })).sort((a, b) => a.style.localeCompare(b.style) || a.order.localeCompare(b.order));
+}
+function prodReportVisible(all) {
+  const f = prodDrFilter, q = f.q.trim().toLowerCase();
+  return all.filter(r => (!f.buyer || r.buyer === f.buyer) && (!f.style || r.style === f.style)
+    && (!q || `${r.buyer} ${r.style} ${r.order}`.toLowerCase().includes(q))
+    && (f.zero || r.stages.some(s => s.today > 0)));
+}
+function renderProdDaily(container) {
+  const all = prodReportRows(), f = prodDrFilter;
+  const buyers = [...new Set(all.map(r => r.buyer))].sort(), styles = [...new Set(all.map(r => r.style))].sort();
+  const opt = (list, cur, first) => `<option value="">${first}</option>${list.map(v => `<option value="${escapeHtml(v)}" ${v === cur ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('')}`;
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+          ${coaField('Report Date', `<input id="prodDrDate" type="date" value="${escapeHtml(f.date)}" class="${COA_INPUT} tabular" />`)}
+          ${coaField('Buyer', `<select id="prodDrBuyer" class="${COA_INPUT}">${opt(buyers, f.buyer, 'All Buyers')}</select>`)}
+          ${coaField('Style', `<select id="prodDrStyle" class="${COA_INPUT}">${opt(styles, f.style, 'All Styles')}</select>`)}
+          <div>
+            <span class="block text-label font-medium text-secondary mb-1">Search</span>
+            <div class="relative">${PROD_SEARCH_ICON}<input id="prodDrSearch" type="text" value="${escapeHtml(f.q)}" placeholder="Buyer, style or order…" class="${COA_INPUT} pl-9" /></div>
+          </div>
+          <label class="h-9 inline-flex items-center gap-2 text-label text-secondary cursor-pointer"><input id="prodDrZero" type="checkbox" ${f.zero ? 'checked' : ''} class="w-4 h-4 accent-[var(--accent)]" />Show rows with no production today</label>
+        </div>
+      </section>
+      <div id="prodDrBody">${prodDrBodyHtml()}</div>
+    </div>`;
+  const bodyRefresh = () => { container.querySelector('#prodDrBody').innerHTML = prodDrBodyHtml(); };
+  container.querySelector('#prodDrDate').addEventListener('change', (e) => { f.date = e.target.value || prodToday(); renderProdDaily(container); });
+  container.querySelector('#prodDrBuyer').addEventListener('change', (e) => { f.buyer = e.target.value; bodyRefresh(); });
+  container.querySelector('#prodDrStyle').addEventListener('change', (e) => { f.style = e.target.value; bodyRefresh(); });
+  container.querySelector('#prodDrSearch').addEventListener('input', (e) => { f.q = e.target.value; bodyRefresh(); });
+  container.querySelector('#prodDrZero').addEventListener('change', (e) => { f.zero = e.target.checked; bodyRefresh(); });
+}
+function prodDrBodyHtml() {
+  const rows = prodReportVisible(prodReportRows()), last = PROD_STAGES.length - 1;
+  const sum = fn => rows.reduce((s, r) => s + fn(r), 0);
+  const totalOrder = sum(r => r.qty), knitToday = sum(r => r.stages[0].today), knitTotal = sum(r => r.stages[0].total), delivered = sum(r => r.stages[last].total);
+  const wip = Math.max(0, knitTotal - delivered), notStarted = Math.max(0, totalOrder - knitTotal), balance = Math.max(0, totalOrder - delivered);
+  const machines = new Set(); rows.forEach(r => r.machines.forEach(m => machines.add(m)));
+  const kpis = `<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+    ${prodTile('Total Orders', prodFmt(totalOrder), 'PCS')}
+    ${prodTile('Knitting Today', prodFmt(knitToday), 'PCS')}
+    ${prodTile('Total WIP', prodFmt(wip), 'Knitted − delivered')}
+    ${prodTile('Total Delivery', prodFmt(delivered), 'PCS')}
+    ${prodTile('Running M/C', prodFmt(machines.size), 'Knitting machines today')}
+    ${prodTile('Balance Qty', prodFmt(balance), 'Order − delivered')}
+  </div>`;
+  const todayBars = prodBarChart(PROD_STAGE_NAMES, [{ name: 'Produced today', color: '--chart-1', values: PROD_STAGES.map((_, i) => sum(r => r.stages[i].today)) }],
+    { values: true, label: 'Stage-wise production today', empty: 'No stage production recorded on this date.' });
+  const parts = [['Delivered', delivered, '--chart-1'], ['In Production', wip, '--chart-2'], ['Not Started', notStarted, '--chart-10']];
+  const base = parts.reduce((s, p) => s + p[1], 0);
+  let acc = 0;
+  const ring = base ? `conic-gradient(${parts.map(p => { const a = acc; acc += p[1] / base * 100; return `var(${p[2]}) ${a}% ${acc}%`; }).join(', ')})` : 'var(--border-inner)';
+  const fulfil = `
+    <div class="flex flex-wrap items-center justify-center gap-6 py-2">
+      <div class="w-36 h-36 rounded-full grid place-items-center shrink-0" style="background:${ring}">
+        <div class="w-24 h-24 rounded-full bg-cardBg grid place-content-center text-center">
+          <span class="fs-title font-semibold text-primary tabular">${prodFmt(totalOrder)}</span>
+          <span class="text-helper text-muted">Total order</span>
+        </div>
+      </div>
+      <div class="space-y-2.5 min-w-[200px]">${parts.map(p => `
+        <div class="flex items-center gap-2 fs-base">
+          <span class="w-2.5 h-2.5 rounded-sm shrink-0" style="background:var(${p[2]})"></span>
+          <span class="text-secondary">${p[0]}</span>
+          <span class="ml-auto pl-3 font-medium text-primary tabular">${prodFmt(p[1])}</span>
+          <span class="w-14 text-right text-muted tabular">${base ? prodPct(p[1] / base * 100) : '—'}</span>
+        </div>`).join('')}</div>
+    </div>`;
+  const basic = ['SL', 'Buyer', 'Style No.', 'Order No.', 'GG', 'Ship Date', 'Order Qty', 'Yarn Required', 'Yarn Received', 'Yarn Remaining', 'Running M/C'];
+  const numFrom = 6, cell = 'px-2.5 py-2 fs-base whitespace-nowrap';
+  const stageCells = (vals, strong) => vals.map((v, k) => `<td class="${cell} text-right tabular ${k % 3 === 0 ? 'border-l border-side-line' : ''} ${strong ? 'font-semibold text-primary' : 'text-secondary'}">${v ? prodFmt(v) : '—'}</td>`).join('');
+  const body = rows.length ? rows.map((r, i) => {
+    const b = [i + 1, r.buyer, r.style, r.order, r.gauge || '—', r.ship || '—', r.qty, r.yarnReq, r.yarnRec, r.yarnRem, r.machines.size];
+    return `<tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
+      ${b.map((v, j) => `<td class="${j === 0 ? 'pl-4 pr-2 text-muted' : 'text-secondary'} ${cell} ${j >= numFrom ? 'text-right tabular' : ''} ${j === 2 ? 'font-medium text-primary' : ''}">${j >= numFrom ? (v ? prodFmt(v) : '—') : escapeHtml(String(v))}</td>`).join('')}
+      ${stageCells(r.stages.flatMap(s => [s.today, s.total, s.balance]))}
+    </tr>`;
+  }).join('') : `<tr><td colspan="${basic.length + PROD_STAGES.length * 3}" class="px-4 py-8 text-center fs-base text-muted">No production recorded up to this date for the selected filters.</td></tr>`;
+  const foot = rows.length ? `<tfoot><tr class="border-t border-side-line bg-side-hover">
+      <td colspan="${numFrom}" class="pl-4 pr-2 py-2.5 fs-base font-semibold text-primary">Grand Total</td>
+      ${[totalOrder, sum(r => r.yarnReq), sum(r => r.yarnRec), sum(r => r.yarnRem), machines.size].map(v => `<td class="${cell} text-right tabular font-semibold text-primary">${v ? prodFmt(v) : '—'}</td>`).join('')}
+      ${stageCells(PROD_STAGES.flatMap((_, i) => [sum(r => r.stages[i].today), sum(r => r.stages[i].total), sum(r => r.stages[i].balance)]), true)}
+    </tr></tfoot>` : '';
+  return `
+    <div class="space-y-4">
+      ${kpis}
+      <div class="grid grid-cols-1 xl:grid-cols-5 gap-4">
+        <div class="xl:col-span-3 min-w-0">${prodChartCard('Stage-wise Production Today (PCS)', prodShortDate(prodDrFilter.date), null, todayBars)}</div>
+        <div class="xl:col-span-2 min-w-0">${prodChartCard('Order Fulfillment Overview', 'Up to the report date', null, fulfil)}</div>
+      </div>
+      <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+        <div class="flex items-center justify-between gap-3 p-4">
+          <h3 class="text-section-title text-primary">Daily Production Report Details</h3>
+          <p class="text-helper text-muted">${rows.length} order${rows.length === 1 ? '' : 's'}</p>
+        </div>
+        <div class="overflow-x-auto border-t border-side-line">
+          <table class="w-full min-w-[1680px]">
+            <thead>
+              <tr class="border-b border-side-line">
+                ${basic.map((h, i) => `<th rowspan="2" class="${i === 0 ? 'pl-4 pr-2' : 'px-2.5'} py-2.5 fs-head font-semibold text-muted text-${i >= numFrom ? 'right' : 'left'} whitespace-nowrap align-bottom">${escapeHtml(h)}</th>`).join('')}
+                ${PROD_STAGE_NAMES.map(n => `<th colspan="3" class="px-2.5 pt-2.5 pb-1 fs-head font-semibold text-primary text-center whitespace-nowrap border-l border-side-line">${escapeHtml(n)}</th>`).join('')}
+              </tr>
+              <tr class="border-b border-side-line">
+                ${PROD_STAGES.map(() => ['Today', 'Total', 'Balance'].map((h, k) => `<th class="px-2.5 pb-2 pt-1 fs-head font-semibold text-muted text-right whitespace-nowrap ${k === 0 ? 'border-l border-side-line' : ''}">${h}</th>`).join('')).join('')}
+              </tr>
+            </thead>
+            <tbody>${body}</tbody>${foot}
+          </table>
+        </div>
+      </section>
+    </div>`;
+}
+
+/* ---------- Efficiency & KPI (Data / Chart tabs) ---------- */
+const PROD_KPI_TABS = ['Data', 'Chart'];
+function renderProdEfficiency(tabsEl, container) {
+  tabsEl.classList.remove('hidden');
+  tabsEl.innerHTML = `
+    <div class="flex items-center gap-1 -mb-px pb-px overflow-x-auto overflow-y-hidden">
+      ${PROD_KPI_TABS.map((t, i) => `
+        <button type="button" data-prodkpitab="${i}" class="px-3.5 py-2.5 text-label font-semibold border-b-2 whitespace-nowrap -mb-px ${i === state.tabIndex ? 'border-side-accent text-side-accent' : 'border-transparent text-muted hover:text-secondary'}">${escapeHtml(t)}</button>
+      `).join('')}
+    </div>`;
+  tabsEl.querySelectorAll('[data-prodkpitab]').forEach(btn => {
+    btn.addEventListener('click', () => { state.tabIndex = +btn.dataset.prodkpitab; renderProdEfficiency(tabsEl, container); });
+  });
+  document.getElementById('page-actions').innerHTML = '';
+  if (state.tabIndex === 1) renderProdChart(container);
+  else renderProdScreen(container, 'kpi');
+}
+function prodKpiCards() {
+  let eN = 0, eD = 0, eC = 0, tT = 0, tP = 0, tC = 0, qI = 0, qP = 0, qC = 0, dD = 0, dR = 0, dC = 0;
+  prodRecords.kpi.forEach(r => { const mp = prodN(r.manpower), h = prodN(r.hours), s = prodN(r.sam); if (mp > 0 && h > 0 && s > 0 && prodHas(r.produced)) { eN += prodN(r.produced) * s; eD += mp * h * 60; eC++; } });
+  PROD_STAGES.forEach(st => prodStageRecords[st.id].forEach(rec => { const s = prodStageSums(st.id, rec); if (s.target > 0) { tT += s.target; tP += s.produced; tC++; } }));
+  prodRecords.qc.forEach(r => { if (prodN(r.inspected) > 0 && prodHas(r.passed)) { qI += prodN(r.inspected); qP += prodN(r.passed); qC++; } });
+  prodRecords.defect.forEach(r => { if (prodN(r.defect) > 0) { dD += prodN(r.defect); dR += prodN(r.reworked); dC++; } });
+  const cards = [
+    { l: 'Line Efficiency', v: eD > 0 ? eN / eD * 100 : null, f: 'Σ(produced × SAM) ÷ Σ(manpower × hours × 60)', c: eC, s: 'Efficiency & KPI entries' },
+    { l: 'Target Achievement', v: tT > 0 ? tP / tT * 100 : null, f: 'Σ actual ÷ Σ target', c: tC, s: 'Production Stage entries' },
+    { l: 'QC Pass Rate', v: qI > 0 ? qP / qI * 100 : null, f: 'Σ passed ÷ Σ inspected', c: qC, s: 'Quality Control entries' },
+    { l: 'Rework Completion', v: dD > 0 ? dR / dD * 100 : null, f: 'Σ reworked ÷ Σ defect qty', c: dC, s: 'Defect & Rework entries' },
+  ];
+  return `<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">${cards.map(k => `
+    <div class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <p class="text-micro text-muted mb-1">${escapeHtml(k.l)}</p>
+      <p class="text-display ${k.v == null ? 'text-muted' : 'text-primary'}">${prodPct(k.v)}</p>
+      <p class="text-helper text-muted mt-1.5">${escapeHtml(k.f)} × 100</p>
+      <p class="text-helper text-secondary mt-1">${k.c ? `Based on ${k.c} ${k.c === 1 ? 'entry' : 'entries'} from ${escapeHtml(k.s)}` : `Calculated once ${escapeHtml(k.s)} exist`}</p>
+    </div>`).join('')}</div>`;
+}
+
+const prodChartFilter = { from: prodDaysAgo(6), to: prodToday(), style: '', stage: '' };
+function prodInRange(date) { const f = prodChartFilter; return !!date && (!f.from || date >= f.from) && (!f.to || date <= f.to); }
+function prodChartDays(dataDates) {
+  const f = prodChartFilter;
+  if (f.from && f.to && f.from <= f.to) {
+    const out = [], d = new Date(`${f.from}T00:00:00`), end = new Date(`${f.to}T00:00:00`);
+    while (d <= end && out.length <= 62) { out.push(prodISO(d)); d.setDate(d.getDate() + 1); }
+    if (out.length <= 62) return out;
+  }
+  return [...new Set(dataDates)].sort();
+}
+function renderProdChart(container) {
+  const f = prodChartFilter;
+  const styles = [...new Set([...styStyles.map(s => s.style), ...PROD_STAGES.flatMap(st => prodStageRecords[st.id].map(r => r.header.styleNo)).filter(Boolean)])];
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          ${coaField('From', `<input data-prodcf="from" type="date" value="${escapeHtml(f.from)}" class="${COA_INPUT} tabular" />`)}
+          ${coaField('To', `<input data-prodcf="to" type="date" value="${escapeHtml(f.to)}" class="${COA_INPUT} tabular" />`)}
+          ${coaField('Style', `<select data-prodcf="style" class="${COA_INPUT}"><option value="">All Styles</option>${styles.map(s => `<option ${s === f.style ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}</select>`)}
+          ${coaField('Stage', `<select data-prodcf="stage" class="${COA_INPUT}"><option value="">All Stages</option>${PROD_STAGE_NAMES.map(s => `<option ${s === f.stage ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}</select>`)}
+        </div>
+      </section>
+      <div id="prodChartBody">${prodChartBodyHtml()}</div>
+    </div>`;
+  container.querySelectorAll('[data-prodcf]').forEach(el => el.addEventListener('change', () => {
+    f[el.dataset.prodcf] = el.value;
+    container.querySelector('#prodChartBody').innerHTML = prodChartBodyHtml();
+  }));
+}
+function prodChartBodyHtml() {
+  const f = prodChartFilter;
+  const okStyle = s => !f.style || s === f.style, okStage = s => !f.stage || s === f.stage;
+  const byDay = {}, dates = [], knitOrders = {};
+  const summary = PROD_STAGES.map(st => {
+    const t = { name: st.name, target: 0, produced: 0, fail: 0, wip: 0 };
+    if (!okStage(st.name)) return null;
+    prodStageRecords[st.id].forEach(rec => {
+      const h = rec.header;
+      if (!prodInRange(h.date) || !okStyle(h.styleNo)) return;
+      const s = prodStageSums(st.id, rec), d = byDay[h.date] || (byDay[h.date] = { target: 0, actual: 0, defect: 0, reworked: 0 });
+      d.target += s.target; d.actual += s.produced; dates.push(h.date);
+      t.target += s.target; t.produced += s.produced; t.fail += s.fail;
+      if (st.id === 'knitting') {
+        /* Knitting's input is the order quantity, which every entry repeats — count it once per order. */
+        const k = `${h.styleNo}||${h.orderNo}`, o = knitOrders[k] || (knitOrders[k] = { qty: 0, out: 0 });
+        o.qty = Math.max(o.qty, s.input); o.out += s.produced + s.fail;
+      } else t.wip += s.balance;
+    });
+    if (st.id === 'knitting') t.wip = Object.values(knitOrders).reduce((sum, o) => sum + Math.max(0, o.qty - o.out), 0);
+    return t;
+  }).filter(Boolean);
+  const qc = prodRecords.qc.filter(r => prodInRange(r.date) && okStyle(r.style) && okStage(r.stage));
+  const defects = prodRecords.defect.filter(r => prodInRange(r.date) && okStyle(r.style) && okStage(r.stage));
+  defects.forEach(r => { const d = byDay[r.date] || (byDay[r.date] = { target: 0, actual: 0, defect: 0, reworked: 0 }); d.defect += prodN(r.defect); d.reworked += prodN(r.reworked); dates.push(r.date); });
+  const kpiRows = prodRecords.kpi.filter(r => prodInRange(r.date) && okStyle(r.style));
+  const tot = (list, k) => list.reduce((s, r) => s + prodN(r[k]), 0);
+  const target = tot(summary, 'target'), actual = tot(summary, 'produced'), wip = tot(summary, 'wip');
+  const inspected = tot(qc, 'inspected'), passed = tot(qc, 'passed');
+  let eN = 0, eD = 0; const lines = {};
+  kpiRows.forEach(r => {
+    const mp = prodN(r.manpower), h = prodN(r.hours), s = prodN(r.sam);
+    if (!(mp > 0 && h > 0 && s > 0 && prodHas(r.produced))) return;
+    eN += prodN(r.produced) * s; eD += mp * h * 60;
+    const l = lines[r.section] || (lines[r.section] = { n: 0, d: 0 }); l.n += prodN(r.produced) * s; l.d += mp * h * 60;
+  });
+  const delivered = (summary.find(s => s.name === 'Delivery') || { produced: 0 }).produced;
+  const tiles = `<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    ${prodTile('Target', prodFmt(target), 'Σ employee targets on stage entries')}
+    ${prodTile('Actual Production', prodFmt(actual), 'Σ employee actuals on stage entries')}
+    ${prodTile('Target Achievement', target ? prodPct(actual / target * 100) : '—', 'Actual ÷ target')}
+    ${prodTile('Total WIP', prodFmt(wip), 'Σ stage balances')}
+    ${prodTile('QC Pass Rate', inspected ? prodPct(passed / inspected * 100) : '—', `${prodFmt(inspected)} pieces inspected`)}
+    ${prodTile('Line Efficiency', eD ? prodPct(eN / eD * 100) : '—', 'From Efficiency & KPI data')}
+    ${prodTile('Rejected Qty', prodFmt(tot(qc, 'rejected')), `Rework ${prodFmt(tot(qc, 'rework'))} at QC`)}
+    ${prodTile('Delivered Qty', prodFmt(delivered), 'Delivery stage output')}
+  </div>`;
+  const days = prodChartDays(dates), labels = days.map(prodShortDate), val = k => days.map(d => (byDay[d] ? byDay[d][k] : 0));
+  const prodChart = prodBarChart(labels, [{ name: 'Target', color: '--chart-2', values: val('target') }, { name: 'Actual', color: '--chart-1', values: val('actual') }], { label: 'Production versus target by day' });
+  const defectChart = prodBarChart(labels, [{ name: 'Defect', color: '--chart-5', values: val('defect') }, { name: 'Reworked', color: '--chart-8', values: val('reworked') }], { label: 'Defect and rework by day', empty: 'No defects recorded for the selected filters.' });
+  const lineItems = Object.keys(lines).sort().map(k => ({ label: k, v: lines[k].d ? lines[k].n / lines[k].d * 100 : 0 }));
+  const lineBars = lineItems.length ? `<div class="space-y-3">${lineItems.map(it => `
+    <div class="flex items-center gap-3" title="${escapeHtml(`${it.label}: ${prodPct(it.v)}`)}">
+      <span class="w-28 shrink-0 fs-base text-secondary truncate">${escapeHtml(it.label)}</span>
+      <div class="flex-1 h-2 rounded-full bg-side-line overflow-hidden"><div class="h-full rounded-full" style="width:${Math.min(100, it.v).toFixed(1)}%;background:var(--chart-1)"></div></div>
+      <span class="w-16 text-right fs-base font-medium text-primary tabular">${prodPct(it.v)}</span>
+    </div>`).join('')}</div>` : `<div class="py-10 text-center fs-base text-muted">No efficiency entries for the selected filters.</div>`;
+  const sHeads = ['Stage', 'Target', 'Produced', 'QC Fail', 'WIP', 'Efficiency'];
+  const stageTable = `
+    <div class="overflow-x-auto -mx-5 border-t border-side-line">
+      <table class="w-full min-w-[520px]">
+        <thead><tr class="border-b border-side-line">${sHeads.map((h, i) => prodTh(h, i, sHeads.length, i > 0)).join('')}</tr></thead>
+        <tbody>${summary.map(s => `
+          <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
+            <td class="pl-4 pr-2 py-2 fs-base font-medium text-primary whitespace-nowrap">${escapeHtml(s.name)}</td>
+            ${[s.target, s.produced, s.fail, s.wip].map(v => `<td class="px-3 py-2 fs-base text-secondary text-right tabular">${prodFmt(v)}</td>`).join('')}
+            <td class="pr-4 pl-3 py-2 fs-base font-medium text-primary text-right tabular">${s.target ? prodPct(s.produced / s.target * 100) : '—'}</td>
+          </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+  return `
+    <div class="space-y-4">
+      ${tiles}
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        ${prodChartCard('Production vs Target', 'Daily totals from stage entries', [['Target', '--chart-2'], ['Actual', '--chart-1']], prodChart)}
+        ${prodChartCard('Defect & Rework Trend', 'Quantity per day from Defect & Rework', [[`Defect ${prodFmt(tot(defects, 'defect'))}`, '--chart-5'], [`Reworked ${prodFmt(tot(defects, 'reworked'))}`, '--chart-8']], defectChart)}
+      </div>
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        ${prodChartCard('Efficiency by Line', 'Produced × SAM ÷ available minutes', null, lineBars)}
+        ${prodChartCard('Stage Summary', 'Stage movement in the selected period', null, stageTable)}
+      </div>
+    </div>`;
 }
 
 // ---------- Command palette ----------
