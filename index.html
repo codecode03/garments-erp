@@ -449,8 +449,10 @@ const modules = [
     { name:'Quality Control' }, { name:'Defect & Rework' }, { name:'Efficiency & KPI' }, { name:'Other Production Cost' },
   ]},
   { key:'commercial', name:'Commercial', icon:'ship', submodules:[
-    { name:'Export Management' }, { name:'LC Management' }, { name:'Commercial Invoice' }, { name:'Packing List' },
-    { name:'Shipment Management' }, { name:'Document Management' }, { name:'Shipment Tracking' }, { name:'Reports' },
+    { name:'Buyer & Agent' }, { name:'Export Order' }, { name:'L/C Management' }, { name:'Back-to-Back L/C' },
+    { name:'Import' }, { name:'Bond & Customs' }, { name:'Shipment' }, { name:'Export Documentation' },
+    { name:'Freight & C&F' }, { name:'Export Costing' }, { name:'Bank & Realization' }, { name:'Claims & Discrepancy' },
+    { name:'Commission' }, { name:'Export Incentive' }, { name:'Reports' },
   ]},
   { key:'hr', name:'HR', icon:'users', submodules:[
     { name:'Employee Management' }, { name:'Attendance' }, { name:'Holiday Management' },
@@ -604,7 +606,7 @@ const subtitles = {
   'General Entry': 'Post daily cash and bank transactions directly against the Chart of Accounts',
   'VAT & Tax': 'Issue and track Mushak 6.3 tax invoices and output VAT',
   'Budget Management': 'Plan departmental budgets and track actual spend against them',
-  'LC & Export Finance': 'Track letters of credit, utilization and expiry across export and back-to-back LCs',
+  'LC & Export Finance': 'Read-only view of every L/C entered in Commercial: value, utilization and expiry',
   'Audit': 'Log audit findings and generate summaries from live Finance data',
   'Financial Statements': 'Trial balance, ledger, profit & loss and balance sheet from posted entries',
   'Purchase Requisition': 'Create and track requisitions linked to confirmed purchase orders',
@@ -692,7 +694,7 @@ function renderContent() {
   else if (mod.key === 'procurement' && sm.name === 'Purchase Requisition') renderPurchaseRequisition(pageContent);
   else if (mod.key === 'procurement' && sm.name === 'Supplier Selection/Management') renderSupplierManagement(pageContent);
   else if (mod.key === 'procurement' && sm.name === 'Purchase Order') renderProcurementPO(pageContent);
-  else if (mod.key === 'procurement' && sm.name === 'Import Management') renderLcExportFinance(pageContent);
+  else if (mod.key === 'procurement' && sm.name === 'Import Management') renderCommercial(tabsEl, pageContent, 'Import');
   else if (mod.key === 'procurement' && sm.name === 'Goods Receipt') renderGoodsReceipt(pageContent);
   else if (mod.key === 'procurement' && sm.name === 'Reports') renderProcurementReports(pageContent);
   else if (mod.key === 'inventory' && sm.name === 'Warehouse Management') renderWarehouseManagement(pageContent);
@@ -722,6 +724,7 @@ function renderContent() {
   else if (mod.key === 'production' && sm.name === 'Defect & Rework') renderProdScreen(pageContent, 'defect');
   else if (mod.key === 'production' && sm.name === 'Efficiency & KPI') renderProdEfficiency(tabsEl, pageContent);
   else if (mod.key === 'production' && sm.name === 'Other Production Cost') renderProdScreen(pageContent, 'cost');
+  else if (mod.key === 'commercial') renderCommercial(tabsEl, pageContent, sm.name);
   else renderNotBuilt(pageContent, mod, sm, single);
 }
 
@@ -8024,22 +8027,38 @@ function budgetOpenSpendModal(code, container) {
 // and the back-to-back / revolving LCs used to finance materials against them), showing how much
 // of each LC's value has been utilized and how much headroom is left before expiry. Status is
 // derived from amount, utilized total and expiry date so it can't drift out of sync.
-const LC_TYPES = ['Export LC - Sight', 'Export LC - Usance', 'Back-to-Back LC', 'Revolving LC'];
+// L/Cs are entered in Commercial (L/C Management, Back-to-Back L/C, Import), which stores them
+// in lcRecords below; this page is the read-only finance view of the same rows. `buyer` holds the
+// L/C party: the buyer for export L/Cs, the supplier for BTB / local / import L/Cs.
+const LC_TYPES = ['Export LC - Sight', 'Export LC - Usance', 'Back-to-Back LC', 'Revolving LC', 'Local LC', 'Import LC'];
 const LC_SHIPMENT_OPTIONS = ['Allowed', 'Not Allowed'];
 const LC_CURRENCIES = COA_CASHBANK_CURRENCIES.slice(1);
 const LC_STATUSES = ['Active', 'Partially Utilized', 'Utilized', 'Expired'];
 
 const lcRecords = [
-  { lcNo: '0123456789012001', lcType: 'Export LC - Sight', issuingBank: 'HSBC Bangladesh', advisingBank: 'City Bank PLC', buyer: 'Everest Apparels Ltd.', contractRef: 'SC-4471', amount: 4500000, currency: 'USD', issueDate: '2026-03-01', expiryDate: '2026-09-30', latestShipmentDate: '2026-09-15', portOfLoading: 'Chattogram', portOfDischarge: 'Rotterdam', partialShipment: 'Allowed', utilized: 2000000 },
-  { lcNo: '0123456789012002', lcType: 'Export LC - Usance', issuingBank: 'Standard Chartered Bank', advisingBank: 'HSBC Bangladesh', buyer: 'Metro Fashion House', contractRef: 'SO-118', amount: 620000, currency: 'USD', issueDate: '2026-04-10', expiryDate: '2026-08-10', latestShipmentDate: '2026-07-25', portOfLoading: 'Chattogram', portOfDischarge: 'Hamburg', partialShipment: 'Not Allowed', utilized: 620000 },
-  { lcNo: '0123456789012003', lcType: 'Back-to-Back LC', issuingBank: 'City Bank PLC', advisingBank: '', buyer: 'ABC Textiles Ltd. (supplier)', contractRef: 'PO-2031', amount: 875000, currency: 'USD', issueDate: '2026-05-01', expiryDate: '2026-11-01', latestShipmentDate: '2026-10-15', portOfLoading: '', portOfDischarge: 'Chattogram', partialShipment: 'Allowed', utilized: 150000 },
-  { lcNo: '0123456789012004', lcType: 'Export LC - Sight', issuingBank: 'Northline Buying House Bankers', advisingBank: 'Dutch-Bangla Bank Ltd.', buyer: 'Northline Buying House', contractRef: 'SMP-77', amount: 85000, currency: 'USD', issueDate: '2026-01-05', expiryDate: '2026-04-05', latestShipmentDate: '2026-03-20', portOfLoading: 'Chattogram', portOfDischarge: 'Felixstowe', partialShipment: 'Not Allowed', utilized: 0 },
-  { lcNo: '0123456789012005', lcType: 'Revolving LC', issuingBank: 'HSBC Bangladesh', advisingBank: '', buyer: 'Everest Apparels Ltd.', contractRef: 'SC-4502', amount: 3100000, currency: 'USD', issueDate: '2026-06-18', expiryDate: '2027-06-18', latestShipmentDate: '2027-06-01', portOfLoading: 'Chattogram', portOfDischarge: 'Rotterdam', partialShipment: 'Allowed', utilized: 0 },
+  { id: 1, lcNo: '0123456789012001', lcType: 'Export LC - Sight', issuingBank: 'HSBC Bangladesh', advisingBank: 'City Bank PLC', buyer: 'Everest Apparels Ltd.', contractRef: 'SC-4471', amount: 4500000, currency: 'USD', issueDate: '2026-03-01', expiryDate: '2026-09-30', latestShipmentDate: '2026-09-15', portOfLoading: 'Chattogram', portOfDischarge: 'Rotterdam', partialShipment: 'Allowed' },
+  { id: 2, lcNo: '0123456789012002', lcType: 'Export LC - Usance', issuingBank: 'Standard Chartered Bank', advisingBank: 'HSBC Bangladesh', buyer: 'Metro Fashion House', contractRef: 'SO-118', amount: 620000, currency: 'USD', issueDate: '2026-04-10', expiryDate: '2026-08-10', latestShipmentDate: '2026-07-25', portOfLoading: 'Chattogram', portOfDischarge: 'Hamburg', partialShipment: 'Not Allowed' },
+  { id: 3, lcNo: '0123456789012003', lcType: 'Back-to-Back LC', issuingBank: 'City Bank PLC', advisingBank: '', buyer: 'ABC Textiles Ltd.', masterLc: '0123456789012001', contractRef: 'PO-2031', amount: 875000, currency: 'USD', issueDate: '2026-05-01', expiryDate: '2026-11-01', latestShipmentDate: '2026-10-15', portOfLoading: '', portOfDischarge: 'Chattogram', partialShipment: 'Allowed' },
+  { id: 4, lcNo: '0123456789012004', lcType: 'Export LC - Sight', issuingBank: 'Northline Buying House Bankers', advisingBank: 'Dutch-Bangla Bank Ltd.', buyer: 'Northline Buying House', contractRef: 'SMP-77', amount: 85000, currency: 'USD', issueDate: '2026-01-05', expiryDate: '2026-04-05', latestShipmentDate: '2026-03-20', portOfLoading: 'Chattogram', portOfDischarge: 'Felixstowe', partialShipment: 'Not Allowed' },
+  { id: 5, lcNo: '0123456789012005', lcType: 'Revolving LC', issuingBank: 'HSBC Bangladesh', advisingBank: '', buyer: 'Everest Apparels Ltd.', contractRef: 'SC-4502', amount: 3100000, currency: 'USD', issueDate: '2026-06-18', expiryDate: '2027-06-18', latestShipmentDate: '2027-06-01', portOfLoading: 'Chattogram', portOfDischarge: 'Rotterdam', partialShipment: 'Allowed' },
+  { id: 6, lcNo: '0123456789012006', lcType: 'Export LC - Usance', issuingBank: 'Standard Chartered Bank', advisingBank: 'City Bank PLC', buyer: 'ABC Fashion Ltd.', contractRef: 'SC-4587', exportOrder: 'EO-2026-001', amount: 225000, currency: 'USD', issueDate: '2026-08-21', expiryDate: '2027-03-15', latestShipmentDate: '2027-02-15', portOfLoading: 'Chattogram', portOfDischarge: 'Felixstowe', partialShipment: 'Allowed', transshipment: 'Not Allowed', paymentTerms: 'L/C 60 Days', tolerance: 3 },
+  { id: 7, lcNo: '0123456789012007', lcType: 'Export LC - Sight', issuingBank: 'Citibank N.A.', advisingBank: 'HSBC Bangladesh', buyer: 'XYZ Garments Ltd.', contractRef: 'SC-4390', exportOrder: 'EO-2026-002', amount: 116200, currency: 'USD', issueDate: '2026-06-12', expiryDate: '2026-11-30', latestShipmentDate: '2026-09-25', portOfLoading: 'Chattogram', portOfDischarge: 'New York', partialShipment: 'Not Allowed', transshipment: 'Allowed', paymentTerms: 'L/C at Sight', tolerance: 5 },
+  { id: 8, lcNo: '0123456789012008', lcType: 'Local LC', issuingBank: 'Dutch-Bangla Bank Ltd.', advisingBank: '', buyer: 'Golden Fiber Trims', masterLc: '0123456789012006', material: 'Labels, hangtags & polybags', contractRef: '', amount: 18000, currency: 'USD', issueDate: '2026-08-28', expiryDate: '2026-12-28', latestShipmentDate: '', portOfLoading: '', portOfDischarge: '', partialShipment: 'Allowed' },
+  { id: 9, lcNo: '0123456789012009', lcType: 'Import LC', issuingBank: 'City Bank PLC', advisingBank: '', buyer: 'Ningbo Knit Machinery Co., Ltd.', indentNo: 'IND-0001', material: 'Knitting machine spare parts', contractRef: '', amount: 54000, currency: 'USD', issueDate: '2026-08-30', expiryDate: '2026-12-30', latestShipmentDate: '2026-11-15', portOfLoading: 'Ningbo', portOfDischarge: 'Chattogram', partialShipment: 'Not Allowed' },
 ];
 
 const lcFilter = { q: '', lcType: 'All Types', bank: 'All Banks', status: 'All Statuses', page: 1 };
 
-function lcBalance(l) { return Math.max(0, (l.amount || 0) - (l.utilized || 0)); }
+// An L/C's utilized amount is never typed in: it is what Commercial has drawn against it. Export
+// L/C utilizations, BTB / local L/C utilizations (Pending ones excluded) and import shipments.
+function lcUtilized(l) {
+  const drawn = (key, lcKey, amtKey) => (comRecords[key] || [])
+    .filter(r => r[lcKey] === l.lcNo && r.status !== 'Pending')
+    .reduce((s, r) => s + prodN(r[amtKey]), 0);
+  return drawn('lc_utilization', 'lc', 'amount') + drawn('btb_utilization', 'lcReference', 'amount') + drawn('import_shipment', 'importLc', 'value');
+}
+
+function lcBalance(l) { return Math.max(0, prodN(l.amount) - lcUtilized(l)); }
 
 function lcDaysToExpiry(l) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -8049,7 +8068,7 @@ function lcDaysToExpiry(l) {
 function lcStatus(l) {
   if (lcBalance(l) <= 0) return 'Utilized';
   if (lcDaysToExpiry(l) < 0) return 'Expired';
-  return l.utilized > 0 ? 'Partially Utilized' : 'Active';
+  return lcUtilized(l) > 0 ? 'Partially Utilized' : 'Active';
 }
 
 function lcStatusPill(status) {
@@ -8080,9 +8099,9 @@ function lcFiltered() {
 }
 
 // Card version of the per-currency totals: the currency is a small label so long figures stay on one line.
-function lcTotalsCard(valueOf) {
+function lcTotalsCard(valueOf, records) {
   const by = {};
-  lcRecords.forEach(l => { by[l.currency] = (by[l.currency] || 0) + valueOf(l); });
+  (records || lcRecords).forEach(l => { by[l.currency] = (by[l.currency] || 0) + valueOf(l); });
   const keys = Object.keys(by);
   return keys.length ? keys.map(c => `<span class="block whitespace-nowrap"><span class="fs-small font-medium text-muted mr-1.5">${escapeHtml(c)}</span>${coaInt(Math.round(by[c]))}</span>`).join('') : '0';
 }
@@ -8091,8 +8110,8 @@ function lcSummaryCards() {
   const expiring = lcRecords.filter(l => lcBalance(l) > 0 && lcDaysToExpiry(l) >= 0 && lcDaysToExpiry(l) <= 30).length;
   return `
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, lcTotalsCard(l => l.amount || 0), 'Total LC Value')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, lcTotalsCard(l => l.utilized || 0), 'Total Utilized')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, lcTotalsCard(l => prodN(l.amount)), 'Total LC Value')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, lcTotalsCard(lcUtilized), 'Total Utilized')}
       ${coaCashBankStatCard(COA_CASHBANK_STAT_CASH_ICON, lcTotalsCard(lcBalance), 'Available Balance')}
       ${coaCashBankStatCard(AP_AR_ICON_DUESOON, expiring, 'Expiring in 30 Days')}
     </div>`;
@@ -8107,7 +8126,7 @@ function lcFilterBar() {
           <span class="block text-label font-medium text-secondary mb-1">Search</span>
           <div class="relative">
             <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-            <input id="lcSearch" type="text" value="${escapeHtml(lcFilter.q)}" placeholder="Search LC no. or buyer…" class="${COA_INPUT} pl-9" />
+            <input id="lcSearch" type="text" value="${escapeHtml(lcFilter.q)}" placeholder="Search LC no. or party…" class="${COA_INPUT} pl-9" />
           </div>
         </div>
         ${coaField('LC Type', `<select id="lcTypeFilter" class="${COA_INPUT}">${opt(['All Types', ...LC_TYPES], lcFilter.lcType)}</select>`)}
@@ -8135,14 +8154,10 @@ function lcRow(l, n) {
         <p class="fs-base text-secondary tabular">${coaFormatDateDisplay(l.expiryDate)}</p>
         <div class="mt-1.5">${lcStatusPill(status)}</div>
       </td>
-      <td class="px-3 py-2.5 fs-base text-primary font-semibold whitespace-nowrap tabular text-right">${coaInt(l.amount)} ${escapeHtml(l.currency)}</td>
-      <td class="px-3 py-2.5 whitespace-nowrap text-right tabular">
-        <p class="fs-base text-secondary">${coaInt(l.utilized)} <span class="text-helper text-muted">used</span></p>
+      <td class="px-3 py-2.5 fs-base text-primary font-semibold whitespace-nowrap tabular text-right">${coaInt(prodN(l.amount))} ${escapeHtml(l.currency)}</td>
+      <td class="pr-4 pl-3 py-2.5 whitespace-nowrap text-right tabular">
+        <p class="fs-base text-secondary">${coaInt(lcUtilized(l))} <span class="text-helper text-muted">used</span></p>
         <p class="fs-base font-semibold mt-0.5 ${balance > 0 ? 'text-success' : 'text-secondary'}">${coaInt(balance)} <span class="text-helper font-normal text-muted">left</span></p>
-      </td>
-      <td class="pr-4 pl-3 py-2.5 text-right whitespace-nowrap">
-        ${balance > 0 && status !== 'Expired' ? `<button type="button" data-lc-utilize="${escapeHtml(l.lcNo)}" class="h-7 px-2.5 rounded border border-side-accent/40 text-side-accent fs-small font-semibold hover:bg-side-active mr-1.5">Utilize</button>` : ''}
-        <button type="button" data-lc-remove="${escapeHtml(l.lcNo)}" class="w-7 h-7 rounded border border-side-border inline-flex items-center justify-center text-muted hover:text-danger hover:bg-dangerSoft" title="Remove">${COA_DELETE_ICON}</button>
       </td>
     </tr>`;
 }
@@ -8153,14 +8168,14 @@ function lcResultsHtml() {
   lcFilter.page = Math.min(Math.max(1, lcFilter.page), totalPages);
   const start = (lcFilter.page - 1) * COA_PAGE_SIZE;
   const rows = all.slice(start, start + COA_PAGE_SIZE);
-  const headers = ['SL', 'LC No. / Type', 'Buyer / Issuing Bank', 'Expiry / Status', 'LC Value', 'Utilized / Balance', 'Actions'];
+  const headers = ['SL', 'LC No. / Type', 'Party / Issuing Bank', 'Expiry / Status', 'LC Value', 'Utilized / Balance'];
   return `
     <div class="overflow-x-auto border-t border-side-line">
       <table class="w-full min-w-[900px]">
         <thead><tr class="border-b border-side-line">
-          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${i >= 4 || i === headers.length - 1 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
+          ${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted text-${i >= 4 ? 'right' : 'left'} whitespace-nowrap">${escapeHtml(h)}</th>`).join('')}
         </tr></thead>
-        <tbody>${rows.length ? rows.map((l, i) => lcRow(l, start + i + 1)).join('') : `<tr><td colspan="7" class="px-4 py-10 text-center"><p class="text-body text-muted">No LC records match your filters.</p></td></tr>`}</tbody>
+        <tbody>${rows.length ? rows.map((l, i) => lcRow(l, start + i + 1)).join('') : `<tr><td colspan="6" class="px-4 py-10 text-center"><p class="text-body text-muted">No LC records match your filters.</p></td></tr>`}</tbody>
       </table>
     </div>
     <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
@@ -8183,8 +8198,9 @@ function renderLcExportFinance(container) {
           <div>
             <h3 class="text-section-title text-primary">LC &amp; Export Finance Register</h3>
             <p id="lcCounter" class="text-helper text-muted mt-0.5">${lcCounterText()}</p>
+            <p class="text-helper text-muted mt-0.5">Read-only. L/Cs are opened and utilized in Commercial.</p>
           </div>
-          <button type="button" id="lcNew" class="${COA_BTN_PRIMARY}">${COA_PLUS_ICON}New LC Record</button>
+          <button type="button" id="lcManage" class="${COA_BTN}">Manage in Commercial</button>
         </div>
         <div id="lcResults">${lcResultsHtml()}</div>
       </section>
@@ -8212,7 +8228,7 @@ function lcBindEvents(container) {
   bind('lcBankFilter', 'bank', 'change');
   bind('lcStatusFilter', 'status', 'change');
 
-  container.querySelector('#lcNew').addEventListener('click', () => lcOpenNewModal(container));
+  container.querySelector('#lcManage').addEventListener('click', () => comGo('export_lc'));
 
   container.querySelector('#lcResults').addEventListener('click', (e) => {
     const pageBtn = e.target.closest('[data-lcpage]');
@@ -8221,78 +8237,7 @@ function lcBindEvents(container) {
       const p = pageBtn.dataset.lcpage;
       lcFilter.page = p === 'prev' ? Math.max(1, lcFilter.page - 1) : p === 'next' ? Math.min(totalPages, lcFilter.page + 1) : +p;
       lcRefresh(container);
-      return;
     }
-    const utilBtn = e.target.closest('[data-lc-utilize]');
-    if (utilBtn) { lcOpenUtilizeModal(utilBtn.dataset.lcUtilize, container); return; }
-    const removeBtn = e.target.closest('[data-lc-remove]');
-    if (removeBtn) {
-      const i = lcRecords.findIndex(l => l.lcNo === removeBtn.dataset.lcRemove);
-      if (i > -1) lcRecords.splice(i, 1);
-      lcRefresh(container, true);
-    }
-  });
-}
-
-// LC no., type, issuing bank, buyer, value, currency and the three dates are what a bank or
-// auditor expects on file; advising bank, contract ref and ports are supporting detail.
-function lcOpenNewModal(container) {
-  const today = new Date().toISOString().slice(0, 10);
-  finOpenModal({
-    id: 'lcNewModal', title: 'New LC / Export Finance Record', icon: 'doc', wide: true, submitLabel: 'Save Record',
-    body: [
-      finFormField('LC Number', 'lcNo', { req: true, placeholder: 'e.g. 0123456789012006' }),
-      finFormField('LC Type', 'lcType', { options: LC_TYPES }),
-      finFormField('Issuing Bank', 'issuingBank', { req: true, placeholder: 'e.g. HSBC Bangladesh' }),
-      finFormField('Advising Bank (optional)', 'advisingBank', { placeholder: 'e.g. City Bank PLC' }),
-      finFormField('Buyer / Applicant', 'buyer', { req: true, placeholder: 'e.g. Everest Apparels Ltd.' }),
-      finFormField('Sales Contract / PO Ref. (optional)', 'contractRef', { placeholder: 'e.g. SC-4471' }),
-      finFormField('LC Amount', 'amount', { type: 'number', req: true, placeholder: '0.00' }),
-      finFormField('Currency', 'currency', { options: LC_CURRENCIES, value: 'USD' }),
-      finFormField('Partial Shipment', 'partialShipment', { options: LC_SHIPMENT_OPTIONS }),
-      finFormField('Issue Date', 'issueDate', { type: 'date', value: today }),
-      finFormField('Expiry Date', 'expiryDate', { type: 'date', value: today }),
-      finFormField('Latest Shipment Date', 'latestShipmentDate', { type: 'date', value: today }),
-      finFormField('Port of Loading (optional)', 'portOfLoading', { placeholder: 'e.g. Chattogram' }),
-      finFormField('Port of Discharge (optional)', 'portOfDischarge', { placeholder: 'e.g. Rotterdam' }),
-    ].join(''),
-    onSubmit(form) {
-      const v = (n) => finFormVal(form, n);
-      const amount = Number(v('amount')) || 0;
-      if (!v('lcNo')) return 'Enter the LC number.';
-      if (lcRecords.some(l => l.lcNo === v('lcNo'))) return `LC ${v('lcNo')} is already on file.`;
-      if (!v('issuingBank')) return 'Enter the issuing bank.';
-      if (!v('buyer')) return 'Enter the buyer / applicant.';
-      if (amount <= 0) return 'Enter an LC amount greater than zero.';
-      if (!v('issueDate') || !v('expiryDate') || !v('latestShipmentDate')) return 'Enter the issue, expiry and latest shipment dates.';
-      if (v('expiryDate') < v('issueDate')) return 'Expiry date cannot be before the issue date.';
-      if (v('latestShipmentDate') > v('expiryDate')) return 'Latest shipment date cannot be after the expiry date.';
-      lcRecords.push({
-        lcNo: v('lcNo'), lcType: v('lcType'), issuingBank: v('issuingBank'), advisingBank: v('advisingBank'),
-        buyer: v('buyer'), contractRef: v('contractRef'), amount, currency: v('currency'),
-        issueDate: v('issueDate'), expiryDate: v('expiryDate'), latestShipmentDate: v('latestShipmentDate'),
-        portOfLoading: v('portOfLoading'), portOfDischarge: v('portOfDischarge'), partialShipment: v('partialShipment'), utilized: 0,
-      });
-      lcFilter.page = Math.ceil(lcFiltered().length / COA_PAGE_SIZE);
-      lcRefresh(container, true);
-    },
-  });
-}
-
-function lcOpenUtilizeModal(lcNo, container) {
-  const l = lcRecords.find(x => x.lcNo === lcNo);
-  if (!l) return;
-  const balance = lcBalance(l);
-  finOpenModal({
-    id: 'lcUtilizeModal', title: `Record Utilization — ${l.lcNo}`, icon: 'doc', submitLabel: 'Record Utilization',
-    intro: `${escapeHtml(l.buyer)} — available balance <span class="text-primary font-semibold tabular">${escapeHtml(l.currency)} ${coaMoney(balance)}</span>`,
-    body: finFormField(`Utilization Amount (${l.currency})`, 'amount', { type: 'number', req: true, value: balance }),
-    onSubmit(form) {
-      const amount = Number(finFormVal(form, 'amount')) || 0;
-      if (amount <= 0 || amount > balance + 0.005) return `Enter an amount between 0 and ${l.currency} ${coaMoney(balance)}.`;
-      l.utilized = (l.utilized || 0) + amount;
-      lcRefresh(container, true);
-    },
   });
 }
 
@@ -8393,7 +8338,7 @@ function auditReportHtml() {
   } else if (r.type === 'lc') {
     const list = lcRecords.filter(l => auditInRange(l.issueDate, r.from, r.to));
     title = 'LC & Export Finance Summary'; note = `Letters of Credit issued${rangeNote}`;
-    rows = [['LCs on File', list.length], ['Total LC Value', lcTotalsText(l => l.amount || 0, list)], ['Total Utilized', lcTotalsText(l => l.utilized || 0, list)], ['Available Balance', lcTotalsText(lcBalance, list)], ['Expiring in 30 Days', list.filter(l => lcBalance(l) > 0 && lcDaysToExpiry(l) >= 0 && lcDaysToExpiry(l) <= 30).length]];
+    rows = [['LCs on File', list.length], ['Total LC Value', lcTotalsText(l => prodN(l.amount), list)], ['Total Utilized', lcTotalsText(lcUtilized, list)], ['Available Balance', lcTotalsText(lcBalance, list)], ['Expiring in 30 Days', list.filter(l => lcBalance(l) > 0 && lcDaysToExpiry(l) >= 0 && lcDaysToExpiry(l) <= 30).length]];
   } else {
     const list = auditFindings.filter(a => auditInRange(a.date, r.from, r.to));
     title = 'Audit Findings Summary'; note = `Findings logged${rangeNote}`;
@@ -9095,6 +9040,7 @@ const procurementSuppliers = [
   { id: 1, code: 'SUP-000001', name: 'ABC Textiles Ltd.', contactPerson: 'Md. Kamal Hossain', phone: '+880 1711-000111', email: 'sales@abctextiles.example', address: 'Tejgaon Industrial Area, Dhaka', country: 'Bangladesh', paymentTerms: '30 Days', status: 'Active', remarks: '' },
   { id: 2, code: 'SUP-000002', name: 'Prime Dyeing & Finishing', contactPerson: 'Farida Yasmin', phone: '+880 1819-222333', email: 'info@primedyeing.example', address: 'Narayanganj', country: 'Bangladesh', paymentTerms: '15 Days', status: 'Active', remarks: '' },
   { id: 3, code: 'SUP-000003', name: 'Golden Fiber Trims', contactPerson: 'Rezaul Karim', phone: '+880 1911-444555', email: 'contact@goldenfiber.example', address: 'Gazipur', country: 'Bangladesh', paymentTerms: '30 Days', status: 'Active', remarks: '' },
+  { id: 4, code: 'SUP-000004', name: 'Ningbo Knit Machinery Co., Ltd.', contactPerson: 'Chen Wei', phone: '+86 574-8765-4321', email: 'export@ningboknit.example', address: 'Ningbo, Zhejiang', country: 'China', paymentTerms: 'LC at Sight', status: 'Active', remarks: 'Knitting machine spare parts (import)' },
 ];
 
 const supForm = {
@@ -9309,8 +9255,8 @@ const PROC_ROUTE_TXT = {
   Cash: 'Goes to a Purchase Voucher. A cash posting account is chosen at posting time.',
   Bank: 'Goes to a Purchase Voucher. A bank posting account is chosen at posting time.',
   'Partial Payment': 'Total, paid and remaining are tracked from posted payments.',
-  LC: 'Available under Import Management / LC & Export Finance, for LC Management.',
-  'BtB LC': 'Available under Import Management / LC & Export Finance, for BtB LC Management.',
+  LC: 'Opened as an Import L/C under Import Management (Commercial › Import).',
+  'BtB LC': 'Opened as a BTB L/C in Commercial › Back-to-Back L/C, against a master export L/C.',
 };
 const PROC_RAW_PRODUCTS = [
   { name: 'Cotton Jersey Fabric (180 GSM)', unit: 'Kg' },
@@ -15261,6 +15207,1219 @@ function prodChartBodyHtml() {
         ${prodChartCard('Stage Summary', 'Stage movement in the selected period', null, stageTable)}
       </div>
     </div>`;
+}
+
+// ---------- Commercial ----------
+// Content ported from the Commercial reference build (commercial.html); every style below is
+// index.html's own. The sidebar is one level deep, so each reference group is a submenu and its
+// screens are tabs. One schema-driven engine (COM_SCREENS + renderCommercial) renders every tab:
+// a sectioned entry form card above a register with filter and paging.
+// Linked fields are pickers, never free text: buyers and styles come from Merchandising, suppliers
+// from Procurement, everything else from the other Commercial registers. Links store the record's
+// reference no. (like Production does), and renaming a reference no. updates every link to it.
+// Every L/C (export, back-to-back, local, import) is a row in Finance's lcRecords, so Finance ›
+// LC & Export Finance is a read-only view of what is entered here; an L/C's utilized amount and
+// status are derived (see lcUtilized), never typed in.
+// UI-only prototype: records live in memory, seeded around the Merchandising sample buyers.
+const COM_CURRENCIES = ['USD', 'EUR', 'GBP', 'BDT'];
+const COM_PAY_TERMS = ['L/C at Sight', 'L/C 30 Days', 'L/C 60 Days', 'L/C 90 Days', 'TT Advance', 'TT After Shipment', 'Open Account'];
+const COM_INCOTERMS = ['FOB', 'CFR', 'CIF', 'FCA', 'EXW', 'DAP', 'DDP'];
+const COM_UNITS = ['PCS', 'DOZ', 'SET', 'KG', 'YDS', 'MTR'];
+const COM_CONTAINERS = ['20 GP', '40 GP', '40 HQ', '45 HQ', 'Air'];
+const COM_ACTIVE = ['Active', 'Inactive'];
+const COM_APPROVAL = ['Draft', 'Pending Approval', 'Approved', 'Rejected'];
+const COM_CERT_STATUS = ['Draft', 'Applied', 'Issued', 'Submitted'];
+const COM_NOTE_STATUS = ['Draft', 'Issued', 'Accepted', 'Settled'];
+const COM_PAY_STATUS = ['Not Due', 'Due', 'Partially Paid', 'Paid'];
+const COM_UTIL_STATUS = ['Pending', 'Utilized', 'Adjusted'];
+const COM_EXPORT_LC_TYPES = ['Export LC - Sight', 'Export LC - Usance', 'Revolving LC'];
+// Screens whose rows live in Finance's lcRecords, and which L/C types each one owns.
+const COM_LC_SCREENS = { export_lc: COM_EXPORT_LC_TYPES, btb_lc: ['Back-to-Back LC'], local_lc: ['Local LC'], import_lc: ['Import LC'] };
+const COM_PAGE_SIZE = 10;
+
+/* Field builders. A field is { type, k, label, req?, options?, rel?, fn?, fmt? }. */
+const COM_REQ = { req: true };
+function comF(type, k, label, o) { return Object.assign({ type, k, label }, o); }
+const comT = (k, l, o) => comF('text', k, l, o);
+const comN = (k, l, o) => comF('number', k, l, o);
+const comM = (k, l, o) => comF('money', k, l, o);
+const comD = (k, l, o) => comF('date', k, l, o);
+const comA = (k, l, o) => comF('textarea', k, l, o);
+const comS = (k, l, options, o) => comF('select', k, l, Object.assign({ options }, o));
+const comR = (k, l, rel, o) => comF('rel', k, l, Object.assign({ rel: [].concat(rel) }, o));
+const comB = (k, l, o) => comF('buyer', k, l, o);
+const comSt = (k, l, o) => comF('style', k, l, o);
+const comSp = (k, l, o) => comF('supplier', k, l, o);
+// Calculated field: read-only in the form, recalculated live and stored on save. fmt: money | num | pct | text.
+const comC = (k, l, fn, fmt) => comF('calc', k, l, { fn, fmt: fmt || 'money' });
+const comCur = (o) => comS('currency', 'Currency', COM_CURRENCIES, o);
+const comLcCurField = () => comS('currency', 'Currency', LC_CURRENCIES, COM_REQ);
+const comStatus = (options, o) => comS('status', 'Status', options, o);
+// Column: [label, main field, second-line field]. For number / money columns the second field is a
+// suffix (unit, currency) instead of a second line. o.html(r) overrides the cell entirely.
+function comCol(label, k, sub, o) { return Object.assign({ label, k, sub }, o); }
+
+const comSum = (v, keys) => keys.reduce((s, k) => s + prodN(v[k]), 0);
+const comPctOf = (part, whole) => (prodN(whole) ? part / prodN(whole) * 100 : null);
+const COM_ORDER_COST_KEYS = ['productionCost', 'rawMaterial', 'accessories', 'washing', 'printing', 'embroidery', 'freight', 'cnf', 'portCharges', 'documentation', 'banking', 'insurance', 'commission', 'inspection', 'other'];
+const COM_SHIP_COST_KEYS = ['freight', 'cnf', 'portCharges', 'documentation', 'banking', 'insurance', 'commission', 'other'];
+const COM_LOCAL_CHARGE_KEYS = ['portCharges', 'documentationCharges', 'containerCharges', 'demurrage', 'detention', 'cnfCharges', 'transport', 'otherCharges'];
+
+/* Outstanding receivable: aging and status follow the due date, so they can't go stale. */
+function comOsAging(r) {
+  if (!(prodN(r.exportValue) - prodN(r.received) > 0) || !r.dueDate) return 0;
+  return Math.max(0, Math.floor((new Date(prodToday() + 'T00:00:00') - new Date(r.dueDate + 'T00:00:00')) / 86400000));
+}
+function comOsStatus(r) {
+  if (prodN(r.exportValue) > 0 && prodN(r.exportValue) - prodN(r.received) <= 0) return 'Realized';
+  if (!r.dueDate) return 'Not Due';
+  return comOsAging(r) > 0 ? 'Overdue' : r.dueDate === prodToday() ? 'Due' : 'Not Due';
+}
+
+/* ---------- L/C helpers shared with Finance ---------- */
+function comLcCur(lcNo) { const l = lcRecords.find(x => x.lcNo === lcNo); return l ? l.currency : ''; }
+function comLcParty(lcNo) { const l = lcRecords.find(x => x.lcNo === lcNo); return l ? l.buyer : ''; }
+function comLcValidate(v) {
+  if (!(prodN(v.amount) > 0)) return 'Enter an L/C amount greater than zero.';
+  if (v.issueDate && v.expiryDate && v.expiryDate < v.issueDate) return 'Expiry date cannot be before the issue date.';
+  if (v.latestShipmentDate && v.expiryDate && v.latestShipmentDate > v.expiryDate) return 'Latest shipment date cannot be after the expiry date.';
+  return '';
+}
+// A drawing can't take an L/C past its value. Pending entries don't draw, so they aren't checked.
+function comDrawCheck(v, row, lcKey, amtKey) {
+  const l = lcRecords.find(x => x.lcNo === v[lcKey]);
+  if (!l || v.status === 'Pending') return '';
+  const own = row && row[lcKey] === l.lcNo && row.status !== 'Pending' ? prodN(row[amtKey]) : 0;
+  const left = prodN(l.amount) - lcUtilized(l) + own;
+  return prodN(v[amtKey]) > left + 0.005 ? `Only ${l.currency} ${coaMoney(Math.max(0, left))} is left on L/C ${l.lcNo}.` : '';
+}
+const COM_LC_EXPIRY_COL = comCol('Expiry / Status', null, null, { html: r => `<p class="fs-base text-primary tabular">${r.expiryDate ? coaFormatDateDisplay(r.expiryDate) : '—'}</p><div class="mt-1.5">${lcStatusPill(lcStatus(r))}</div>` });
+const COM_LC_VALUE_COL = comCol('L/C Value', null, null, { right: true, html: r => `<span class="fs-base font-semibold text-primary tabular">${coaInt(prodN(r.amount))}</span> <span class="text-helper text-muted">${escapeHtml(r.currency)}</span>` });
+const COM_LC_UTIL_COL = comCol('Utilized / Balance', null, null, {
+  right: true,
+  html: r => {
+    const b = lcBalance(r);
+    return `<p class="fs-base text-secondary tabular">${coaInt(lcUtilized(r))} <span class="text-helper text-muted">used</span></p><p class="fs-base font-semibold tabular mt-0.5 ${b > 0 ? 'text-success' : 'text-secondary'}">${coaInt(b)} <span class="text-helper font-normal text-muted">left</span></p>`;
+  },
+});
+const comDrawCol = (label, amtKey, lcKey) => comCol(label, null, null, { right: true, html: r => `<span class="fs-base text-primary tabular">${coaMoney(prodN(r[amtKey]))}</span> <span class="text-helper text-muted">${escapeHtml(comLcCur(r[lcKey]))}</span>` });
+const comChangeCol = () => comCol('Previous → New', null, null, { html: r => `<p class="fs-base text-muted line-through">${escapeHtml(r.oldValue || '—')}</p><p class="fs-base text-primary mt-0.5">${escapeHtml(r.newValue || '—')}</p>` });
+function comLcTiles(key) {
+  const list = comList(key), soon = list.filter(l => lcBalance(l) > 0 && lcDaysToExpiry(l) >= 0 && lcDaysToExpiry(l) <= 30).length;
+  return `
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, lcTotalsCard(l => prodN(l.amount), list), 'Total L/C Value')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, lcTotalsCard(lcUtilized, list), 'Total Utilized')}
+      ${coaCashBankStatCard(COA_CASHBANK_STAT_CASH_ICON, lcTotalsCard(lcBalance, list), 'Available Balance')}
+      ${coaCashBankStatCard(AP_AR_ICON_DUESOON, soon, 'Expiring in 30 Days')}
+    </div>`;
+}
+
+/* ---------- Screens ----------
+   sections: [[title, fields]] · cols: register columns · ref: the reference-no. field (default: first
+   field) · hint: field shown beside the reference no. in other screens' pickers · fill: picking a linked
+   record copies its values into empty fields — { field: [sourceScreen(s), { target: sourceField }] } ·
+   fixed: values set on every save · validate(v, row) returns an error or '' · tiles(): summary cards. */
+const COM_SCREENS = {
+  /* 01 Buyer & Agent */
+  buying_houses: {
+    tab: 'Buying House', noun: 'Buying House', title: 'Buying Houses',
+    desc: 'Buying houses that place or manage orders on behalf of buyers.',
+    sections: [['Profile', [comT('name', 'Buying House Name', COM_REQ), comT('code', 'Code'), comT('country', 'Country'), comT('contactPerson', 'Contact Person'), comT('email', 'Email'), comT('phone', 'Phone'), comN('commission', 'Default Commission %'), comA('address', 'Address')]]],
+    cols: [comCol('Buying House / Code', 'name', 'code'), comCol('Country', 'country'), comCol('Contact / Email', 'contactPerson', 'email'), comCol('Phone', 'phone'), comCol('Commission %', 'commission')],
+  },
+  agents: {
+    tab: 'Agent', noun: 'Agent', title: 'Agents',
+    sections: [['Profile', [comT('name', 'Agent Name', COM_REQ), comT('code', 'Agent Code'), comT('country', 'Country'), comT('contactPerson', 'Contact Person'), comT('email', 'Email'), comT('phone', 'Phone'), comN('commission', 'Commission %'), comStatus(COM_ACTIVE)]]],
+    cols: [comCol('Agent / Code', 'name', 'code'), comCol('Country', 'country'), comCol('Contact / Email', 'contactPerson', 'email'), comCol('Commission %', 'commission'), comCol('Status', 'status')],
+  },
+  buyer_terms: {
+    tab: 'Buyer Terms', noun: 'Buyer Terms', title: 'Buyer Terms',
+    desc: 'Default commercial terms per buyer. Buyers themselves are kept in Merchandising › Buyer & Inquiry.',
+    sections: [['Terms', [comB('buyer', 'Buyer', COM_REQ), comCur(), comS('paymentTerms', 'Payment Terms', COM_PAY_TERMS), comS('incoterms', 'Incoterms', COM_INCOTERMS), comN('tolerance', 'Tolerance %'), comT('portDischarge', 'Port of Discharge'), comA('specialTerms', 'Special Terms')]]],
+    cols: [comCol('Buyer', 'buyer'), comCol('Currency', 'currency'), comCol('Payment Terms / Incoterms', 'paymentTerms', 'incoterms'), comCol('Tolerance %', 'tolerance'), comCol('Port of Discharge', 'portDischarge')],
+  },
+
+  /* 02 Export Order */
+  export_orders: {
+    tab: 'Export Order', noun: 'Export Order', title: 'Export Orders', hint: 'buyer', minW: 'min-w-[900px]',
+    desc: 'Commercial master record for each buyer export order.',
+    sections: [
+      ['Order Reference', [comT('exportOrderNo', 'Export Order No.', COM_REQ), comB('buyer', 'Buyer', COM_REQ), comT('buyerPO', 'Buyer PO No.', COM_REQ), comT('salesContractNo', 'Sales Contract No.'), comD('contractDate', 'Contract Date'), comSt('styleNo', 'Style No.'), comT('season', 'Season'), comT('department', 'Department')]],
+      ['Product & Value', [comT('productDescription', 'Product Description', COM_REQ), comN('orderQuantity', 'Order Quantity', COM_REQ), comS('unit', 'Unit', COM_UNITS), comM('unitPrice', 'Unit Price', COM_REQ), comCur(), comS('valueBasis', 'Value Basis', ['FOB', 'CM', 'CIF']), comC('totalValue', 'Total Value', v => prodN(v.orderQuantity) * prodN(v.unitPrice))]],
+      ['Shipment Terms', [comD('shipmentDate', 'Shipment Date'), comD('latestShipmentDate', 'Latest Shipment Date', COM_REQ), comS('incoterms', 'Incoterms', COM_INCOTERMS), comT('portLoading', 'Port of Loading'), comT('portDischarge', 'Port of Discharge'), comT('destinationCountry', 'Destination Country'), comS('paymentTerms', 'Payment Terms', COM_PAY_TERMS), comN('tolerance', 'Tolerance %'), comStatus(['Draft', 'Confirmed', 'In Production', 'Ready to Ship', 'Partially Shipped', 'Shipped', 'Closed', 'Cancelled'])]],
+      ['Order Detail', [comT('color', 'Color'), comT('size', 'Size'), comN('shipmentQty', 'Shipment Quantity'), comT('productionOrder', 'Production Order'), comA('packingInfo', 'Packing Information'), comA('commercialDocuments', 'Commercial Documents / Notes')]],
+    ],
+    cols: [comCol('Order / Buyer PO', 'exportOrderNo', 'buyerPO'), comCol('Buyer / Style', 'buyer', 'styleNo'), comCol('Quantity', 'orderQuantity', 'unit'), comCol('Order Value', 'totalValue'), comCol('Latest Shipment', 'latestShipmentDate'), comCol('Status', 'status')],
+    validate: v => (v.shipmentDate && v.shipmentDate > v.latestShipmentDate ? 'Shipment date cannot be after the latest shipment date.' : ''),
+  },
+  sales_contracts: {
+    tab: 'Sales Contract', noun: 'Sales Contract', title: 'Sales Contracts',
+    sections: [['Contract', [comT('contractNo', 'Sales Contract No.', COM_REQ), comD('contractDate', 'Contract Date', COM_REQ), comR('exportOrder', 'Export Order', 'export_orders'), comB('buyer', 'Buyer', COM_REQ), comCur(), comM('contractValue', 'Contract Value'), comD('shipmentDate', 'Shipment Date'), comS('paymentTerms', 'Payment Terms', COM_PAY_TERMS), comA('terms', 'Contract Terms')]]],
+    cols: [comCol('Contract / Date', 'contractNo', 'contractDate'), comCol('Buyer / Order', 'buyer', 'exportOrder'), comCol('Contract Value', 'contractValue'), comCol('Shipment Date', 'shipmentDate'), comCol('Payment Terms', 'paymentTerms')],
+    fill: { exportOrder: ['export_orders', { buyer: 'buyer', currency: 'currency', contractValue: 'totalValue', shipmentDate: 'latestShipmentDate', paymentTerms: 'paymentTerms' }] },
+  },
+  buyer_po: {
+    tab: 'Buyer PO', noun: 'Buyer PO', title: 'Buyer POs',
+    sections: [['Buyer PO', [comT('buyerPO', 'Buyer PO No.', COM_REQ), comB('buyer', 'Buyer', COM_REQ), comD('poDate', 'PO Date'), comSt('styleNo', 'Style No.'), comN('quantity', 'Quantity'), comM('unitPrice', 'Unit Price'), comCur(), comC('poValue', 'PO Value', v => prodN(v.quantity) * prodN(v.unitPrice)), comD('deliveryDate', 'Delivery Date'), comA('remarks', 'Remarks')]]],
+    cols: [comCol('Buyer PO / Date', 'buyerPO', 'poDate'), comCol('Buyer / Style', 'buyer', 'styleNo'), comCol('Quantity', 'quantity'), comCol('Unit Price', 'unitPrice'), comCol('PO Value', 'poValue'), comCol('Delivery', 'deliveryDate')],
+  },
+  order_amendments: {
+    tab: 'Order Amendment', noun: 'Amendment', title: 'Order Amendments',
+    sections: [['Amendment', [comT('amendmentNo', 'Amendment No.', COM_REQ), comR('exportOrder', 'Export Order', 'export_orders', COM_REQ), comD('amendmentDate', 'Date'), comS('amendmentType', 'Amendment Type', ['Quantity', 'Price', 'Shipment Date', 'Style / Product', 'Terms', 'Other']), comT('oldValue', 'Previous Value'), comT('newValue', 'New Value'), comS('approvalStatus', 'Approval Status', COM_APPROVAL), comA('reason', 'Reason')]]],
+    cols: [comCol('Amendment / Date', 'amendmentNo', 'amendmentDate'), comCol('Export Order', 'exportOrder'), comCol('Type', 'amendmentType'), comChangeCol(), comCol('Approval', 'approvalStatus')],
+  },
+
+  /* 03 L/C Management */
+  export_lc: {
+    tab: 'Export L/C', noun: 'Export L/C', title: 'Export L/Cs', ref: 'lcNo', hint: 'buyer',
+    desc: 'Status and balance are calculated from L/C Utilization entries. Finance › LC & Export Finance shows these same L/Cs.',
+    sections: [
+      ['L/C Identity', [comT('lcNo', 'L/C No.', COM_REQ), comS('lcType', 'L/C Type', COM_EXPORT_LC_TYPES, COM_REQ), comD('issueDate', 'L/C Date', COM_REQ), comR('exportOrder', 'Export Order', 'export_orders'), comB('buyer', 'Buyer', COM_REQ), comT('contractRef', 'Sales Contract Ref.'), comT('issuingBank', 'Issuing Bank', COM_REQ), comT('advisingBank', 'Advising Bank'), comT('negotiatingBank', 'Negotiating Bank')]],
+      ['Amount & Validity', [comM('amount', 'L/C Amount', COM_REQ), comLcCurField(), comD('expiryDate', 'Expiry Date', COM_REQ), comT('expiryPlace', 'Expiry Place'), comD('latestShipmentDate', 'Latest Shipment Date', COM_REQ), comN('tolerance', 'Tolerance %')]],
+      ['Terms & Compliance', [comS('partialShipment', 'Partial Shipment', LC_SHIPMENT_OPTIONS), comS('transshipment', 'Transshipment', LC_SHIPMENT_OPTIONS), comS('paymentTerms', 'Payment Terms', COM_PAY_TERMS), comT('portOfLoading', 'Port of Loading'), comT('portOfDischarge', 'Port of Discharge'), comA('lcClauses', 'L/C Clauses')]],
+    ],
+    cols: [comCol('L/C No. / Type', 'lcNo', 'lcType'), comCol('Buyer / Issuing Bank', 'buyer', 'issuingBank'), COM_LC_EXPIRY_COL, COM_LC_VALUE_COL, COM_LC_UTIL_COL],
+    fill: { exportOrder: ['export_orders', { buyer: 'buyer', currency: 'currency', amount: 'totalValue', latestShipmentDate: 'latestShipmentDate', contractRef: 'salesContractNo', paymentTerms: 'paymentTerms', tolerance: 'tolerance', portOfLoading: 'portLoading', portOfDischarge: 'portDischarge' }] },
+    validate: comLcValidate, tiles: () => comLcTiles('export_lc'),
+  },
+  lc_amendments: {
+    tab: 'L/C Amendment', noun: 'L/C Amendment', title: 'L/C Amendments',
+    sections: [['Amendment', [comT('amendmentNo', 'Amendment No.', COM_REQ), comR('lc', 'Export L/C', 'export_lc', COM_REQ), comD('amendmentDate', 'Amendment Date'), comS('type', 'Amendment Type', ['Amount', 'Expiry Date', 'Shipment Date', 'Clause', 'Other']), comT('oldValue', 'Previous Value'), comT('newValue', 'New Value'), comT('bankAdviceRef', 'Bank Advice Ref.'), comA('remarks', 'Remarks')]]],
+    cols: [comCol('Amendment / Date', 'amendmentNo', 'amendmentDate'), comCol('Export L/C', 'lc'), comCol('Type', 'type'), comChangeCol(), comCol('Bank Advice Ref.', 'bankAdviceRef')],
+  },
+  lc_utilization: {
+    tab: 'L/C Utilization', noun: 'Utilization', title: 'Export L/C Utilization',
+    desc: 'Each Utilized or Adjusted entry draws down the export L/C. Pending entries don’t count yet.',
+    sections: [['Utilization', [comT('utilizationNo', 'Utilization No.', COM_REQ), comR('lc', 'Export L/C', 'export_lc', COM_REQ), comR('exportOrder', 'Export Order', 'export_orders'), comR('shipment', 'Shipment', 'shipments'), comT('invoiceNo', 'Invoice No.'), comM('amount', 'Utilized Amount', COM_REQ), comD('date', 'Utilization Date'), comStatus(COM_UTIL_STATUS)]]],
+    cols: [comCol('Utilization / Date', 'utilizationNo', 'date'), comCol('Export L/C / Order', 'lc', 'exportOrder'), comCol('Shipment / Invoice', 'shipment', 'invoiceNo'), comDrawCol('Amount', 'amount', 'lc'), comCol('Status', 'status')],
+    fill: { shipment: ['shipments', { exportOrder: 'exportOrder', invoiceNo: 'invoiceNo', amount: 'shipmentValue' }] },
+    validate: (v, row) => comDrawCheck(v, row, 'lc', 'amount'),
+  },
+  lc_discrepancy: {
+    tab: 'L/C Discrepancy', noun: 'Discrepancy', title: 'L/C Discrepancies',
+    sections: [['Discrepancy', [comT('refNo', 'Discrepancy Ref.', COM_REQ), comR('lc', 'Export L/C', 'export_lc', COM_REQ), comD('date', 'Date'), comT('type', 'Discrepancy Type'), comM('amount', 'Discrepancy / Charge Amount'), comStatus(['Open', 'Accepted', 'Waived', 'Resolved']), comA('details', 'Discrepancy Details'), comA('resolution', 'Resolution')]]],
+    cols: [comCol('Ref / Date', 'refNo', 'date'), comCol('Export L/C', 'lc'), comCol('Type', 'type'), comDrawCol('Charge', 'amount', 'lc'), comCol('Status', 'status')],
+  },
+
+  /* 04 Back-to-Back L/C */
+  btb_lc: {
+    tab: 'BTB L/C', noun: 'BTB L/C', title: 'Back-to-Back L/Cs', ref: 'lcNo', hint: 'buyer', fixed: { lcType: 'Back-to-Back LC' },
+    desc: 'Opened against a master export L/C to buy fabric, yarn or accessories. Balance comes from BTB Utilization.',
+    sections: [
+      ['L/C Details', [comT('lcNo', 'BTB L/C No.', COM_REQ), comR('masterLc', 'Master Export L/C', 'export_lc', COM_REQ), comSp('buyer', 'Supplier', COM_REQ), comT('supplierLc', 'Supplier PI / Ref.'), comS('contractRef', 'Purchase Order', () => procurementPOs.map(p => p.poNo)), comT('material', 'Raw Material / Fabric / Yarn / Accessories'), comT('issuingBank', 'Opening Bank', COM_REQ)]],
+      ['Amount & Validity', [comM('amount', 'L/C Amount', COM_REQ), comLcCurField(), comD('issueDate', 'Opening Date', COM_REQ), comD('expiryDate', 'Expiry Date', COM_REQ), comD('latestShipmentDate', 'Shipment Deadline')]],
+    ],
+    cols: [comCol('BTB L/C / Master L/C', 'lcNo', 'masterLc'), comCol('Supplier / Bank', 'buyer', 'issuingBank'), comCol('Material / PO', 'material', 'contractRef'), COM_LC_EXPIRY_COL, COM_LC_VALUE_COL, COM_LC_UTIL_COL],
+    validate: comLcValidate, tiles: () => comLcTiles('btb_lc'),
+  },
+  local_lc: {
+    tab: 'Local L/C', noun: 'Local L/C', title: 'Local L/Cs', ref: 'lcNo', hint: 'buyer', fixed: { lcType: 'Local LC' },
+    sections: [['L/C Details', [comT('lcNo', 'Local L/C No.', COM_REQ), comR('masterLc', 'Master Export L/C', 'export_lc'), comSp('buyer', 'Local Supplier', COM_REQ), comT('material', 'Material'), comT('issuingBank', 'Bank', COM_REQ), comM('amount', 'L/C Amount', COM_REQ), comLcCurField(), comD('issueDate', 'Opening Date', COM_REQ), comD('expiryDate', 'Expiry Date', COM_REQ)]]],
+    cols: [comCol('Local L/C / Master L/C', 'lcNo', 'masterLc'), comCol('Supplier / Bank', 'buyer', 'issuingBank'), COM_LC_EXPIRY_COL, COM_LC_VALUE_COL, COM_LC_UTIL_COL],
+    validate: comLcValidate, tiles: () => comLcTiles('local_lc'),
+  },
+  btb_utilization: {
+    tab: 'BTB Utilization', noun: 'BTB Utilization', title: 'BTB / Local L/C Utilization',
+    desc: 'Each Utilized or Adjusted entry draws down the BTB or local L/C. Pending entries don’t count yet.',
+    sections: [['Utilization', [comT('utilizationNo', 'Utilization No.', COM_REQ), comR('lcReference', 'BTB / Local L/C', ['btb_lc', 'local_lc'], COM_REQ), comT('invoiceNo', 'Supplier Invoice No.'), comD('date', 'Date'), comM('amount', 'Amount', COM_REQ), comT('material', 'Material'), comStatus(COM_UTIL_STATUS)]]],
+    cols: [comCol('Utilization / Date', 'utilizationNo', 'date'), comCol('L/C / Supplier', null, null, { html: r => `<p class="fs-base text-primary">${escapeHtml(r.lcReference)}</p><p class="text-helper text-muted mt-0.5">${escapeHtml(comLcParty(r.lcReference) || '—')}</p>` }), comCol('Invoice / Material', 'invoiceNo', 'material'), comDrawCol('Amount', 'amount', 'lcReference'), comCol('Status', 'status')],
+    fill: { lcReference: [['btb_lc', 'local_lc'], { material: 'material' }] },
+    validate: (v, row) => comDrawCheck(v, row, 'lcReference', 'amount'),
+  },
+
+  /* 05 Import */
+  import_indent: {
+    tab: 'Import Indent', noun: 'Indent', title: 'Import Indents', hint: 'material',
+    sections: [['Indent', [comT('indentNo', 'Indent No.', COM_REQ), comD('date', 'Date', COM_REQ), comR('exportOrder', 'Export Order', 'export_orders'), comT('productionOrder', 'Production Order'), comT('material', 'Material', COM_REQ), comN('requiredQuantity', 'Required Quantity'), comS('unit', 'Unit', COM_UNITS), comD('requiredDate', 'Required Date'), comSp('supplier', 'Supplier'), comT('origin', 'Country of Origin'), comS('purchaseType', 'Import / Local', ['Import', 'Local']), comM('estimatedCost', 'Estimated Cost'), comS('approvalStatus', 'Approval Status', COM_APPROVAL), comA('specification', 'Specification')]]],
+    cols: [comCol('Indent / Date', 'indentNo', 'date'), comCol('Material / Supplier', 'material', 'supplier'), comCol('Export Order', 'exportOrder'), comCol('Required Qty', 'requiredQuantity', 'unit'), comCol('Est. Cost', 'estimatedCost'), comCol('Approval', 'approvalStatus')],
+  },
+  import_lc: {
+    tab: 'Import L/C', noun: 'Import L/C', title: 'Import L/Cs', ref: 'lcNo', hint: 'buyer', fixed: { lcType: 'Import LC' },
+    desc: 'Balance comes from the import shipments received against each L/C.',
+    sections: [['Import L/C', [comT('lcNo', 'Import L/C No.', COM_REQ), comR('indentNo', 'Import Indent', 'import_indent'), comSp('buyer', 'Supplier', COM_REQ), comT('issuingBank', 'Opening Bank', COM_REQ), comT('material', 'Raw Material / Machinery'), comM('amount', 'L/C Amount', COM_REQ), comLcCurField(), comD('issueDate', 'Opening Date', COM_REQ), comD('expiryDate', 'Expiry Date', COM_REQ), comD('latestShipmentDate', 'Shipment Deadline')]]],
+    cols: [comCol('Import L/C / Indent', 'lcNo', 'indentNo'), comCol('Supplier / Bank', 'buyer', 'issuingBank'), COM_LC_EXPIRY_COL, COM_LC_VALUE_COL, COM_LC_UTIL_COL],
+    fill: { indentNo: ['import_indent', { buyer: 'supplier', material: 'material', amount: 'estimatedCost' }] },
+    validate: comLcValidate, tiles: () => comLcTiles('import_lc'),
+  },
+  import_shipment: {
+    tab: 'Import Shipment', noun: 'Import Shipment', title: 'Import Shipments', hint: 'supplier',
+    sections: [['Shipment', [comT('shipmentNo', 'Import Shipment No.', COM_REQ), comR('importLc', 'Import L/C', 'import_lc'), comSp('supplier', 'Supplier'), comT('invoiceNo', 'Commercial Invoice'), comD('shipmentDate', 'Shipment Date'), comD('etd', 'ETD'), comD('eta', 'ETA'), comT('blAwb', 'B/L or AWB'), comT('vessel', 'Vessel / Flight'), comT('portLoading', 'Port of Loading'), comT('portDischarge', 'Port of Discharge'), comN('grossWeight', 'Gross Weight (kg)'), comM('value', 'Shipment Value'), comCur(), comStatus(['Booked', 'In Transit', 'Arrived', 'Cleared', 'Received'])]]],
+    cols: [comCol('Shipment / B/L', 'shipmentNo', 'blAwb'), comCol('Import L/C / Supplier', 'importLc', 'supplier'), comCol('ETD / ETA', 'etd', 'eta'), comCol('Vessel / Discharge', 'vessel', 'portDischarge'), comCol('Value', 'value'), comCol('Status', 'status')],
+    fill: { importLc: ['import_lc', { supplier: 'buyer', currency: 'currency' }] },
+    validate: (v, row) => comDrawCheck(v, row, 'importLc', 'value'),
+  },
+  import_docs: {
+    tab: 'Import Documents', noun: 'Import Document', title: 'Import Documents',
+    sections: [['Document Record', [comT('docRef', 'Document Ref.', COM_REQ), comR('shipment', 'Import Shipment', 'import_shipment'), comS('documentType', 'Document Type', ['Commercial Invoice', 'Packing List', 'Bill of Lading / AWB', 'Certificate of Origin', 'Insurance', 'Bill of Entry', 'Customs Document']), comT('documentNo', 'Document No.'), comD('documentDate', 'Document Date'), comD('receivedDate', 'Received Date'), comStatus(['Pending', 'Received', 'Verified', 'Rejected']), comA('remarks', 'Remarks')]]],
+    cols: [comCol('Doc Ref / No.', 'docRef', 'documentNo'), comCol('Type', 'documentType'), comCol('Import Shipment', 'shipment'), comCol('Doc Date / Received', 'documentDate', 'receivedDate'), comCol('Status', 'status')],
+  },
+  customs_clearance: {
+    tab: 'Customs Clearance', noun: 'Clearance', title: 'Customs Clearance', minW: 'min-w-[920px]',
+    desc: 'Clearance amounts are in BDT.',
+    sections: [['Clearance', [comT('clearanceNo', 'Clearance No.', COM_REQ), comR('importShipment', 'Import Shipment', 'import_shipment', COM_REQ), comT('billOfEntry', 'Bill of Entry'), comD('beDate', 'Bill of Entry Date'), comR('cnfAgent', 'C&F Agent', 'cnf_agents'), comM('assessmentValue', 'Assessment Value'), comM('dutyTax', 'Import Duty / Tax'), comM('portCharges', 'Port Charges'), comC('totalCost', 'Total Clearance Cost', v => comSum(v, ['dutyTax', 'portCharges'])), comD('clearanceDate', 'Clearance Date'), comStatus(['Pending', 'Under Assessment', 'Duty Paid', 'Cleared'])]]],
+    cols: [comCol('Clearance / B/E', 'clearanceNo', 'billOfEntry'), comCol('Shipment / C&F Agent', 'importShipment', 'cnfAgent'), comCol('Assessment', 'assessmentValue'), comCol('Duty / Tax', 'dutyTax'), comCol('Total Cost', 'totalCost'), comCol('Status', 'status')],
+  },
+
+  /* 06 Bond & Customs */
+  bond_license: {
+    tab: 'Bond License', noun: 'Bond License', title: 'Bond Licenses',
+    sections: [['License', [comT('licenseNo', 'Bond License No.', COM_REQ), comD('issueDate', 'Issue Date'), comD('expiryDate', 'Expiry Date'), comT('licenseType', 'Bond Type'), comT('customsOffice', 'Customs Office'), comN('entitlement', 'Bond Entitlement / Limit'), comStatus(['Active', 'Expired', 'Suspended']), comA('remarks', 'Remarks')]]],
+    cols: [comCol('License / Type', 'licenseNo', 'licenseType'), comCol('Customs Office', 'customsOffice'), comCol('Issue / Expiry', 'issueDate', 'expiryDate'), comCol('Entitlement', 'entitlement'), comCol('Status', 'status')],
+    validate: v => (v.issueDate && v.expiryDate && v.expiryDate < v.issueDate ? 'Expiry date cannot be before the issue date.' : ''),
+  },
+  bond_register: {
+    tab: 'Bond Register', noun: 'Register Entry', title: 'Bond Register',
+    sections: [['Bond Stock', [comT('entryNo', 'Register Entry No.', COM_REQ), comD('date', 'Date'), comT('material', 'Imported Raw Material', COM_REQ), comT('hsCode', 'HS Code'), comT('importRef', 'Import Shipment / B/E Ref.'), comN('quantityIn', 'Quantity In'), comN('quantityConsumed', 'Production Consumption'), comC('balance', 'Bond Balance', v => prodN(v.quantityIn) - prodN(v.quantityConsumed), 'num'), comS('unit', 'Unit', COM_UNITS), comT('exportRef', 'Export Against Bond Ref.')]]],
+    cols: [comCol('Entry / Date', 'entryNo', 'date'), comCol('Material / HS Code', 'material', 'hsCode'), comCol('Import Ref.', 'importRef'), comCol('In', 'quantityIn', 'unit'), comCol('Consumed', 'quantityConsumed', 'unit'), comCol('Balance', 'balance', 'unit')],
+    validate: v => (prodN(v.quantityConsumed) > prodN(v.quantityIn) ? 'Consumption cannot be more than the quantity in.' : ''),
+  },
+  bond_utilization: {
+    tab: 'Bond Utilization', noun: 'Bond Utilization', title: 'Bond Utilization',
+    sections: [['Utilization', [comT('utilizationNo', 'Utilization No.', COM_REQ), comR('bondLicense', 'Bond License', 'bond_license'), comR('exportOrder', 'Export Order', 'export_orders'), comT('material', 'Material'), comN('importQuantity', 'Imported Quantity'), comN('consumedQuantity', 'Consumed Quantity'), comN('exportQuantity', 'Finished Goods Export Qty'), comN('adjustment', 'Bond Adjustment Qty'), comD('date', 'Date'), comStatus(['Open', 'Partially Adjusted', 'Adjusted'])]]],
+    cols: [comCol('Utilization / Date', 'utilizationNo', 'date'), comCol('License / Order', 'bondLicense', 'exportOrder'), comCol('Material', 'material'), comCol('Imported', 'importQuantity'), comCol('Consumed', 'consumedQuantity'), comCol('Status', 'status')],
+  },
+  import_bond: {
+    tab: 'Import Against Bond', noun: 'Bond Import', title: 'Import Against Bond',
+    sections: [['Transaction', [comT('refNo', 'Reference No.', COM_REQ), comR('bondLicense', 'Bond License', 'bond_license'), comR('importShipment', 'Import Shipment', 'import_shipment'), comT('material', 'Material'), comN('quantity', 'Quantity'), comM('dutySuspended', 'Duty / Tax Suspended (BDT)'), comD('date', 'Date'), comStatus(['Pending', 'Posted', 'Adjusted'])]]],
+    cols: [comCol('Ref / Date', 'refNo', 'date'), comCol('License / Shipment', 'bondLicense', 'importShipment'), comCol('Material', 'material'), comCol('Quantity', 'quantity'), comCol('Duty Suspended', 'dutySuspended'), comCol('Status', 'status')],
+  },
+  export_bond: {
+    tab: 'Export Against Bond', noun: 'Bond Export', title: 'Export Against Bond',
+    sections: [['Transaction', [comT('refNo', 'Reference No.', COM_REQ), comR('bondLicense', 'Bond License', 'bond_license'), comR('shipment', 'Export Shipment', 'shipments'), comR('exportOrder', 'Export Order', 'export_orders'), comN('quantity', 'Export Quantity'), comM('exportValue', 'Export Value'), comD('date', 'Date'), comS('adjustmentStatus', 'Bond Adjustment Status', ['Pending', 'Partial', 'Adjusted'])]]],
+    cols: [comCol('Ref / Date', 'refNo', 'date'), comCol('License', 'bondLicense'), comCol('Shipment / Order', 'shipment', 'exportOrder'), comCol('Quantity', 'quantity'), comCol('Export Value', 'exportValue'), comCol('Adjustment', 'adjustmentStatus')],
+    fill: { shipment: ['shipments', { exportOrder: 'exportOrder', quantity: 'pieces', exportValue: 'shipmentValue' }] },
+  },
+
+  /* 07 Shipment */
+  shipment_plan: {
+    tab: 'Shipment Plan', noun: 'Shipment Plan', title: 'Shipment Plans',
+    sections: [['Plan', [comT('planNo', 'Shipment Plan No.', COM_REQ), comR('exportOrder', 'Export Order', 'export_orders', COM_REQ), comT('buyerPO', 'Buyer PO'), comD('plannedDate', 'Planned Shipment Date'), comN('plannedQty', 'Planned Quantity'), comS('mode', 'Shipment Mode', ['Sea', 'Air', 'Road', 'Courier']), comT('portLoading', 'Port of Loading'), comT('portDischarge', 'Port of Discharge'), comStatus(['Planned', 'Confirmed', 'Revised', 'Completed'])]]],
+    cols: [comCol('Plan / Order', 'planNo', 'exportOrder'), comCol('Buyer PO', 'buyerPO'), comCol('Planned Date', 'plannedDate'), comCol('Planned Qty', 'plannedQty'), comCol('Mode / Discharge', 'mode', 'portDischarge'), comCol('Status', 'status')],
+    fill: { exportOrder: ['export_orders', { buyerPO: 'buyerPO', plannedDate: 'latestShipmentDate', plannedQty: 'orderQuantity', portLoading: 'portLoading', portDischarge: 'portDischarge' }] },
+  },
+  shipment_booking: {
+    tab: 'Shipment Booking', noun: 'Booking', title: 'Shipment Bookings',
+    sections: [['Booking', [comT('bookingNo', 'Booking No.', COM_REQ), comR('shipmentPlan', 'Shipment Plan', 'shipment_plan'), comR('exportOrder', 'Export Order', 'export_orders'), comR('forwarder', 'Forwarder', 'forwarders'), comR('shippingLine', 'Shipping Line', 'shipping_lines'), comT('vessel', 'Vessel / Flight'), comD('etd', 'ETD'), comD('eta', 'ETA'), comS('containerSize', 'Container Size', COM_CONTAINERS), comS('bookingStatus', 'Booking Status', ['Requested', 'Confirmed', 'Rolled', 'Cancelled'])]]],
+    cols: [comCol('Booking / Plan', 'bookingNo', 'shipmentPlan'), comCol('Export Order', 'exportOrder'), comCol('Forwarder / Line', 'forwarder', 'shippingLine'), comCol('Vessel / Container', 'vessel', 'containerSize'), comCol('ETD / ETA', 'etd', 'eta'), comCol('Status', 'bookingStatus')],
+    fill: { shipmentPlan: ['shipment_plan', { exportOrder: 'exportOrder' }] },
+    validate: v => (v.etd && v.eta && v.eta < v.etd ? 'ETA cannot be before ETD.' : ''),
+  },
+  containers: {
+    tab: 'Container', noun: 'Container', title: 'Containers',
+    sections: [['Container', [comT('containerNo', 'Container No.', COM_REQ), comR('bookingNo', 'Booking No.', 'shipment_booking'), comS('containerSize', 'Container Size', COM_CONTAINERS.slice(0, 4)), comT('sealNo', 'Seal No.'), comD('pickupDate', 'Pickup Date'), comD('stuffingDate', 'Stuffing Date'), comN('grossWeight', 'Gross Weight (kg)'), comStatus(['Empty Pickup', 'Stuffing', 'Stuffed', 'Gate In', 'Loaded'])]]],
+    cols: [comCol('Container / Seal', 'containerNo', 'sealNo'), comCol('Booking', 'bookingNo'), comCol('Size', 'containerSize'), comCol('Pickup / Stuffing', 'pickupDate', 'stuffingDate'), comCol('Gross Wt (kg)', 'grossWeight'), comCol('Status', 'status')],
+    fill: { bookingNo: ['shipment_booking', { containerSize: 'containerSize' }] },
+  },
+  stuffing: {
+    tab: 'Stuffing', noun: 'Stuffing', title: 'Stuffing',
+    sections: [['Stuffing', [comT('stuffingNo', 'Stuffing No.', COM_REQ), comR('container', 'Container', 'containers'), comR('exportOrder', 'Export Order', 'export_orders'), comD('date', 'Stuffing Date'), comN('cartonQty', 'Carton Quantity'), comN('pieces', 'Pieces'), comN('grossWeight', 'Gross Weight (kg)'), comN('netWeight', 'Net Weight (kg)'), comN('cbm', 'CBM'), comT('location', 'Stuffing Location'), comStatus(['Planned', 'In Progress', 'Completed'])]]],
+    cols: [comCol('Stuffing / Date', 'stuffingNo', 'date'), comCol('Container / Order', 'container', 'exportOrder'), comCol('Cartons', 'cartonQty'), comCol('Pieces', 'pieces'), comCol('CBM', 'cbm'), comCol('Status', 'status')],
+    validate: v => (prodN(v.netWeight) > prodN(v.grossWeight) && v.grossWeight !== '' ? 'Net weight cannot be more than gross weight.' : ''),
+  },
+  shipments: {
+    tab: 'Shipment Execution', noun: 'Shipment', title: 'Shipments', hint: 'exportOrder',
+    desc: 'Final export shipment record, linked with order, invoice, packing and realization.',
+    sections: [
+      ['Shipment Reference', [comT('shipmentNo', 'Shipment No.', COM_REQ), comR('exportOrder', 'Export Order', 'export_orders', COM_REQ), comT('buyerPO', 'Buyer PO'), comT('invoiceNo', 'Invoice No.'), comD('shipmentDate', 'Shipment Date', COM_REQ), comD('etd', 'ETD'), comD('eta', 'ETA')]],
+      ['Logistics', [comT('vessel', 'Vessel'), comT('voyageNo', 'Voyage No.'), comR('shippingLine', 'Shipping Line', 'shipping_lines'), comR('forwarder', 'Forwarder', 'forwarders'), comT('containerNo', 'Container No.'), comS('containerSize', 'Container Size', COM_CONTAINERS), comT('sealNo', 'Seal No.'), comT('portLoading', 'Port of Loading'), comT('portDischarge', 'Port of Discharge'), comT('destination', 'Destination')]],
+      ['Quantity & Value', [comN('cartonQuantity', 'Carton Quantity'), comN('pieces', 'Pieces'), comN('grossWeight', 'Gross Weight (kg)'), comN('netWeight', 'Net Weight (kg)'), comN('cbm', 'CBM'), comM('shipmentValue', 'Shipment Value'), comCur(), comStatus(['Planned', 'Booked', 'Stuffed', 'Shipped', 'In Transit', 'Arrived', 'Delivered'])]],
+    ],
+    cols: [comCol('Shipment / Invoice', 'shipmentNo', 'invoiceNo'), comCol('Order / Buyer PO', 'exportOrder', 'buyerPO'), comCol('Vessel / Container', 'vessel', 'containerNo'), comCol('ETD / ETA', 'etd', 'eta'), comCol('Value', 'shipmentValue'), comCol('Status', 'status')],
+    fill: { exportOrder: ['export_orders', { buyerPO: 'buyerPO', shipmentValue: 'totalValue', currency: 'currency', portLoading: 'portLoading', portDischarge: 'portDischarge', destination: 'destinationCountry' }] },
+    validate: v => (v.etd && v.eta && v.eta < v.etd ? 'ETA cannot be before ETD.' : ''),
+  },
+  shipment_tracking: {
+    tab: 'Shipment Tracking', noun: 'Tracking Event', title: 'Shipment Tracking',
+    sections: [['Tracking', [comT('trackingRef', 'Tracking Ref.', COM_REQ), comR('shipment', 'Shipment', 'shipments', COM_REQ), comD('eventDate', 'Event Date'), comT('location', 'Current Location'), comS('event', 'Tracking Event', ['Booking Confirmed', 'Gate In', 'Loaded on Vessel', 'Departed', 'Transshipment', 'Arrived POD', 'Customs Cleared', 'Delivered']), comStatus(['On Time', 'Delayed', 'Exception', 'Delivered']), comA('remarks', 'Remarks')]]],
+    cols: [comCol('Ref / Date', 'trackingRef', 'eventDate'), comCol('Shipment', 'shipment'), comCol('Event', 'event'), comCol('Location', 'location'), comCol('Status', 'status')],
+  },
+
+  /* 08 Export Documentation */
+  commercial_invoice: {
+    tab: 'Commercial Invoice', noun: 'Commercial Invoice', title: 'Commercial Invoices', hint: 'buyer',
+    desc: 'Picking the export order fills buyer and product details instead of retyping them.',
+    sections: [
+      ['Invoice Header', [comT('invoiceNo', 'Invoice No.', COM_REQ), comD('invoiceDate', 'Invoice Date', COM_REQ), comR('exportOrder', 'Export Order', 'export_orders', COM_REQ), comR('shipment', 'Shipment', 'shipments'), comB('buyer', 'Buyer'), comT('consignee', 'Consignee'), comT('notifyParty', 'Notify Party'), comCur(), comS('incoterms', 'Incoterms', COM_INCOTERMS)]],
+      ['Product', [comT('product', 'Product'), comSt('style', 'Style'), comT('color', 'Color'), comT('size', 'Size'), comN('quantity', 'Quantity'), comM('unitPrice', 'Unit Price'), comC('totalAmount', 'Total Amount', v => prodN(v.quantity) * prodN(v.unitPrice)), comT('countryOrigin', 'Country of Origin'), comT('hsCode', 'HS Code'), comN('netWeight', 'Net Weight (kg)'), comN('grossWeight', 'Gross Weight (kg)'), comN('cartonCount', 'Carton Count')]],
+    ],
+    cols: [comCol('Invoice / Date', 'invoiceNo', 'invoiceDate'), comCol('Order / Shipment', 'exportOrder', 'shipment'), comCol('Buyer / Style', 'buyer', 'style'), comCol('Quantity', 'quantity'), comCol('Amount', 'totalAmount'), comCol('HS Code', 'hsCode')],
+    fill: {
+      exportOrder: ['export_orders', { buyer: 'buyer', currency: 'currency', incoterms: 'incoterms', product: 'productDescription', style: 'styleNo', color: 'color', size: 'size', quantity: 'orderQuantity', unitPrice: 'unitPrice' }],
+      shipment: ['shipments', { netWeight: 'netWeight', grossWeight: 'grossWeight', cartonCount: 'cartonQuantity' }],
+    },
+  },
+  packing_list: {
+    tab: 'Packing List', noun: 'Packing List', title: 'Packing Lists',
+    sections: [
+      ['Packing Header', [comT('packingListNo', 'Packing List No.', COM_REQ), comR('shipment', 'Shipment No.', 'shipments', COM_REQ), comR('exportOrder', 'Export Order', 'export_orders'), comT('cartonNo', 'Carton No. / Range'), comSt('style', 'Style'), comT('color', 'Color'), comT('size', 'Size')]],
+      ['Packing Details', [comN('pieces', 'Pieces'), comN('cartonQty', 'Carton Qty'), comN('netWeight', 'Net Weight (kg)'), comN('grossWeight', 'Gross Weight (kg)'), comN('cbm', 'CBM'), comT('cartonDimension', 'Carton Dimension'), comT('packingMethod', 'Packing Method')]],
+    ],
+    cols: [comCol('Packing List / Cartons', 'packingListNo', 'cartonNo'), comCol('Shipment / Order', 'shipment', 'exportOrder'), comCol('Style / Color', 'style', 'color'), comCol('Pieces', 'pieces'), comCol('Cartons', 'cartonQty'), comCol('N.W. / G.W. (kg)', null, null, { right: true, html: r => `<span class="fs-base text-primary tabular">${r.netWeight === '' || r.netWeight == null ? '—' : prodFmt(r.netWeight)} / ${r.grossWeight === '' || r.grossWeight == null ? '—' : prodFmt(r.grossWeight)}</span>` })],
+    fill: {
+      shipment: ['shipments', { exportOrder: 'exportOrder', pieces: 'pieces', cartonQty: 'cartonQuantity', netWeight: 'netWeight', grossWeight: 'grossWeight', cbm: 'cbm' }],
+      exportOrder: ['export_orders', { style: 'styleNo', color: 'color', size: 'size' }],
+    },
+  },
+  exp_form: {
+    tab: 'EXP', noun: 'EXP Form', title: 'EXP Forms',
+    sections: [['EXP Details', [comT('expNo', 'EXP No.', COM_REQ), comD('expDate', 'EXP Date'), comR('exportOrder', 'Export Order', 'export_orders'), comR('shipment', 'Shipment', 'shipments'), comR('invoiceNo', 'Invoice No.', 'commercial_invoice'), comT('bank', 'Authorized Dealer Bank'), comM('exportValue', 'Export Value'), comCur(), comStatus(['Draft', 'Submitted', 'Certified', 'Realized'])]]],
+    cols: [comCol('EXP / Date', 'expNo', 'expDate'), comCol('Shipment / Invoice', 'shipment', 'invoiceNo'), comCol('Bank', 'bank'), comCol('Export Value', 'exportValue'), comCol('Status', 'status')],
+    fill: { shipment: ['shipments', { exportOrder: 'exportOrder', invoiceNo: 'invoiceNo', exportValue: 'shipmentValue', currency: 'currency' }] },
+  },
+  coo: {
+    tab: 'Certificate of Origin', noun: 'Certificate of Origin', title: 'Certificates of Origin',
+    sections: [['Certificate', [comT('certificateNo', 'Certificate No.', COM_REQ), comD('date', 'Date'), comR('exportOrder', 'Export Order', 'export_orders'), comR('shipment', 'Shipment', 'shipments'), comT('countryOrigin', 'Country of Origin'), comT('destinationCountry', 'Destination Country'), comT('issuingAuthority', 'Issuing Authority'), comStatus(COM_CERT_STATUS)]]],
+    cols: [comCol('Certificate / Date', 'certificateNo', 'date'), comCol('Shipment / Order', 'shipment', 'exportOrder'), comCol('Origin / Destination', 'countryOrigin', 'destinationCountry'), comCol('Issuing Authority', 'issuingAuthority'), comCol('Status', 'status')],
+    fill: { shipment: ['shipments', { exportOrder: 'exportOrder', destinationCountry: 'destination' }] },
+  },
+  gsp: {
+    tab: 'GSP / Preferential', noun: 'GSP Certificate', title: 'GSP / Preferential Certificates',
+    sections: [['Certificate', [comT('certificateNo', 'Certificate No.', COM_REQ), comT('scheme', 'Scheme / Preference'), comR('exportOrder', 'Export Order', 'export_orders'), comR('shipment', 'Shipment', 'shipments'), comT('country', 'Destination Country'), comD('applicationDate', 'Application Date'), comD('issueDate', 'Issue Date'), comStatus(COM_CERT_STATUS)]]],
+    cols: [comCol('Certificate / Scheme', 'certificateNo', 'scheme'), comCol('Shipment / Order', 'shipment', 'exportOrder'), comCol('Country', 'country'), comCol('Applied / Issued', 'applicationDate', 'issueDate'), comCol('Status', 'status')],
+    fill: { shipment: ['shipments', { exportOrder: 'exportOrder', country: 'destination' }] },
+  },
+  bl: {
+    tab: 'B/L', noun: 'Bill of Lading', title: 'Bills of Lading',
+    sections: [['B/L Details', [comT('blNo', 'B/L No.', COM_REQ), comR('shipment', 'Shipment', 'shipments', COM_REQ), comD('issueDate', 'Issue Date'), comR('shippingLine', 'Shipping Line', 'shipping_lines'), comT('vessel', 'Vessel'), comT('voyage', 'Voyage No.'), comT('portLoading', 'Port of Loading'), comT('portDischarge', 'Port of Discharge'), comT('containerNo', 'Container No.'), comT('sealNo', 'Seal No.'), comS('blType', 'B/L Type', ['Original', 'Sea Waybill', 'Telex Release']), comStatus(['Draft', 'Issued', 'Submitted', 'Released'])]]],
+    cols: [comCol('B/L / Type', 'blNo', 'blType'), comCol('Shipment / Issued', 'shipment', 'issueDate'), comCol('Line / Vessel', 'shippingLine', 'vessel'), comCol('Loading / Discharge', 'portLoading', 'portDischarge'), comCol('Container', 'containerNo'), comCol('Status', 'status')],
+    fill: { shipment: ['shipments', { shippingLine: 'shippingLine', vessel: 'vessel', voyage: 'voyageNo', portLoading: 'portLoading', portDischarge: 'portDischarge', containerNo: 'containerNo', sealNo: 'sealNo' }] },
+  },
+  other_docs: {
+    tab: 'Other Documents', noun: 'Document', title: 'Other Export Documents',
+    sections: [['Document', [comT('documentNo', 'Document No.', COM_REQ), comS('documentType', 'Document Type', ['Beneficiary Certificate', 'Inspection Certificate', 'Insurance Certificate', 'Shipment Advice', 'Buyer Specific', 'Other']), comR('exportOrder', 'Export Order', 'export_orders'), comR('shipment', 'Shipment', 'shipments'), comD('preparedDate', 'Prepared Date'), comD('submittedDate', 'Submitted Date'), comStatus(['Required', 'Prepared', 'Submitted', 'Complete']), comA('remarks', 'Remarks')]]],
+    cols: [comCol('Document / Type', 'documentNo', 'documentType'), comCol('Shipment / Order', 'shipment', 'exportOrder'), comCol('Prepared / Submitted', 'preparedDate', 'submittedDate'), comCol('Status', 'status')],
+  },
+
+  /* 09 Freight & C&F */
+  forwarders: {
+    tab: 'Freight Forwarder', noun: 'Forwarder', title: 'Freight Forwarders',
+    sections: [['Forwarder', [comT('name', 'Forwarder Name', COM_REQ), comT('code', 'Code'), comT('contactPerson', 'Contact Person'), comT('email', 'Email'), comT('phone', 'Phone'), comS('serviceMode', 'Service Mode', ['Sea', 'Air', 'Sea & Air']), comStatus(COM_ACTIVE), comA('address', 'Address')]]],
+    cols: [comCol('Forwarder / Code', 'name', 'code'), comCol('Contact / Email', 'contactPerson', 'email'), comCol('Phone', 'phone'), comCol('Service Mode', 'serviceMode'), comCol('Status', 'status')],
+  },
+  shipping_lines: {
+    tab: 'Shipping Line', noun: 'Shipping Line', title: 'Shipping Lines',
+    sections: [['Shipping Line', [comT('name', 'Shipping Line', COM_REQ), comT('code', 'Code'), comT('contactPerson', 'Contact Person'), comT('email', 'Email'), comT('phone', 'Phone'), comT('serviceRoute', 'Service Route'), comStatus(COM_ACTIVE)]]],
+    cols: [comCol('Shipping Line / Code', 'name', 'code'), comCol('Contact / Email', 'contactPerson', 'email'), comCol('Phone', 'phone'), comCol('Service Route', 'serviceRoute'), comCol('Status', 'status')],
+  },
+  cnf_agents: {
+    tab: 'C&F Agent', noun: 'C&F Agent', title: 'C&F Agents',
+    sections: [['Agent', [comT('name', 'C&F Agent', COM_REQ), comT('licenseNo', 'License No.'), comT('contactPerson', 'Contact Person'), comT('email', 'Email'), comT('phone', 'Phone'), comT('port', 'Port / Customs House'), comStatus(COM_ACTIVE), comA('address', 'Address')]]],
+    cols: [comCol('C&F Agent / License', 'name', 'licenseNo'), comCol('Contact / Email', 'contactPerson', 'email'), comCol('Phone', 'phone'), comCol('Port / Customs House', 'port'), comCol('Status', 'status')],
+  },
+  freight_charges: {
+    tab: 'Freight Charges', noun: 'Freight Rate', title: 'Freight Charges',
+    sections: [['Charges', [comT('rateRef', 'Freight Rate Ref.', COM_REQ), comR('forwarder', 'Forwarder', 'forwarders'), comR('shippingLine', 'Shipping Line', 'shipping_lines'), comT('route', 'Route'), comS('mode', 'Mode', ['Sea', 'Air']), comS('containerSize', 'Container Size', ['20 GP', '40 GP', '40 HQ', 'Air']), comM('oceanFreight', 'Ocean Freight'), comM('airFreight', 'Air Freight'), comS('currency', 'Currency', ['USD', 'BDT']), comD('effectiveDate', 'Effective Date'), comD('validUntil', 'Valid Until')]]],
+    cols: [comCol('Rate Ref / Route', 'rateRef', 'route'), comCol('Forwarder / Line', 'forwarder', 'shippingLine'), comCol('Mode / Container', 'mode', 'containerSize'), comCol('Ocean Freight', 'oceanFreight'), comCol('Air Freight', 'airFreight'), comCol('Effective / Valid Until', 'effectiveDate', 'validUntil')],
+    validate: v => (v.effectiveDate && v.validUntil && v.validUntil < v.effectiveDate ? 'Valid-until date cannot be before the effective date.' : ''),
+  },
+  local_charges: {
+    tab: 'Local Charges', noun: 'Local Charge', title: 'Local Charges',
+    sections: [['Charges', [comT('chargeRef', 'Charge Ref.', COM_REQ), comR('shipment', 'Shipment', 'shipments'), comM('portCharges', 'Port Charges'), comM('documentationCharges', 'Documentation Charges'), comM('containerCharges', 'Container Charges'), comM('demurrage', 'Demurrage'), comM('detention', 'Detention'), comM('cnfCharges', 'C&F Charges'), comM('transport', 'Transport'), comM('otherCharges', 'Other Charges'), comS('currency', 'Currency', ['BDT', 'USD']), comC('total', 'Total Local Charges', v => comSum(v, COM_LOCAL_CHARGE_KEYS))]]],
+    cols: [comCol('Charge Ref / Shipment', 'chargeRef', 'shipment'), comCol('Port', 'portCharges'), comCol('C&F', 'cnfCharges'), comCol('Transport', 'transport'), comCol('Demurrage', 'demurrage'), comCol('Total', 'total')],
+  },
+
+  /* 10 Export Costing */
+  order_costing: {
+    tab: 'Order Costing', noun: 'Order Costing', title: 'Order Costing',
+    sections: [
+      ['Costing Header', [comT('costingNo', 'Costing No.', COM_REQ), comR('exportOrder', 'Export Order', 'export_orders', COM_REQ), comM('orderValue', 'Order Value'), comCur()]],
+      ['Cost Components', [comM('productionCost', 'Product / Production Cost'), comM('rawMaterial', 'Raw Material'), comM('accessories', 'Accessories'), comM('washing', 'Washing'), comM('printing', 'Printing'), comM('embroidery', 'Embroidery'), comM('freight', 'Freight'), comM('cnf', 'C&F'), comM('portCharges', 'Port Charges'), comM('documentation', 'Documentation'), comM('banking', 'Banking Charges'), comM('insurance', 'Insurance'), comM('commission', 'Commission'), comM('inspection', 'Inspection'), comM('other', 'Other Commercial Expenses')]],
+      ['Result', [comC('totalCost', 'Total Cost', v => comSum(v, COM_ORDER_COST_KEYS)), comC('grossMargin', 'Gross Margin', v => prodN(v.orderValue) - comSum(v, COM_ORDER_COST_KEYS)), comC('marginPercent', 'Margin %', v => comPctOf(prodN(v.orderValue) - comSum(v, COM_ORDER_COST_KEYS), v.orderValue), 'pct')]],
+    ],
+    cols: [comCol('Costing / Order', 'costingNo', 'exportOrder'), comCol('Order Value', 'orderValue'), comCol('Total Cost', 'totalCost'), comCol('Gross Margin', 'grossMargin'), comCol('Margin %', 'marginPercent')],
+    fill: { exportOrder: ['export_orders', { orderValue: 'totalValue', currency: 'currency' }] },
+  },
+  shipment_costing: {
+    tab: 'Shipment Costing', noun: 'Shipment Costing', title: 'Shipment Costing',
+    sections: [
+      ['Shipment', [comT('costingNo', 'Costing No.', COM_REQ), comR('shipment', 'Shipment', 'shipments', COM_REQ), comM('shipmentValue', 'Shipment Value'), comCur()]],
+      ['Commercial Cost', [comM('freight', 'Freight'), comM('cnf', 'C&F'), comM('portCharges', 'Port Charges'), comM('documentation', 'Documentation'), comM('banking', 'Banking Charges'), comM('insurance', 'Insurance'), comM('commission', 'Commission'), comM('other', 'Other Cost'), comC('totalCost', 'Total Commercial Cost', v => comSum(v, COM_SHIP_COST_KEYS)), comC('netContribution', 'Net Contribution', v => prodN(v.shipmentValue) - comSum(v, COM_SHIP_COST_KEYS))]],
+    ],
+    cols: [comCol('Costing / Shipment', 'costingNo', 'shipment'), comCol('Shipment Value', 'shipmentValue'), comCol('Commercial Cost', 'totalCost'), comCol('Net Contribution', 'netContribution')],
+    fill: { shipment: ['shipments', { shipmentValue: 'shipmentValue', currency: 'currency' }] },
+  },
+  profitability: {
+    tab: 'Profitability', noun: 'Profitability', title: 'Profitability',
+    sections: [['Profitability Snapshot', [comT('reference', 'Reference No.', COM_REQ), comR('exportOrder', 'Export Order', 'export_orders'), comR('shipment', 'Shipment', 'shipments'), comM('revenue', 'Revenue'), comM('totalCost', 'Total Cost'), comCur(), comC('grossMargin', 'Gross Margin', v => prodN(v.revenue) - prodN(v.totalCost)), comC('marginPercent', 'Margin %', v => comPctOf(prodN(v.revenue) - prodN(v.totalCost), v.revenue), 'pct')]]],
+    cols: [comCol('Reference', 'reference'), comCol('Order / Shipment', 'exportOrder', 'shipment'), comCol('Revenue', 'revenue'), comCol('Total Cost', 'totalCost'), comCol('Gross Margin', 'grossMargin'), comCol('Margin %', 'marginPercent')],
+    fill: { shipment: ['shipments', { exportOrder: 'exportOrder', revenue: 'shipmentValue', currency: 'currency' }] },
+  },
+
+  /* 11 Bank & Realization */
+  export_bill: {
+    tab: 'Export Bill', noun: 'Export Bill', title: 'Export Bills',
+    sections: [['Bill', [comT('billNo', 'Export Bill No.', COM_REQ), comR('invoiceNo', 'Export Invoice No.', 'commercial_invoice'), comR('shipment', 'Shipment', 'shipments'), comM('exportValue', 'Export Value'), comCur(), comD('bankSubmission', 'Bank Submission Date'), comT('bank', 'Bank'), comStatus(['Prepared', 'Submitted', 'Under Scrutiny', 'Accepted'])]]],
+    cols: [comCol('Bill / Submitted', 'billNo', 'bankSubmission'), comCol('Invoice / Shipment', 'invoiceNo', 'shipment'), comCol('Bank', 'bank'), comCol('Export Value', 'exportValue'), comCol('Status', 'status')],
+    fill: { invoiceNo: ['commercial_invoice', { shipment: 'shipment', exportValue: 'totalAmount', currency: 'currency' }] },
+  },
+  negotiation: {
+    tab: 'Negotiation', noun: 'Negotiation', title: 'Bill Negotiation',
+    sections: [['Negotiation', [comT('negotiationNo', 'Negotiation No.', COM_REQ), comR('exportBill', 'Export Bill', 'export_bill'), comT('bank', 'Negotiating Bank'), comD('date', 'Negotiation Date'), comM('billAmount', 'Bill Amount'), comM('negotiatedAmount', 'Negotiated Amount'), comM('bankCharges', 'Bank Charges'), comN('exchangeRate', 'Exchange Rate'), comD('maturityDate', 'Maturity Date'), comStatus(['Pending', 'Negotiated', 'Accepted', 'Discrepant'])]]],
+    cols: [comCol('Negotiation / Date', 'negotiationNo', 'date'), comCol('Export Bill / Bank', 'exportBill', 'bank'), comCol('Bill Amount', 'billAmount'), comCol('Negotiated', 'negotiatedAmount'), comCol('Maturity', 'maturityDate'), comCol('Status', 'status')],
+    fill: { exportBill: ['export_bill', { bank: 'bank', billAmount: 'exportValue' }] },
+  },
+  payments: {
+    tab: 'Payment', noun: 'Payment', title: 'Export Payments',
+    sections: [['Payment', [comT('paymentRef', 'Payment Ref.', COM_REQ), comR('exportBill', 'Export Bill', 'export_bill'), comR('shipment', 'Shipment', 'shipments'), comD('paymentDate', 'Payment Date'), comM('exportValue', 'Export Value'), comM('paymentReceived', 'Payment Received'), comM('bankCharges', 'Bank Charges'), comM('shortPayment', 'Short Payment'), comN('exchangeRate', 'Exchange Rate'), comCur(), comStatus(['Payment Due', 'Partially Received', 'Payment Received'])]]],
+    cols: [comCol('Payment / Date', 'paymentRef', 'paymentDate'), comCol('Bill / Shipment', 'exportBill', 'shipment'), comCol('Export Value', 'exportValue'), comCol('Received', 'paymentReceived'), comCol('Short Payment', 'shortPayment'), comCol('Status', 'status')],
+    fill: { exportBill: ['export_bill', { shipment: 'shipment', exportValue: 'exportValue', currency: 'currency' }] },
+  },
+  realization: {
+    tab: 'Realization', noun: 'Realization', title: 'Export Realization',
+    sections: [['Realization', [comT('realizationRef', 'Realization Ref.', COM_REQ), comR('exportBill', 'Export Bill', 'export_bill'), comR('shipment', 'Shipment', 'shipments'), comM('exportValue', 'Export Value'), comM('paymentReceived', 'Payment Received'), comCur(), comC('outstanding', 'Outstanding Export Receivable', v => prodN(v.exportValue) - prodN(v.paymentReceived)), comD('realizationDate', 'Realization Date'), comM('bankCharges', 'Bank Charges'), comN('exchangeRate', 'Exchange Rate'), comS('realizationStatus', 'Realization Status', ['Shipped', 'Documents Submitted', 'Negotiated', 'Payment Due', 'Payment Received', 'Realized'])]]],
+    cols: [comCol('Realization / Date', 'realizationRef', 'realizationDate'), comCol('Bill / Shipment', 'exportBill', 'shipment'), comCol('Export Value', 'exportValue'), comCol('Received', 'paymentReceived'), comCol('Outstanding', 'outstanding'), comCol('Status', 'realizationStatus')],
+    fill: { exportBill: ['export_bill', { shipment: 'shipment', exportValue: 'exportValue', currency: 'currency' }] },
+    validate: v => (prodN(v.paymentReceived) > prodN(v.exportValue) ? 'Payment received cannot be more than the export value.' : ''),
+  },
+  outstanding: {
+    tab: 'Outstanding', noun: 'Receivable', title: 'Outstanding Export Receivable',
+    desc: 'Aging and status follow the due date: overdue once the due date passes with money still outstanding.',
+    sections: [['Outstanding', [comT('reference', 'Reference', COM_REQ), comB('buyer', 'Buyer'), comR('exportOrder', 'Export Order', 'export_orders'), comR('invoiceNo', 'Invoice No.', 'commercial_invoice'), comD('dueDate', 'Due Date', COM_REQ), comM('exportValue', 'Export Value'), comM('received', 'Received'), comCur(), comC('outstandingAmount', 'Outstanding', v => prodN(v.exportValue) - prodN(v.received)), comC('aging', 'Aging Days', comOsAging, 'num'), comC('status', 'Status', comOsStatus, 'text')]]],
+    cols: [comCol('Reference / Invoice', 'reference', 'invoiceNo'), comCol('Buyer / Order', 'buyer', 'exportOrder'), comCol('Due Date', 'dueDate'), comCol('Outstanding', 'outstandingAmount'), comCol('Aging', null, null, { right: true, html: r => { const d = comOsAging(r); return `<span class="fs-base tabular ${d > 0 ? 'text-danger font-semibold' : 'text-muted'}">${d > 0 ? `${d} day${d === 1 ? '' : 's'}` : '—'}</span>`; } }), comCol('Status', null, null, { html: r => comPill(comOsStatus(r)) })],
+    fill: { exportOrder: ['export_orders', { buyer: 'buyer', currency: 'currency' }], invoiceNo: ['commercial_invoice', { buyer: 'buyer', exportOrder: 'exportOrder', exportValue: 'totalAmount', currency: 'currency' }] },
+    validate: v => (prodN(v.received) > prodN(v.exportValue) ? 'Received cannot be more than the export value.' : ''),
+  },
+
+  /* 12 Claims & Discrepancy */
+  buyer_claim: {
+    tab: 'Buyer Claim', noun: 'Buyer Claim', title: 'Buyer Claims',
+    sections: [['Claim', [comT('claimNo', 'Claim No.', COM_REQ), comB('buyer', 'Buyer'), comR('exportOrder', 'Export Order', 'export_orders'), comR('shipment', 'Shipment', 'shipments'), comS('claimType', 'Claim Type', ['Quality Claim', 'Short Shipment', 'Excess Shipment', 'Price Claim', 'Commercial Discrepancy', 'Other']), comD('claimDate', 'Claim Date'), comM('claimAmount', 'Claim Amount'), comT('responsibleDept', 'Responsible Department'), comS('settlementStatus', 'Settlement Status', ['Open', 'Under Review', 'Accepted', 'Rejected', 'Settled']), comA('details', 'Claim Details')]]],
+    cols: [comCol('Claim / Date', 'claimNo', 'claimDate'), comCol('Buyer / Order', 'buyer', 'exportOrder'), comCol('Claim Type', 'claimType'), comCol('Amount', 'claimAmount'), comCol('Responsible', 'responsibleDept'), comCol('Status', 'settlementStatus')],
+    fill: { exportOrder: ['export_orders', { buyer: 'buyer' }] },
+  },
+  bank_discrepancy: {
+    tab: 'Bank Discrepancy', noun: 'Bank Discrepancy', title: 'Bank Discrepancies',
+    sections: [['Discrepancy', [comT('refNo', 'Discrepancy Ref.', COM_REQ), comR('exportBill', 'Export Bill', 'export_bill'), comR('lc', 'Export L/C', 'export_lc'), comD('date', 'Date'), comM('charge', 'Discrepancy Charge'), comStatus(['Open', 'Waiver Requested', 'Waived', 'Resolved']), comA('discrepancy', 'Discrepancy', COM_REQ), comA('action', 'Corrective Action')]]],
+    cols: [comCol('Ref / Date', 'refNo', 'date'), comCol('Bill / L/C', 'exportBill', 'lc'), comCol('Discrepancy', 'discrepancy'), comCol('Charge', 'charge'), comCol('Status', 'status')],
+  },
+  debit_note: {
+    tab: 'Debit Note', noun: 'Debit Note', title: 'Debit Notes',
+    sections: [['Debit Note', [comT('noteNo', 'Debit Note No.', COM_REQ), comD('date', 'Date'), comB('buyer', 'Buyer'), comR('exportOrder', 'Export Order', 'export_orders'), comM('amount', 'Amount'), comCur(), comStatus(COM_NOTE_STATUS), comA('reason', 'Reason')]]],
+    cols: [comCol('Note / Date', 'noteNo', 'date'), comCol('Buyer / Order', 'buyer', 'exportOrder'), comCol('Reason', 'reason'), comCol('Amount', 'amount'), comCol('Status', 'status')],
+    fill: { exportOrder: ['export_orders', { buyer: 'buyer', currency: 'currency' }] },
+  },
+  credit_note: {
+    tab: 'Credit Note', noun: 'Credit Note', title: 'Credit Notes',
+    sections: [['Credit Note', [comT('noteNo', 'Credit Note No.', COM_REQ), comD('date', 'Date'), comB('buyer', 'Buyer'), comR('exportOrder', 'Export Order', 'export_orders'), comM('amount', 'Amount'), comCur(), comStatus(COM_NOTE_STATUS), comA('reason', 'Reason')]]],
+    cols: [comCol('Note / Date', 'noteNo', 'date'), comCol('Buyer / Order', 'buyer', 'exportOrder'), comCol('Reason', 'reason'), comCol('Amount', 'amount'), comCol('Status', 'status')],
+    fill: { exportOrder: ['export_orders', { buyer: 'buyer', currency: 'currency' }] },
+  },
+
+  /* 13 Commission */
+  buying_commission: {
+    tab: 'Buying House Commission', noun: 'Commission', title: 'Buying House Commission',
+    sections: [['Commission', [comT('commissionRef', 'Commission Ref.', COM_REQ), comR('buyingHouse', 'Buying House', 'buying_houses', COM_REQ), comR('exportOrder', 'Order', 'export_orders'), comR('shipment', 'Shipment', 'shipments'), comN('commissionPercent', 'Commission %'), comM('shipmentValue', 'Shipment Value'), comC('commissionAmount', 'Commission Amount', v => prodN(v.shipmentValue) * prodN(v.commissionPercent) / 100), comT('commissionInvoice', 'Commission Invoice'), comS('paymentStatus', 'Payment Status', COM_PAY_STATUS)]]],
+    cols: [comCol('Commission / Invoice', 'commissionRef', 'commissionInvoice'), comCol('Buying House / Order', 'buyingHouse', 'exportOrder'), comCol('Shipment Value', 'shipmentValue'), comCol('Rate %', 'commissionPercent'), comCol('Commission', 'commissionAmount'), comCol('Payment', 'paymentStatus')],
+    fill: { buyingHouse: ['buying_houses', { commissionPercent: 'commission' }], shipment: ['shipments', { exportOrder: 'exportOrder', shipmentValue: 'shipmentValue' }] },
+  },
+  agent_commission: {
+    tab: 'Agent Commission', noun: 'Commission', title: 'Agent Commission',
+    sections: [['Commission', [comT('commissionRef', 'Commission Ref.', COM_REQ), comR('agent', 'Agent', 'agents', COM_REQ), comR('exportOrder', 'Order', 'export_orders'), comR('shipment', 'Shipment', 'shipments'), comN('commissionPercent', 'Commission %'), comM('shipmentValue', 'Shipment Value'), comC('commissionAmount', 'Commission Amount', v => prodN(v.shipmentValue) * prodN(v.commissionPercent) / 100), comS('paymentStatus', 'Payment Status', COM_PAY_STATUS)]]],
+    cols: [comCol('Commission Ref.', 'commissionRef'), comCol('Agent / Order', 'agent', 'exportOrder'), comCol('Shipment Value', 'shipmentValue'), comCol('Rate %', 'commissionPercent'), comCol('Commission', 'commissionAmount'), comCol('Payment', 'paymentStatus')],
+    fill: { agent: ['agents', { commissionPercent: 'commission' }], shipment: ['shipments', { exportOrder: 'exportOrder', shipmentValue: 'shipmentValue' }] },
+  },
+  commission_settlement: {
+    tab: 'Settlement', noun: 'Settlement', title: 'Commission Settlement',
+    sections: [['Settlement', [comT('settlementNo', 'Settlement No.', COM_REQ), comR('party', 'Buying House / Agent', ['buying_houses', 'agents'], COM_REQ), comR('commissionRef', 'Commission Reference', ['buying_commission', 'agent_commission']), comM('payableAmount', 'Payable Amount'), comM('paidAmount', 'Paid Amount'), comC('balance', 'Balance', v => prodN(v.payableAmount) - prodN(v.paidAmount)), comD('paymentDate', 'Payment Date'), comT('bankRef', 'Bank / Payment Ref.'), comStatus(['Pending', 'Partial', 'Settled'])]]],
+    cols: [comCol('Settlement / Date', 'settlementNo', 'paymentDate'), comCol('Party / Commission', 'party', 'commissionRef'), comCol('Payable', 'payableAmount'), comCol('Paid', 'paidAmount'), comCol('Balance', 'balance'), comCol('Status', 'status')],
+    fill: { commissionRef: [['buying_commission', 'agent_commission'], { payableAmount: 'commissionAmount' }] },
+    validate: v => (prodN(v.paidAmount) > prodN(v.payableAmount) ? 'Paid amount cannot be more than the payable amount.' : ''),
+  },
+
+  /* 14 Export Incentive */
+  incentive_application: {
+    tab: 'Incentive Application', noun: 'Application', title: 'Export Incentive Applications',
+    sections: [['Application', [comT('applicationNo', 'Application No.', COM_REQ), comR('shipment', 'Export Shipment', 'shipments', COM_REQ), comM('eligibleExportValue', 'Eligible Export Value'), comT('incentiveType', 'Incentive Type'), comN('rate', 'Incentive Rate %'), comC('claimAmount', 'Claim Amount', v => prodN(v.eligibleExportValue) * prodN(v.rate) / 100), comD('applicationDate', 'Application Date'), comD('bankSubmission', 'Bank Submission Date'), comStatus(['Draft', 'Submitted to Bank', 'Under Review', 'Approved', 'Rejected'])]]],
+    cols: [comCol('Application / Date', 'applicationNo', 'applicationDate'), comCol('Shipment / Type', 'shipment', 'incentiveType'), comCol('Eligible Value', 'eligibleExportValue'), comCol('Rate %', 'rate'), comCol('Claim', 'claimAmount'), comCol('Status', 'status')],
+    fill: { shipment: ['shipments', { eligibleExportValue: 'shipmentValue' }] },
+  },
+  incentive_approval: {
+    tab: 'Approval', noun: 'Approval', title: 'Export Incentive Approvals',
+    sections: [['Approval', [comT('approvalRef', 'Approval Ref.', COM_REQ), comR('applicationNo', 'Application No.', 'incentive_application'), comM('approvedAmount', 'Approved Amount'), comD('approvalDate', 'Approval Date'), comT('bank', 'Bank'), comStatus(['Pending', 'Approved', 'Partially Approved', 'Rejected']), comA('remarks', 'Remarks')]]],
+    cols: [comCol('Approval / Date', 'approvalRef', 'approvalDate'), comCol('Application', 'applicationNo'), comCol('Bank', 'bank'), comCol('Approved Amount', 'approvedAmount'), comCol('Status', 'status')],
+    fill: { applicationNo: ['incentive_application', { approvedAmount: 'claimAmount' }] },
+  },
+  incentive_settlement: {
+    tab: 'Settlement', noun: 'Settlement', title: 'Export Incentive Settlement',
+    sections: [['Settlement', [comT('settlementNo', 'Settlement No.', COM_REQ), comR('applicationNo', 'Application No.', 'incentive_application'), comM('approvedAmount', 'Approved Amount'), comM('receivedAmount', 'Received Amount'), comC('pendingAmount', 'Pending Amount', v => prodN(v.approvedAmount) - prodN(v.receivedAmount)), comD('receivedDate', 'Received Date'), comT('bankRef', 'Bank Ref.'), comStatus(['Pending', 'Partially Received', 'Received'])]]],
+    cols: [comCol('Settlement / Date', 'settlementNo', 'receivedDate'), comCol('Application / Bank Ref.', 'applicationNo', 'bankRef'), comCol('Approved', 'approvedAmount'), comCol('Received', 'receivedAmount'), comCol('Pending', 'pendingAmount'), comCol('Status', 'status')],
+    fill: { applicationNo: ['incentive_application', { approvedAmount: 'claimAmount' }] },
+    validate: v => (prodN(v.receivedAmount) > prodN(v.approvedAmount) ? 'Received amount cannot be more than the approved amount.' : ''),
+  },
+};
+
+/* Report tabs: a status summary over one register, read-only. done = statuses that count as finished. */
+const COM_REPORTS = {
+  overview: { tab: 'Overview' },
+  report_orders: { tab: 'Order Status', src: 'export_orders', value: 'totalValue', done: ['Shipped', 'Closed', 'Cancelled'] },
+  report_shipments: { tab: 'Shipment Status', src: 'shipments', value: 'shipmentValue', done: ['Delivered'] },
+  report_lc: { tab: 'L/C Status', src: 'export_lc', value: 'amount', done: ['Utilized', 'Expired'], status: r => lcStatus(r) },
+  report_import: { tab: 'Import Status', src: 'import_shipment', value: 'value', done: ['Cleared', 'Received'] },
+  report_bond: { tab: 'Bond Status', src: 'bond_utilization', done: ['Adjusted'] },
+  report_realization: { tab: 'Export Realization', src: 'realization', value: 'outstanding', valueLabel: 'Outstanding', done: ['Realized'] },
+  report_outstanding: { tab: 'Outstanding', src: 'outstanding', value: 'outstandingAmount', valueLabel: 'Outstanding', done: ['Realized'], status: r => comOsStatus(r) },
+};
+
+const COM_GROUPS = [
+  { name: 'Buyer & Agent', sub: 'Buying houses, agents and buyer-specific commercial terms', tabs: ['buying_houses', 'agents', 'buyer_terms'] },
+  { name: 'Export Order', sub: 'Commercial master record for each buyer export order', tabs: ['export_orders', 'sales_contracts', 'buyer_po', 'order_amendments'] },
+  { name: 'L/C Management', sub: 'Export L/C opening, amendment, utilization and discrepancy', tabs: ['export_lc', 'lc_amendments', 'lc_utilization', 'lc_discrepancy'] },
+  { name: 'Back-to-Back L/C', sub: 'BTB and local L/Cs opened against master export L/Cs', tabs: ['btb_lc', 'local_lc', 'btb_utilization'] },
+  { name: 'Import', sub: 'Import indents, import L/Cs, shipments, documents and customs clearance', tabs: ['import_indent', 'import_lc', 'import_shipment', 'import_docs', 'customs_clearance'] },
+  { name: 'Bond & Customs', sub: 'Bond license, bonded stock and bond adjustment against exports', tabs: ['bond_license', 'bond_register', 'bond_utilization', 'import_bond', 'export_bond'] },
+  { name: 'Shipment', sub: 'Plan, book, stuff, ship and track export shipments', tabs: ['shipment_plan', 'shipment_booking', 'containers', 'stuffing', 'shipments', 'shipment_tracking'] },
+  { name: 'Export Documentation', sub: 'Invoice, packing list, EXP, certificates and bill of lading per shipment', tabs: ['commercial_invoice', 'packing_list', 'exp_form', 'coo', 'gsp', 'bl', 'other_docs'] },
+  { name: 'Freight & C&F', sub: 'Forwarders, shipping lines, C&F agents and freight / local charges', tabs: ['forwarders', 'shipping_lines', 'cnf_agents', 'freight_charges', 'local_charges'] },
+  { name: 'Export Costing', sub: 'Order and shipment costing and profitability', tabs: ['order_costing', 'shipment_costing', 'profitability'] },
+  { name: 'Bank & Realization', sub: 'Export bills, negotiation, payment and realization of export proceeds', tabs: ['export_bill', 'negotiation', 'payments', 'realization', 'outstanding'] },
+  { name: 'Claims & Discrepancy', sub: 'Buyer claims, bank discrepancies and debit / credit notes', tabs: ['buyer_claim', 'bank_discrepancy', 'debit_note', 'credit_note'] },
+  { name: 'Commission', sub: 'Buying house and agent commission, and its settlement', tabs: ['buying_commission', 'agent_commission', 'commission_settlement'] },
+  { name: 'Export Incentive', sub: 'Export incentive applications, approvals and settlement', tabs: ['incentive_application', 'incentive_approval', 'incentive_settlement'] },
+  { name: 'Reports', sub: 'Commercial overview and status reports built from the registers', tabs: Object.keys(COM_REPORTS), report: true },
+];
+
+/* ---------- Seed data (L/Cs are seeded in lcRecords, in the Finance block) ---------- */
+const comRecords = {
+  buying_houses: [
+    { id: 1, name: 'Northline Buying House', code: 'BH-001', country: 'United Kingdom', contactPerson: 'Sarah Collins', email: 'sarah@northline.example', phone: '+44 20 7946 0101', commission: 3, address: 'Aldgate, London E1' },
+  ],
+  agents: [
+    { id: 1, name: 'Delta Trade Agency', code: 'AG-001', country: 'Bangladesh', contactPerson: 'Md. Rafiqul Islam', email: 'rafiq@deltatrade.example', phone: '+880 1712-345678', commission: 1.5, status: 'Active' },
+  ],
+  buyer_terms: [
+    { id: 1, buyer: 'ABC Fashion Ltd.', currency: 'USD', paymentTerms: 'L/C 60 Days', incoterms: 'FOB', tolerance: 3, portDischarge: 'Felixstowe', specialTerms: 'Buyer QA inspection certificate required before shipment.' },
+    { id: 2, buyer: 'XYZ Garments Ltd.', currency: 'USD', paymentTerms: 'L/C at Sight', incoterms: 'FOB', tolerance: 5, portDischarge: 'New York', specialTerms: '' },
+  ],
+  export_orders: [
+    { id: 1, exportOrderNo: 'EO-2026-001', buyer: 'ABC Fashion Ltd.', buyerPO: 'ABC-PO-4587', salesContractNo: 'SC-4587', contractDate: '2026-08-12', styleNo: 'AB-4587', season: 'Spring/Summer 2027', department: "Men's Knit", productDescription: "Men's Polo Shirt", orderQuantity: 50000, unit: 'PCS', unitPrice: 4.5, currency: 'USD', valueBasis: 'FOB', totalValue: 225000, shipmentDate: '2027-02-10', latestShipmentDate: '2027-02-15', incoterms: 'FOB', portLoading: 'Chattogram', portDischarge: 'Felixstowe', destinationCountry: 'United Kingdom', paymentTerms: 'L/C 60 Days', tolerance: 3, status: 'In Production', color: 'Navy / White / Black', size: 'S - XL', shipmentQty: '', productionOrder: 'ORD-2031', packingInfo: 'Solid colour, solid size; 12 pcs per carton.', commercialDocuments: '' },
+    { id: 2, exportOrderNo: 'EO-2026-002', buyer: 'XYZ Garments Ltd.', buyerPO: 'XYZ-PO-4390', salesContractNo: 'SC-4390', contractDate: '2026-05-28', styleNo: 'XZ-4390', season: 'Autumn/Winter 2026', department: "Women's Knit", productDescription: "Women's Knit Top", orderQuantity: 28000, unit: 'PCS', unitPrice: 4.15, currency: 'USD', valueBasis: 'FOB', totalValue: 116200, shipmentDate: prodDaysAgo(12), latestShipmentDate: prodDaysAgo(8), incoterms: 'FOB', portLoading: 'Chattogram', portDischarge: 'New York', destinationCountry: 'USA', paymentTerms: 'L/C at Sight', tolerance: 5, status: 'Shipped', color: 'Assorted', size: 'S - XL', shipmentQty: 28000, productionOrder: 'ORD-1987', packingInfo: '', commercialDocuments: '' },
+    { id: 3, exportOrderNo: 'EO-2026-003', buyer: 'Global Apparel Inc.', buyerPO: 'GAI-PO-4372', salesContractNo: '', contractDate: '2026-07-02', styleNo: 'GA-4372', season: 'Autumn/Winter 2026', department: 'Kids', productDescription: "Kids' Knit Cardigan", orderQuantity: 24500, unit: 'PCS', unitPrice: 5.6, currency: 'USD', valueBasis: 'FOB', totalValue: 137200, shipmentDate: prodDaysAgo(-20), latestShipmentDate: prodDaysAgo(-25), incoterms: 'FOB', portLoading: 'Mongla', portDischarge: 'Halifax', destinationCountry: 'Canada', paymentTerms: 'L/C 90 Days', tolerance: 3, status: 'Ready to Ship', color: 'Grey Melange', size: '2 - 8Y', shipmentQty: '', productionOrder: 'ORD-2012', packingInfo: '', commercialDocuments: '' },
+  ],
+  sales_contracts: [
+    { id: 1, contractNo: 'SC-4587', contractDate: '2026-08-12', exportOrder: 'EO-2026-001', buyer: 'ABC Fashion Ltd.', currency: 'USD', contractValue: 225000, shipmentDate: '2027-02-15', paymentTerms: 'L/C 60 Days', terms: 'Replacement by L/C within 30 days of contract.' },
+  ],
+  buyer_po: [
+    { id: 1, buyerPO: 'ABC-PO-4587', buyer: 'ABC Fashion Ltd.', poDate: '2026-08-06', styleNo: 'AB-4587', quantity: 50000, unitPrice: 4.5, currency: 'USD', poValue: 225000, deliveryDate: '2027-02-15', remarks: '' },
+  ],
+  order_amendments: [
+    { id: 1, amendmentNo: 'AMD-0001', exportOrder: 'EO-2026-001', amendmentDate: prodDaysAgo(10), amendmentType: 'Quantity', oldValue: '48,000 PCS', newValue: '50,000 PCS', approvalStatus: 'Approved', reason: 'Buyer added 2,000 pcs to the Navy colourway.' },
+  ],
+  lc_amendments: [],
+  lc_utilization: [
+    { id: 1, utilizationNo: 'UTL-0001', lc: '0123456789012001', exportOrder: '', shipment: '', invoiceNo: 'INV-4471-01', amount: 1200000, date: '2026-05-20', status: 'Utilized' },
+    { id: 2, utilizationNo: 'UTL-0002', lc: '0123456789012001', exportOrder: '', shipment: '', invoiceNo: 'INV-4471-02', amount: 800000, date: '2026-07-18', status: 'Utilized' },
+    { id: 3, utilizationNo: 'UTL-0003', lc: '0123456789012002', exportOrder: '', shipment: '', invoiceNo: 'INV-118-01', amount: 620000, date: '2026-07-22', status: 'Utilized' },
+    { id: 4, utilizationNo: 'UTL-0004', lc: '0123456789012007', exportOrder: 'EO-2026-002', shipment: 'SHP-2026-014', invoiceNo: 'INV-2026-044', amount: 116200, date: prodDaysAgo(10), status: 'Utilized' },
+  ],
+  lc_discrepancy: [],
+  btb_utilization: [
+    { id: 1, utilizationNo: 'BTU-0001', lcReference: '0123456789012003', invoiceNo: 'ABC-INV-2031', date: '2026-06-15', amount: 150000, material: 'Cotton Jersey Fabric (180 GSM)', status: 'Utilized' },
+  ],
+  import_indent: [
+    { id: 1, indentNo: 'IND-0001', date: '2026-08-18', exportOrder: '', productionOrder: '', material: 'Knitting machine spare parts', requiredQuantity: 1, unit: 'SET', requiredDate: '2026-11-30', supplier: 'Ningbo Knit Machinery Co., Ltd.', origin: 'China', purchaseType: 'Import', estimatedCost: 54000, approvalStatus: 'Approved', specification: 'Needle beds and sinkers for the flat-knit line.' },
+  ],
+  import_shipment: [
+    { id: 1, shipmentNo: 'IMS-0001', importLc: '0123456789012009', supplier: 'Ningbo Knit Machinery Co., Ltd.', invoiceNo: 'NKM-INV-8812', shipmentDate: prodDaysAgo(20), etd: prodDaysAgo(20), eta: prodDaysAgo(3), blAwb: 'ONEYNGB7719', vessel: 'ONE Harmony', portLoading: 'Ningbo', portDischarge: 'Chattogram', grossWeight: 2400, value: 54000, currency: 'USD', status: 'Arrived' },
+  ],
+  import_docs: [
+    { id: 1, docRef: 'IDC-0001', shipment: 'IMS-0001', documentType: 'Bill of Lading / AWB', documentNo: 'ONEYNGB7719', documentDate: prodDaysAgo(20), receivedDate: prodDaysAgo(6), status: 'Verified', remarks: '' },
+    { id: 2, docRef: 'IDC-0002', shipment: 'IMS-0001', documentType: 'Commercial Invoice', documentNo: 'NKM-INV-8812', documentDate: prodDaysAgo(21), receivedDate: prodDaysAgo(6), status: 'Received', remarks: '' },
+  ],
+  customs_clearance: [
+    { id: 1, clearanceNo: 'CLR-0001', importShipment: 'IMS-0001', billOfEntry: 'C-118274', beDate: prodDaysAgo(2), cnfAgent: 'Port Link C&F Ltd.', assessmentValue: 6561000, dutyTax: 656100, portCharges: 38500, totalCost: 694600, clearanceDate: '', status: 'Under Assessment' },
+  ],
+  bond_license: [
+    { id: 1, licenseNo: 'BOND-CHT-2026-0147', issueDate: '2026-01-01', expiryDate: '2026-12-31', licenseType: 'Special Bonded Warehouse', customsOffice: 'Customs Bond Commissionerate, Chattogram', entitlement: 250000, status: 'Active', remarks: 'Entitlement in KG of yarn.' },
+  ],
+  bond_register: [
+    { id: 1, entryNo: 'BR-0001', date: prodDaysAgo(60), material: 'Cotton-elastane yarn', hsCode: '5206.12', importRef: 'B/E C-110932', quantityIn: 18000, quantityConsumed: 11200, balance: 6800, unit: 'KG', exportRef: 'EXB-0001' },
+  ],
+  bond_utilization: [
+    { id: 1, utilizationNo: 'BU-0001', bondLicense: 'BOND-CHT-2026-0147', exportOrder: 'EO-2026-002', material: 'Cotton-elastane yarn', importQuantity: 12000, consumedQuantity: 11200, exportQuantity: 28000, adjustment: 11200, date: prodDaysAgo(9), status: 'Partially Adjusted' },
+  ],
+  import_bond: [],
+  export_bond: [
+    { id: 1, refNo: 'EXB-0001', bondLicense: 'BOND-CHT-2026-0147', shipment: 'SHP-2026-014', exportOrder: 'EO-2026-002', quantity: 28000, exportValue: 116200, date: prodDaysAgo(12), adjustmentStatus: 'Partial' },
+  ],
+  shipment_plan: [
+    { id: 1, planNo: 'SPL-0001', exportOrder: 'EO-2026-001', buyerPO: 'ABC-PO-4587', plannedDate: '2027-02-10', plannedQty: 50000, mode: 'Sea', portLoading: 'Chattogram', portDischarge: 'Felixstowe', status: 'Planned' },
+    { id: 2, planNo: 'SPL-0002', exportOrder: 'EO-2026-003', buyerPO: 'GAI-PO-4372', plannedDate: prodDaysAgo(-20), plannedQty: 24500, mode: 'Sea', portLoading: 'Mongla', portDischarge: 'Halifax', status: 'Confirmed' },
+  ],
+  shipment_booking: [
+    { id: 1, bookingNo: 'BKG-0001', shipmentPlan: '', exportOrder: 'EO-2026-002', forwarder: 'Harbor Link Logistics', shippingLine: 'MSC', vessel: 'MSC Livia', etd: prodDaysAgo(9), eta: prodDaysAgo(-19), containerSize: '40 HQ', bookingStatus: 'Confirmed' },
+    { id: 2, bookingNo: 'BKG-0002', shipmentPlan: 'SPL-0002', exportOrder: 'EO-2026-003', forwarder: 'Harbor Link Logistics', shippingLine: 'Maersk', vessel: 'Maersk Kolkata', etd: prodDaysAgo(-18), eta: prodDaysAgo(-50), containerSize: '40 HQ', bookingStatus: 'Requested' },
+  ],
+  containers: [
+    { id: 1, containerNo: 'MSCU4829910', bookingNo: 'BKG-0001', containerSize: '40 HQ', sealNo: 'SL99281', pickupDate: prodDaysAgo(14), stuffingDate: prodDaysAgo(13), grossWeight: 16850, status: 'Loaded' },
+  ],
+  stuffing: [
+    { id: 1, stuffingNo: 'STF-0001', container: 'MSCU4829910', exportOrder: 'EO-2026-002', date: prodDaysAgo(13), cartonQty: 700, pieces: 28000, grossWeight: 16850, netWeight: 15120, cbm: 61.8, location: 'Factory yard, Gazipur', status: 'Completed' },
+  ],
+  shipments: [
+    { id: 1, shipmentNo: 'SHP-2026-014', exportOrder: 'EO-2026-002', buyerPO: 'XYZ-PO-4390', invoiceNo: 'INV-2026-044', shipmentDate: prodDaysAgo(12), etd: prodDaysAgo(9), eta: prodDaysAgo(-19), vessel: 'MSC Livia', voyageNo: 'FL638A', shippingLine: 'MSC', forwarder: 'Harbor Link Logistics', containerNo: 'MSCU4829910', containerSize: '40 HQ', sealNo: 'SL99281', portLoading: 'Chattogram', portDischarge: 'New York', destination: 'USA', cartonQuantity: 700, pieces: 28000, grossWeight: 16850, netWeight: 15120, cbm: 61.8, shipmentValue: 116200, currency: 'USD', status: 'In Transit' },
+  ],
+  shipment_tracking: [
+    { id: 1, trackingRef: 'TRK-0001', shipment: 'SHP-2026-014', eventDate: prodDaysAgo(9), location: 'Chattogram', event: 'Loaded on Vessel', status: 'On Time', remarks: '' },
+    { id: 2, trackingRef: 'TRK-0002', shipment: 'SHP-2026-014', eventDate: prodDaysAgo(4), location: 'Colombo', event: 'Transshipment', status: 'On Time', remarks: 'Connected to MSC Aurora.' },
+  ],
+  commercial_invoice: [
+    { id: 1, invoiceNo: 'INV-2026-044', invoiceDate: prodDaysAgo(12), exportOrder: 'EO-2026-002', shipment: 'SHP-2026-014', buyer: 'XYZ Garments Ltd.', consignee: 'XYZ Garments Inc.', notifyParty: 'XYZ Garments Inc., New York', currency: 'USD', incoterms: 'FOB', product: "Women's Knit Top", style: 'XZ-4390', color: 'Assorted', size: 'S - XL', quantity: 28000, unitPrice: 4.15, totalAmount: 116200, countryOrigin: 'Bangladesh', hsCode: '6110.20', netWeight: 15120, grossWeight: 16850, cartonCount: 700 },
+  ],
+  packing_list: [
+    { id: 1, packingListNo: 'PL-2026-044', shipment: 'SHP-2026-014', exportOrder: 'EO-2026-002', cartonNo: '1 - 700', style: 'XZ-4390', color: 'Assorted', size: 'S - XL', pieces: 28000, cartonQty: 700, netWeight: 15120, grossWeight: 16850, cbm: 61.8, cartonDimension: '60 × 40 × 35 cm', packingMethod: 'Solid colour, solid size' },
+  ],
+  exp_form: [
+    { id: 1, expNo: 'EXP-0126-044', expDate: prodDaysAgo(13), exportOrder: 'EO-2026-002', shipment: 'SHP-2026-014', invoiceNo: 'INV-2026-044', bank: 'HSBC Bangladesh', exportValue: 116200, currency: 'USD', status: 'Certified' },
+  ],
+  coo: [
+    { id: 1, certificateNo: 'COO-2026-0381', date: prodDaysAgo(11), exportOrder: 'EO-2026-002', shipment: 'SHP-2026-014', countryOrigin: 'Bangladesh', destinationCountry: 'USA', issuingAuthority: 'Export Promotion Bureau', status: 'Applied' },
+  ],
+  gsp: [],
+  bl: [
+    { id: 1, blNo: 'MEDUNY638201', shipment: 'SHP-2026-014', issueDate: prodDaysAgo(9), shippingLine: 'MSC', vessel: 'MSC Livia', voyage: 'FL638A', portLoading: 'Chattogram', portDischarge: 'New York', containerNo: 'MSCU4829910', sealNo: 'SL99281', blType: 'Original', status: 'Issued' },
+  ],
+  other_docs: [],
+  forwarders: [
+    { id: 1, name: 'Harbor Link Logistics', code: 'FF-001', contactPerson: 'Tanvir Ahmed', email: 'ops@harborlink.example', phone: '+880 1811-223344', serviceMode: 'Sea & Air', status: 'Active', address: 'Agrabad, Chattogram' },
+  ],
+  shipping_lines: [
+    { id: 1, name: 'MSC', code: 'MSCU', contactPerson: 'Nadia Karim', email: 'bd.export@msc.example', phone: '+880 31-2512233', serviceRoute: 'Chattogram – Colombo – New York', status: 'Active' },
+    { id: 2, name: 'Maersk', code: 'MAEU', contactPerson: 'Imran Chowdhury', email: 'bd.booking@maersk.example', phone: '+880 31-2856677', serviceRoute: 'Mongla – Singapore – Halifax', status: 'Active' },
+  ],
+  cnf_agents: [
+    { id: 1, name: 'Port Link C&F Ltd.', licenseNo: 'CNF-CHT-0931', contactPerson: 'Abdul Halim', email: 'clearing@portlink.example', phone: '+880 1713-556677', port: 'Chattogram Custom House', status: 'Active', address: 'Agrabad, Chattogram' },
+  ],
+  freight_charges: [
+    { id: 1, rateRef: 'FR-0001', forwarder: 'Harbor Link Logistics', shippingLine: 'MSC', route: 'Chattogram → New York', mode: 'Sea', containerSize: '40 HQ', oceanFreight: 3850, airFreight: '', currency: 'USD', effectiveDate: prodDaysAgo(30), validUntil: prodDaysAgo(-60) },
+  ],
+  local_charges: [
+    { id: 1, chargeRef: 'LCH-0001', shipment: 'SHP-2026-014', portCharges: 18500, documentationCharges: 4500, containerCharges: 12000, demurrage: 0, detention: 0, cnfCharges: 9500, transport: 22000, otherCharges: 2500, currency: 'BDT', total: 69000 },
+  ],
+  order_costing: [
+    { id: 1, costingNo: 'CST-2026-001', exportOrder: 'EO-2026-001', orderValue: 225000, currency: 'USD', productionCost: 98000, rawMaterial: 62000, accessories: 9500, washing: 4200, printing: 0, embroidery: 0, freight: 0, cnf: 1800, portCharges: 900, documentation: 400, banking: 1350, insurance: 0, commission: 6750, inspection: 600, other: 1500, totalCost: 187000, grossMargin: 38000, marginPercent: 16.89 },
+  ],
+  shipment_costing: [
+    { id: 1, costingNo: 'SCS-0001', shipment: 'SHP-2026-014', shipmentValue: 116200, currency: 'USD', freight: 0, cnf: 820, portCharges: 610, documentation: 150, banking: 580, insurance: 0, commission: 3486, other: 250, totalCost: 5896, netContribution: 110304 },
+  ],
+  profitability: [
+    { id: 1, reference: 'PRF-0001', exportOrder: 'EO-2026-002', shipment: 'SHP-2026-014', revenue: 116200, totalCost: 101500, currency: 'USD', grossMargin: 14700, marginPercent: 12.65 },
+  ],
+  export_bill: [
+    { id: 1, billNo: 'EB-2026-044', invoiceNo: 'INV-2026-044', shipment: 'SHP-2026-014', exportValue: 116200, currency: 'USD', bankSubmission: prodDaysAgo(8), bank: 'HSBC Bangladesh', status: 'Accepted' },
+  ],
+  negotiation: [
+    { id: 1, negotiationNo: 'NEG-0001', exportBill: 'EB-2026-044', bank: 'HSBC Bangladesh', date: prodDaysAgo(6), billAmount: 116200, negotiatedAmount: 110390, bankCharges: 580, exchangeRate: 121.5, maturityDate: prodDaysAgo(-5), status: 'Negotiated' },
+  ],
+  payments: [],
+  realization: [
+    { id: 1, realizationRef: 'REAL-2026-008', exportBill: 'EB-2026-044', shipment: 'SHP-2026-014', exportValue: 116200, paymentReceived: 0, currency: 'USD', outstanding: 116200, realizationDate: '', bankCharges: '', exchangeRate: '', realizationStatus: 'Negotiated' },
+  ],
+  outstanding: [
+    { id: 1, reference: 'OS-0001', buyer: 'XYZ Garments Ltd.', exportOrder: 'EO-2026-002', invoiceNo: 'INV-2026-044', dueDate: prodDaysAgo(-5), exportValue: 116200, received: 0, currency: 'USD', outstandingAmount: 116200, aging: 0, status: 'Not Due' },
+    { id: 2, reference: 'OS-0002', buyer: 'Fashion Hub Ltd.', exportOrder: '', invoiceNo: 'INV-2026-019', dueDate: prodDaysAgo(12), exportValue: 78850, received: 40000, currency: 'USD', outstandingAmount: 38850, aging: 12, status: 'Overdue' },
+  ],
+  buyer_claim: [
+    { id: 1, claimNo: 'CLM-0001', buyer: 'Fashion Hub Ltd.', exportOrder: '', shipment: '', claimType: 'Short Shipment', claimDate: prodDaysAgo(15), claimAmount: 1250, responsibleDept: 'Packing', settlementStatus: 'Under Review', details: '48 pcs short across cartons 212–215.' },
+  ],
+  bank_discrepancy: [],
+  debit_note: [],
+  credit_note: [],
+  buying_commission: [
+    { id: 1, commissionRef: 'BHC-0001', buyingHouse: 'Northline Buying House', exportOrder: 'EO-2026-002', shipment: 'SHP-2026-014', commissionPercent: 3, shipmentValue: 116200, commissionAmount: 3486, commissionInvoice: 'NBH-CI-2231', paymentStatus: 'Due' },
+  ],
+  agent_commission: [],
+  commission_settlement: [],
+  incentive_application: [
+    { id: 1, applicationNo: 'INC-0001', shipment: 'SHP-2026-014', eligibleExportValue: 116200, incentiveType: 'Cash incentive – new market', rate: 4, claimAmount: 4648, applicationDate: '', bankSubmission: '', status: 'Draft' },
+  ],
+  incentive_approval: [],
+  incentive_settlement: [],
+};
+
+/* ---------- Engine ---------- */
+function comStore(key) { return COM_LC_SCREENS[key] ? lcRecords : (comRecords[key] || (comRecords[key] = [])); }
+function comList(key) { const t = COM_LC_SCREENS[key]; return t ? lcRecords.filter(l => t.includes(l.lcType)) : comStore(key); }
+function comFields(key) { return COM_SCREENS[key].sections.flatMap(s => s[1]); }
+function comField(key, k) { return comFields(key).find(f => f.k === k); }
+function comRefKey(key) { return COM_SCREENS[key].ref || COM_SCREENS[key].sections[0][1][0].k; }
+function comRef(key, r) { const v = r[comRefKey(key)]; return v == null ? '' : String(v); }
+function comFind(keys, ref) {
+  for (const k of [].concat(keys)) { const r = comList(k).find(x => comRef(k, x) === ref); if (r) return r; }
+  return null;
+}
+function comNextId(list) { return list.reduce((m, r) => Math.max(m, r.id || 0), 0) + 1; }
+function comIsNum(f) { return !!f && (f.type === 'money' || f.type === 'number' || (f.type === 'calc' && f.fmt !== 'text')); }
+function comIsMoney(f) { return !!f && (f.type === 'money' || (f.type === 'calc' && f.fmt === 'money')); }
+function comIsPill(f) { return !!f && (f.type === 'select' || f.type === 'calc') && /status$/i.test(f.k); }
+
+// Every rel field, in every screen, that points at the given screen.
+function comLinksTo(key) {
+  const out = [];
+  Object.keys(COM_SCREENS).forEach(s => comFields(s).forEach(f => { if (f.type === 'rel' && f.rel.includes(key)) out.push([s, f.k]); }));
+  return out;
+}
+function comUsages(key, ref) {
+  const seen = new Set(), hits = [];
+  comLinksTo(key).forEach(([s, k]) => comList(s).forEach(r => {
+    if (r[k] === ref && !seen.has(`${s}:${r.id}`)) { seen.add(`${s}:${r.id}`); hits.push(COM_SCREENS[s].tab); }
+  }));
+  const by = {}; hits.forEach(t => { by[t] = (by[t] || 0) + 1; });
+  return Object.keys(by).map(t => `${by[t]} ${t}`);
+}
+function comCascade(key, from, to) {
+  comLinksTo(key).forEach(([s, k]) => comList(s).forEach(r => { if (r[k] === from) r[k] = to; }));
+}
+
+function comTone(s) {
+  const l = String(s || '').toLowerCase();
+  if (/cancel|reject|expire|overdue|exception|delayed|suspend|rolled|discrepant/.test(l)) return 'danger';
+  if (/inactive|draft|planned|required|not due|empty|gate in/.test(l)) return 'neutral';
+  if (/partial|transit|production|under|negotiat|submitted|booked|advised|applied|stuffing|in progress|requested|prepared|scrutiny/.test(l)) return 'info';
+  if (/complete|approved|active|realized|paid|received|delivered|shipped|closed|adjusted|settled|issued|cleared|certified|verified|utilized|confirmed|accepted|waived|resolved|posted|released|loaded|stuffed|on time|arrived/.test(l)) return 'success';
+  if (/pending|due|ready|review|open|waiver|revised/.test(l)) return 'warning';
+  return 'neutral';
+}
+function comPill(s) { return s ? finPill(s, comTone(s), true) : '<span class="fs-base text-muted">—</span>'; }
+
+function comFmt(f, v) {
+  if (v === '' || v == null) return '—';
+  if (comIsMoney(f)) return coaMoney(prodN(v));
+  if (f.type === 'calc' && f.fmt === 'pct') return prodPct(prodN(v));
+  if (comIsNum(f)) return prodFmt(v);
+  if (f.type === 'date') return coaFormatDateDisplay(v);
+  return escapeHtml(v);
+}
+function comCalcValue(f, v) {
+  const x = f.fn(v);
+  if (f.fmt === 'text') return x || '';
+  return x == null || !isFinite(x) ? '' : Math.round(x * 100) / 100;
+}
+function comCalcText(f, v) { const x = comCalcValue(f, v); return x === '' ? '—' : f.fmt === 'text' ? x : comFmt(f, x).replace(/&amp;/g, '&'); }
+
+/* ---------- Register table ---------- */
+const comUi = {};
+function comUiFor(uiKey) { return comUi[uiKey] || (comUi[uiKey] = { q: '', page: 1, msg: '', tone: 'muted' }); }
+function comFiltered(key, uiKey) {
+  const q = comUiFor(uiKey).q.trim().toLowerCase(), fields = comFields(key);
+  return comList(key)
+    .filter(r => !q || fields.some(f => String(r[f.k] == null ? '' : r[f.k]).toLowerCase().includes(q)))
+    .slice().sort((a, b) => b.id - a.id);
+}
+function comCellHtml(key, c, r, first) {
+  const pad = first ? 'pl-4 pr-2' : 'px-3';
+  if (c.html) return `<td class="${pad} py-2.5 align-top whitespace-nowrap ${c.right ? 'text-right' : ''}">${c.html(r)}</td>`;
+  const f = comField(key, c.k) || { type: 'text', k: c.k }, v = r[c.k], main = first ? 'font-medium text-primary' : 'text-primary';
+  if (comIsPill(f)) return `<td class="${pad} py-2.5 align-top">${comPill(v)}</td>`;
+  if (comIsNum(f)) {
+    const suffix = c.sub ? r[c.sub] : comIsMoney(f) && comField(key, 'currency') ? r.currency : '';
+    const has = v !== '' && v != null;
+    return `<td class="${pad} py-2.5 align-top text-right whitespace-nowrap"><span class="fs-base ${main} tabular">${comFmt(f, v)}</span>${has && suffix ? ` <span class="text-helper text-muted">${escapeHtml(suffix)}</span>` : ''}</td>`;
+  }
+  const sf = c.sub ? comField(key, c.sub) || { type: 'text' } : null, sv = c.sub ? r[c.sub] : '';
+  const long = f.type === 'textarea';
+  return `<td class="${pad} py-2.5 align-top ${long ? 'max-w-[240px]' : 'whitespace-nowrap'}"${long && v ? ` title="${escapeHtml(v)}"` : ''}>
+      <p class="fs-base ${main} ${f.type === 'date' ? 'tabular' : ''} ${long ? 'truncate' : ''}">${comFmt(f, v)}</p>
+      ${sf ? `<p class="text-helper text-muted mt-0.5 ${sf.type === 'date' ? 'tabular' : ''}">${comFmt(sf, sv)}</p>` : ''}
+    </td>`;
+}
+function comResultsHtml(key, uiKey, readOnly) {
+  const sc = COM_SCREENS[key], u = comUiFor(uiKey), all = comFiltered(key, uiKey);
+  const totalPages = Math.max(1, Math.ceil(all.length / COM_PAGE_SIZE));
+  u.page = Math.min(Math.max(1, u.page), totalPages);
+  const start = (u.page - 1) * COM_PAGE_SIZE, rows = all.slice(start, start + COM_PAGE_SIZE);
+  const heads = sc.cols.map(c => [c.label, c.html ? !!c.right : comIsNum(comField(key, c.k))]);
+  if (!readOnly) heads.push(['Actions', true]);
+  const n = heads.length, total = comList(key).length;
+  const body = rows.length ? rows.map(r => `
+      <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
+        ${sc.cols.map((c, i) => comCellHtml(key, c, r, i === 0)).join('')}
+        ${readOnly ? '' : `<td class="pr-4 pl-3 py-2.5 align-top text-right whitespace-nowrap"><button type="button" data-com-edit="${r.id}" class="h-7 px-2.5 rounded border border-side-border text-secondary fs-small font-semibold hover:bg-side-hover mr-1.5">Edit</button><button type="button" data-com-delete="${r.id}" class="h-7 px-2.5 rounded border border-side-border text-danger fs-small font-semibold hover:bg-side-hover">Delete</button></td>`}
+      </tr>`).join('')
+    : `<tr><td colspan="${n}" class="px-4 py-10 text-center fs-base text-muted">${total ? 'No records match the filter.' : readOnly ? 'No records yet.' : `No ${escapeHtml(sc.title.toLowerCase())} yet. Use “New ${escapeHtml(sc.noun)}” to add the first one.`}</td></tr>`;
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full ${sc.minW || 'min-w-[860px]'}">
+        <thead><tr class="border-b border-side-line">${heads.map((h, i) => prodTh(h[0], i, n, h[1])).join('')}</tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-side-line">
+      <p class="text-helper text-muted">${all.length ? `Showing ${start + 1} to ${Math.min(start + COM_PAGE_SIZE, all.length)} of ${all.length} entries${all.length < total ? ` (filtered from ${total})` : ''}` : 'No entries'}</p>
+      ${totalPages > 1 ? finPager('compage', u.page, totalPages) : ''}
+    </div>`;
+}
+// One delegate per results block: <div data-comresults="uiKey" data-comsrc="screenKey" data-comro="1|0">.
+function comResultsBlock(key, uiKey, readOnly) {
+  return `<div data-comresults="${uiKey}" data-comsrc="${key}" data-comro="${readOnly ? 1 : 0}">${comResultsHtml(key, uiKey, readOnly)}</div>`;
+}
+function comBindResults(container, handlers) {
+  container.querySelectorAll('[data-comresults]').forEach(block => {
+    const uiKey = block.dataset.comresults, key = block.dataset.comsrc, ro = block.dataset.comro === '1';
+    block.addEventListener('click', (e) => {
+      const pg = e.target.closest('[data-compage]');
+      if (pg && !pg.disabled) {
+        const u = comUiFor(uiKey), p = pg.dataset.compage;
+        u.page = p === 'prev' ? u.page - 1 : p === 'next' ? u.page + 1 : +p;
+        block.innerHTML = comResultsHtml(key, uiKey, ro);
+        return;
+      }
+      const ed = e.target.closest('[data-com-edit]');
+      if (ed && handlers) { handlers.edit(+ed.dataset.comEdit); return; }
+      const del = e.target.closest('[data-com-delete]');
+      if (del && handlers) handlers.remove(+del.dataset.comDelete);
+    });
+  });
+}
+
+/* ---------- Page ---------- */
+function renderCommercial(tabsEl, container, groupName) {
+  const g = COM_GROUPS.find(x => x.name === groupName) || COM_GROUPS[0];
+  document.getElementById('page-subtitle').textContent = g.sub;
+  if (state.tabIndex >= g.tabs.length) state.tabIndex = 0;
+  const label = k => (g.report ? COM_REPORTS[k] : COM_SCREENS[k]).tab;
+  tabsEl.classList.remove('hidden');
+  tabsEl.innerHTML = `
+    <div class="flex items-center gap-1 -mb-px pb-px overflow-x-auto overflow-y-hidden">
+      ${g.tabs.map((k, i) => `
+        <button type="button" data-comtab="${i}" class="px-3.5 py-2.5 text-label font-semibold border-b-2 whitespace-nowrap -mb-px ${i === state.tabIndex ? 'border-side-accent text-side-accent' : 'border-transparent text-muted hover:text-secondary'}">${escapeHtml(label(k))}</button>
+      `).join('')}
+    </div>`;
+  tabsEl.querySelectorAll('[data-comtab]').forEach(btn => {
+    btn.addEventListener('click', () => { state.tabIndex = +btn.dataset.comtab; renderCommercial(tabsEl, container, g.name); });
+  });
+  const key = g.tabs[state.tabIndex];
+  if (g.report) comRenderReport(container, key);
+  else comRenderScreen(container, key);
+}
+// Jump straight to one register (e.g. from a report or from Finance).
+function comGo(screenKey) {
+  const gi = COM_GROUPS.findIndex(g => g.tabs.includes(screenKey));
+  if (gi < 0) return;
+  goTo('commercial', gi);
+  state.tabIndex = COM_GROUPS[gi].tabs.indexOf(screenKey);
+  renderContent();
+}
+
+// Same layout as the other record screens (Production, Procurement, HR): the entry form card sits
+// on the page above the register. Edit loads a row into the form; the draft survives tab switches.
+function comScreenUi(key) {
+  const u = comUiFor(key);
+  if (!u.v) { u.editId = null; u.v = comBlank(key); u.listMsg = ''; u.listTone = 'muted'; }
+  return u;
+}
+function comFormCard(key) {
+  const sc = COM_SCREENS[key], u = comScreenUi(key), multi = sc.sections.length > 1;
+  return `
+    <section id="comFormCard" class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+      <div class="flex items-center justify-between gap-3 mb-3.5">
+        <h3 class="text-section-title text-primary">${u.editId ? 'Edit' : 'New'} ${escapeHtml(sc.noun)}</h3>
+        <p class="text-helper text-muted"><span class="text-danger">*</span> Required</p>
+      </div>
+      ${sc.sections.map(([title, fields], i) => `
+        <div class="${i ? 'mt-4 pt-4 border-t border-side-line' : ''}">
+          ${multi ? `<p class="text-micro text-muted mb-2.5">${escapeHtml(title)}</p>` : ''}
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-3.5">${fields.map(f => comFieldHtml(f, u.v)).join('')}</div>
+        </div>`).join('')}
+      <div class="flex items-center justify-end gap-3 mt-4">
+        <p id="comFormMsg" class="${prodMsgClass(u.msg, u.tone)}">${escapeHtml(u.msg)}</p>
+        ${u.editId ? `<button type="button" id="comCancelBtn" class="${COA_BTN}">Cancel</button>` : ''}
+        <button type="button" id="comResetBtn" class="${COA_BTN}">Reset</button>
+        <button type="button" id="comSaveBtn" class="${COA_BTN_PRIMARY}">${BI_SAVE_ICON}${u.editId ? 'Update' : 'Save'} ${escapeHtml(sc.noun)}</button>
+      </div>
+    </section>`;
+}
+function comRenderScreen(container, key) {
+  const sc = COM_SCREENS[key], u = comScreenUi(key);
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      ${sc.tiles ? sc.tiles() : ''}
+      ${comFormCard(key)}
+      <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+        <div class="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div class="min-w-0">
+            <h3 class="text-section-title text-primary">${escapeHtml(sc.title)}</h3>
+            ${sc.desc ? `<p class="text-helper text-muted">${escapeHtml(sc.desc)}</p>` : ''}
+          </div>
+          <div class="relative w-full sm:w-72">${PROD_SEARCH_ICON}<input id="comSearch" type="text" value="${escapeHtml(u.q)}" placeholder="Filter records…" aria-label="Filter records" class="${COA_INPUT} pl-9" /></div>
+        </div>
+        <p id="comListMsg" class="${u.listMsg ? '' : 'hidden '}px-4 pb-3 text-helper text-${u.listTone}">${escapeHtml(u.listMsg)}</p>
+        ${comResultsBlock(key, key, false)}
+      </section>
+    </div>`;
+  u.msg = ''; u.listMsg = '';
+  comBindScreen(container, key);
+}
+function comBindScreen(container, key) {
+  const sc = COM_SCREENS[key], u = comScreenUi(key), card = container.querySelector('#comFormCard');
+  const calcs = comFields(key).filter(f => f.type === 'calc'), rerender = () => comRenderScreen(container, key);
+  const recalc = () => calcs.forEach(f => {
+    u.v[f.k] = comCalcValue(f, u.v);
+    const out = card.querySelector(`[data-comcalc="${f.k}"]`);
+    if (out) out.value = comCalcText(f, u.v);
+  });
+  card.querySelectorAll('[data-comf]').forEach(el => {
+    const k = el.dataset.comf, handler = () => { u.v[k] = el.value; recalc(); };
+    if (el.tagName !== 'SELECT') el.addEventListener('input', handler);
+    el.addEventListener('change', () => {
+      handler();
+      // Picking a linked record fills only empty fields, so nothing typed is overwritten.
+      const spec = sc.fill && sc.fill[k], src = spec && el.value ? comFind(spec[0], el.value) : null;
+      if (!src) return;
+      Object.entries(spec[1]).forEach(([to, from]) => {
+        const t = card.querySelector(`[data-comf="${to}"]`);
+        if (t && !t.value && src[from] !== '' && src[from] != null) { comSetEl(t, src[from]); u.v[to] = t.value; }
+      });
+      recalc();
+    });
+  });
+  card.querySelector('#comResetBtn').addEventListener('click', () => {
+    const row = u.editId ? comStore(key).find(r => r.id === u.editId) : null;
+    u.v = row ? Object.assign({}, row) : comBlank(key); u.msg = '';
+    rerender();
+  });
+  const cancel = card.querySelector('#comCancelBtn');
+  if (cancel) cancel.addEventListener('click', () => { u.editId = null; u.v = comBlank(key); u.msg = ''; rerender(); });
+  card.querySelector('#comSaveBtn').addEventListener('click', () => comSave(container, key));
+  container.querySelector('#comSearch').addEventListener('input', (e) => {
+    u.q = e.target.value; u.page = 1;
+    container.querySelector('[data-comresults]').innerHTML = comResultsHtml(key, key, false);
+  });
+  comBindResults(container, {
+    edit: (id) => {
+      const row = comStore(key).find(r => r.id === id);
+      if (!row) return;
+      u.editId = id; u.v = Object.assign({}, row); u.msg = '';
+      rerender();
+      container.querySelector('#comFormCard').scrollIntoView({ block: 'start', behavior: 'smooth' });
+    },
+    remove: id => comDelete(key, id, container),
+  });
+}
+function comSetMsg(container, key, text, tone) {
+  const u = comScreenUi(key), el = container.querySelector('#comFormMsg');
+  u.msg = text || ''; u.tone = tone || 'muted';
+  if (el) { el.textContent = u.msg; el.className = prodMsgClass(u.msg, u.tone); }
+}
+function comDelete(key, id, container) {
+  const u = comScreenUi(key), store = comStore(key), i = store.findIndex(r => r.id === id);
+  if (i < 0) return;
+  const ref = comRef(key, store[i]), used = comUsages(key, ref);
+  if (used.length) {
+    u.listMsg = `${ref} can’t be deleted: it is linked from ${used.join(', ')}. Remove or relink those first.`; u.listTone = 'danger';
+  } else {
+    store.splice(i, 1);
+    if (u.editId === id) { u.editId = null; u.v = comBlank(key); }
+    u.listMsg = `${COM_SCREENS[key].noun} ${ref} deleted.`; u.listTone = 'muted';
+  }
+  comRenderScreen(container, key);
+}
+
+/* ---------- Entry form controls ---------- */
+function comOptions(f) {
+  if (f.type === 'select') return (typeof f.options === 'function' ? f.options() : f.options).map(o => [o, o]);
+  if (f.type === 'buyer') return biBuyers.map(b => [b.name, b.name]);
+  if (f.type === 'style') return styStyles.map(s => [s.style, `${s.style} · ${s.product}`]);
+  if (f.type === 'supplier') return procurementSuppliers.filter(s => s.status === 'Active').map(s => [s.name, s.name]);
+  if (f.type === 'rel') {
+    return f.rel.flatMap(k => {
+      const hint = COM_SCREENS[k].hint;
+      return comList(k).slice().sort((a, b) => b.id - a.id).map(r => [comRef(k, r), hint && r[hint] ? `${comRef(k, r)} · ${r[hint]}` : comRef(k, r)]);
+    });
+  }
+  return null;
+}
+function comControl(f, v) {
+  const s = v[f.k] == null ? '' : String(v[f.k]), attr = `data-comf="${f.k}"`;
+  if (f.type === 'calc') return `<input type="text" readonly tabindex="-1" data-comcalc="${f.k}" value="${escapeHtml(comCalcText(f, v))}" class="${COA_AUTO} tabular" />`;
+  if (f.type === 'textarea') return `<textarea ${attr} style="height:72px" class="${COA_INPUT} py-2 resize-none">${escapeHtml(s)}</textarea>`;
+  const opts = comOptions(f);
+  if (opts) {
+    const all = s && !opts.some(o => o[0] === s) ? [[s, s], ...opts] : opts;
+    return `<select ${attr} class="${COA_INPUT}"><option value="">Select…</option>${all.map(o => `<option value="${escapeHtml(o[0])}" ${o[0] === s ? 'selected' : ''}>${escapeHtml(o[1])}</option>`).join('')}</select>`;
+  }
+  if (comIsNum(f)) return `<input ${attr} type="number" min="0" step="any" inputmode="decimal" value="${escapeHtml(s)}" class="${COA_INPUT} tabular" />`;
+  if (f.type === 'date') return `<input ${attr} type="date" value="${escapeHtml(s)}" class="${COA_INPUT} tabular" />`;
+  return `<input ${attr} type="text" autocomplete="off" value="${escapeHtml(s)}" class="${COA_INPUT}" />`;
+}
+function comFieldHtml(f, v) {
+  return `<label class="block min-w-0${f.type === 'textarea' ? ' sm:col-span-2 lg:col-span-4' : ''}">${biLabel(f.label, { req: f.req })}${comControl(f, v)}</label>`;
+}
+// Blank form: first date = today, currency = USD, status = its first option.
+function comBlank(key) {
+  const v = {}, fields = comFields(key), firstDate = fields.find(f => f.type === 'date');
+  fields.forEach(f => {
+    v[f.k] = '';
+    if (f === firstDate) v[f.k] = prodToday();
+    if (f.type === 'select' && Array.isArray(f.options)) {
+      if (f.k === 'currency' && f.options.includes('USD')) v[f.k] = 'USD';
+      else if (/status$/i.test(f.k) || f.k === 'lcType') v[f.k] = f.options[0];
+    }
+  });
+  fields.filter(f => f.type === 'calc').forEach(f => { v[f.k] = comCalcValue(f, v); });
+  return v;
+}
+function comSetEl(el, val) {
+  const s = String(val);
+  if (el.tagName === 'SELECT' && ![...el.options].some(o => o.value === s)) el.add(new Option(s, s));
+  el.value = s;
+}
+function comSave(container, key) {
+  const sc = COM_SCREENS[key], u = comScreenUi(key), fields = comFields(key);
+  const row = u.editId ? comStore(key).find(r => r.id === u.editId) : null, v = {};
+  fields.forEach(f => { if (f.type !== 'calc') v[f.k] = String(u.v[f.k] == null ? '' : u.v[f.k]).trim(); });
+  fields.filter(f => f.type === 'calc').forEach(f => { v[f.k] = comCalcValue(f, v); });
+  for (const f of fields) {
+    if (f.req && !v[f.k]) return comSetMsg(container, key, `${f.label} is required.`, 'danger');
+    if ((f.type === 'number' || f.type === 'money') && v[f.k] !== '' && (!isFinite(parseFloat(v[f.k])) || parseFloat(v[f.k]) < 0)) return comSetMsg(container, key, `${f.label} must be 0 or more.`, 'danger');
+  }
+  const refKey = comRefKey(key), ref = v[refKey], store = comStore(key);
+  if (store.some(r => r !== row && String(r[refKey]) === ref)) return comSetMsg(container, key, `${comField(key, refKey).label} ${ref} is already on file.`, 'danger');
+  const err = sc.validate ? sc.validate(v, row) : '';
+  if (err) return comSetMsg(container, key, err, 'danger');
+  const rec = {};
+  fields.forEach(f => { rec[f.k] = (f.type === 'number' || f.type === 'money') && v[f.k] !== '' ? parseFloat(v[f.k]) : v[f.k]; });
+  Object.assign(rec, sc.fixed || {});
+  if (row) {
+    const old = comRef(key, row);
+    Object.assign(row, rec);
+    if (old !== ref) comCascade(key, old, ref);
+  } else store.push(Object.assign({ id: comNextId(store) }, rec));
+  u.editId = null; u.v = comBlank(key);
+  u.msg = `${sc.noun} ${ref} ${row ? 'updated' : 'saved'}.`; u.tone = 'success';
+  comRenderScreen(container, key);
+}
+
+/* ---------- Reports ---------- */
+function comStatusOf(rp) {
+  if (rp.status) return rp.status;
+  const f = comFields(rp.src).find(x => /status$/i.test(x.k));
+  return r => (f ? r[f.k] : '');
+}
+function comRenderReport(container, key) {
+  if (key === 'overview') return comRenderOverview(container);
+  const rp = COM_REPORTS[key], sc = COM_SCREENS[rp.src], rows = comList(rp.src), st = comStatusOf(rp);
+  const done = rows.filter(r => rp.done.includes(st(r))).length;
+  const counts = {};
+  rows.forEach(r => { const s = st(r) || 'No status'; counts[s] = (counts[s] || 0) + 1; });
+  const valueField = rp.value ? comField(rp.src, rp.value) : null;
+  const valueTile = rp.value
+    ? prodTile(rp.valueLabel ? `Total ${rp.valueLabel}` : `Total ${valueField.label}`, escapeHtml(lcTotalsText(r => prodN(r[rp.value]), rows)), 'Summed per currency')
+    : prodTile('Completion', rows.length ? prodPct(done / rows.length * 100) : '—', `${done} of ${rows.length} finished`);
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        ${prodTile('Records', prodFmt(rows.length), sc.title)}
+        ${prodTile('Open', prodFmt(rows.length - done), 'Still in progress')}
+        ${prodTile('Finished', prodFmt(done), rp.done.join(' / '))}
+        ${valueTile}
+      </div>
+      ${sectionCard('By Status', '', rows.length ? `<div class="flex flex-wrap gap-x-5 gap-y-2.5">${Object.keys(counts).map(s => `<span class="inline-flex items-center gap-2">${comPill(s)}<span class="fs-base font-semibold text-primary tabular">${counts[s]}</span></span>`).join('')}</div>` : '<p class="fs-base text-muted">No records yet.</p>')}
+      <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+        <div class="flex flex-wrap items-start justify-between gap-3 p-4">
+          <div class="min-w-0">
+            <h3 class="text-section-title text-primary">${escapeHtml(sc.title)}</h3>
+            <p class="text-helper text-muted mt-0.5">Read-only. Records are added and edited in the register.</p>
+          </div>
+          <button type="button" data-comgo="${rp.src}" class="${COA_BTN}">Open ${escapeHtml(sc.tab)}</button>
+        </div>
+        ${comResultsBlock(rp.src, key, true)}
+      </section>
+    </div>`;
+  container.querySelectorAll('[data-comgo]').forEach(b => b.addEventListener('click', () => comGo(b.dataset.comgo)));
+  comBindResults(container);
+}
+
+const COM_SHIPPED = ['Shipped', 'In Transit', 'Arrived', 'Delivered'];
+const COM_DOC_CHECK = [['Commercial Invoice', 'commercial_invoice'], ['Packing List', 'packing_list'], ['EXP', 'exp_form'], ['Certificate of Origin', 'coo'], ['Bill of Lading', 'bl']];
+const COM_DOC_DONE = /submitted|certified|issued|released|realized|complete/i;
+// Per document type: how many of the shipments that have left have it prepared, and submitted.
+function comDocCompliance() {
+  const shipped = comList('shipments').filter(s => COM_SHIPPED.includes(s.status)), n = shipped.length;
+  return COM_DOC_CHECK.map(([label, key]) => {
+    const docs = comList(key), hasStatus = !!comField(key, 'status');
+    const prepared = shipped.filter(s => docs.some(d => d.shipment === s.shipmentNo)).length;
+    const submitted = hasStatus ? shipped.filter(s => docs.some(d => d.shipment === s.shipmentNo && COM_DOC_DONE.test(d.status || ''))).length : null;
+    let pill;
+    if (!n) pill = finPill('No shipments', 'neutral', true);
+    else if (prepared < n) pill = finPill(`${n - prepared} missing`, 'warning', true);
+    else if (submitted != null && submitted < n) pill = finPill('Not submitted', 'info', true);
+    else pill = finPill('Complete', 'success', true);
+    return { label, key, n, prepared, submitted, pill };
+  });
+}
+function comRenderOverview(container) {
+  const orders = comList('export_orders'), ships = comList('shipments'), real = comList('realization');
+  const activeOrders = orders.filter(o => !['Closed', 'Cancelled'].includes(o.status));
+  const liveLcs = comList('export_lc').filter(l => ['Active', 'Partially Utilized'].includes(lcStatus(l)));
+  const openReal = real.filter(r => r.realizationStatus !== 'Realized');
+  const moving = ships.filter(s => COM_SHIPPED.includes(s.status)).length;
+  const steps = [['Export Orders', 'export_orders', orders.length], ['Export L/Cs', 'export_lc', comList('export_lc').length], ['Bookings', 'shipment_booking', comList('shipment_booking').length], ['Shipments', 'shipments', ships.length], ['Invoices', 'commercial_invoice', comList('commercial_invoice').length], ['Realized', 'realization', real.filter(r => r.realizationStatus === 'Realized').length]];
+  const maxStep = Math.max(1, ...steps.map(s => s[2]));
+
+  const lcSoon = lcRecords.filter(l => lcBalance(l) > 0 && lcDaysToExpiry(l) >= 0 && lcDaysToExpiry(l) <= 30);
+  const docCheck = comDocCompliance(), docsOpen = docCheck.filter(d => d.n && (d.prepared < d.n || (d.submitted != null && d.submitted < d.n))).length;
+  const overdue = comList('outstanding').filter(r => comOsStatus(r) === 'Overdue');
+  const openClaims = comList('buyer_claim').filter(r => ['Open', 'Under Review'].includes(r.settlementStatus)).length
+    + comList('bank_discrepancy').filter(r => ['Open', 'Waiver Requested'].includes(r.status)).length
+    + comList('lc_discrepancy').filter(r => r.status === 'Open').length;
+  const actions = [
+    [lcSoon.length ? 'warning' : 'success', 'L/C expiry watch', lcSoon.length ? `${lcSoon.length} L/C${lcSoon.length === 1 ? '' : 's'} with undrawn balance expire${lcSoon.length === 1 ? 's' : ''} within 30 days.` : 'No L/C with a balance expires in the next 30 days.', 'export_lc'],
+    [docsOpen ? 'warning' : 'success', 'Document compliance', docsOpen ? `${docsOpen} document type${docsOpen === 1 ? '' : 's'} not yet prepared or submitted for every shipped shipment.` : 'Every shipped shipment has its documents submitted.', 'coo'],
+    [overdue.length ? 'danger' : 'success', 'Overdue receivables', overdue.length ? `${overdue.length} receivable${overdue.length === 1 ? '' : 's'} overdue: ${lcTotalsText(r => prodN(r.exportValue) - prodN(r.received), overdue)}.` : 'Nothing overdue.', 'outstanding'],
+    [openClaims ? 'warning' : 'success', 'Claims & discrepancies', openClaims ? `${openClaims} buyer claim${openClaims === 1 ? '' : 's'} or discrepanc${openClaims === 1 ? 'y' : 'ies'} still open.` : 'No open claims or discrepancies.', 'buyer_claim'],
+  ];
+
+  container.innerHTML = `
+    <div class="space-y-4 pb-8">
+      <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        ${prodTile('Active Export Orders', prodFmt(activeOrders.length), `${orders.filter(o => o.status === 'In Production').length} in production`)}
+        ${prodTile('Export L/C Balance', escapeHtml(lcTotalsText(lcBalance, liveLcs)), `Undrawn on ${liveLcs.length} live export L/C${liveLcs.length === 1 ? '' : 's'}`)}
+        ${prodTile('Shipments', prodFmt(ships.length), `${moving} shipped or in transit`)}
+        ${prodTile('Export Receivable', escapeHtml(lcTotalsText(r => prodN(r.outstanding), openReal)), 'Awaiting realization')}
+      </div>
+      ${sectionCard('Commercial Workflow', '<span class="text-helper text-muted">Records at each step · bar relative to the busiest step</span>', `
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          ${steps.map(([label, key, n]) => `
+            <button type="button" data-comgo="${key}" class="text-left rounded-md border border-side-line bg-side-hover hover:border-side-accent p-3">
+              <p class="fs-title font-semibold text-primary tabular">${n}</p>
+              <p class="text-helper text-muted mt-0.5">${escapeHtml(label)}</p>
+              <span class="block h-1 rounded-full bg-side-line mt-2.5 overflow-hidden"><span class="block h-full rounded-full bg-side-accent" style="width:${Math.round(n / maxStep * 100)}%"></span></span>
+            </button>`).join('')}
+        </div>`)}
+      <div class="grid grid-cols-1 xl:grid-cols-5 gap-4">
+        <div class="xl:col-span-2">${sectionCard('Action Center', '', actions.map(([tone, title, text, key]) => `
+          <button type="button" data-comgo="${key}" class="w-full text-left flex gap-2.5 py-2.5 border-b border-dashed border-side-line last:border-b-0 hover:bg-side-hover rounded-sm">
+            <span class="w-2 h-2 rounded-full mt-1.5 shrink-0 bg-${tone}"></span>
+            <span class="min-w-0"><span class="block fs-base font-medium text-primary">${escapeHtml(title)}</span><span class="block text-helper text-muted mt-0.5">${escapeHtml(text)}</span></span>
+          </button>`).join(''))}</div>
+        <div class="xl:col-span-3">${sectionCard('Document Compliance', `<span class="text-helper text-muted">${moving} shipped shipment${moving === 1 ? '' : 's'}</span>`, `
+          <div class="overflow-x-auto -mx-5 border-t border-side-line">
+            <table class="w-full min-w-[420px]">
+              <thead><tr class="border-b border-side-line">${['Document', 'Prepared', 'Submitted', 'Status'].map((h, i) => prodTh(h, i, 4, i === 1 || i === 2)).join('')}</tr></thead>
+              <tbody>${docCheck.map(d => `
+                <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
+                  <td class="pl-4 pr-2 py-2.5 fs-base font-medium text-primary whitespace-nowrap"><button type="button" data-comgo="${d.key}" class="hover:text-side-accent">${escapeHtml(d.label)}</button></td>
+                  <td class="px-3 py-2.5 fs-base text-primary text-right tabular">${d.prepared} / ${d.n}</td>
+                  <td class="px-3 py-2.5 fs-base text-primary text-right tabular">${d.submitted == null ? '<span class="text-muted">—</span>' : `${d.submitted} / ${d.n}`}</td>
+                  <td class="pr-4 pl-3 py-2.5">${d.pill}</td>
+                </tr>`).join('')}</tbody>
+            </table>
+          </div>`)}</div>
+      </div>
+      <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+        <div class="flex flex-wrap items-start justify-between gap-3 p-4">
+          <div class="min-w-0">
+            <h3 class="text-section-title text-primary">Export Orders</h3>
+            <p class="text-helper text-muted mt-0.5">Newest first</p>
+          </div>
+          <button type="button" data-comgo="export_orders" class="${COA_BTN}">Open Export Order</button>
+        </div>
+        ${comResultsBlock('export_orders', 'overview', true)}
+      </section>
+    </div>`;
+  container.querySelectorAll('[data-comgo]').forEach(b => b.addEventListener('click', () => comGo(b.dataset.comgo)));
+  comBindResults(container);
 }
 
 // ---------- Command palette ----------
