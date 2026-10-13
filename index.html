@@ -2700,6 +2700,8 @@ const POPI_PRICE_TERMS = ['FOB', 'CIF', 'EXW'];
 const POPI_CURRENCIES = ['USD', 'GBP', 'EUR'];
 const POPI_SHIP_MODES = ['Sea', 'Air'];
 const POPI_YESNO = ['Allowed', 'Not Allowed'];
+const POPI_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+const POPI_COMPACT = 'h-8 px-2 rounded border border-side-border bg-canvas fs-head font-medium text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)] focus:border-side-accent tabular';
 
 const POPI_CONFIG = {
   po: { noLabel: 'PO / Order No.', dateLabel: 'PO Date', statusLabel: 'BOM No.', saveLabel: 'Save PO' },
@@ -2750,6 +2752,7 @@ function popiBlankDetails(type) {
     partial: POPI_YESNO[0], transship: POPI_YESNO[0], shippingMarks: '', instructions: '',
   });
   popiState[type].rows = [];
+  popiState[type].colorGroups = [];
 }
 
 function popiEnsureSeeded(type) {
@@ -2759,6 +2762,15 @@ function popiEnsureSeeded(type) {
     rows: [type === 'po'
       ? { no: 'AB-4587', product: "Men's Polo Shirt", cat: 'Knit', fabric: '95% Cotton 5% Elastane', color: 'Black', size: 'S - XL', qty: 10000, price: 4.50 }
       : { no: 'AB-4587', product: "Men's Basic T-Shirt", cat: 'Knit', fabric: '100% Cotton Jersey 180 GSM', color: 'Black', size: 'S - XL', qty: 10000, price: 4.50 }],
+    colorGroups: [{
+      color: 'Black',
+      sizes: [
+        { size: 'S', qty: 2500, itemCode: 'AB-4587-BLK-S', eanCode: '8901234567890' },
+        { size: 'M', qty: 3500, itemCode: 'AB-4587-BLK-M', eanCode: '8901234567891' },
+        { size: 'L', qty: 2500, itemCode: 'AB-4587-BLK-L', eanCode: '8901234567892' },
+        { size: 'XL', qty: 1500, itemCode: 'AB-4587-BLK-XL', eanCode: '8901234567893' },
+      ],
+    }],
   };
 }
 
@@ -2833,12 +2845,10 @@ function popiBuyerCard(type) {
   const body = `
     <div class="space-y-2.5">
       ${biField('Select Buyer', popiSelect(type, 'buyer', biBuyers.map(b => b.name)), { req: true })}
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2.5">
-        ${biField('Inquiry Date', popiDateInput(type, 'inquiryDate'), { req: true })}
-        <div class="sm:col-span-2">${biField('Contact Person', popiText(type, 'contact', 'Contact name'))}</div>
-        ${biField('Season', popiSelect(type, 'season', BI_SEASONS), { req: true })}
-        ${biField('Country', popiSelect(type, 'country', BI_COUNTRIES), { req: true })}
-      </div>
+      ${biField('Inquiry Date', popiDateInput(type, 'inquiryDate'), { req: true })}
+      ${biField('Contact Person', popiText(type, 'contact', 'Contact name'))}
+      ${biField('Season', popiSelect(type, 'season', BI_SEASONS), { req: true })}
+      ${biField('Country', popiSelect(type, 'country', BI_COUNTRIES), { req: true })}
     </div>`;
   return styCard('users', '--info-soft', '--info', 'Buyer & Inquiry', body);
 }
@@ -2879,8 +2889,6 @@ function popiStyleCard(type) {
         ${biField('Garment Type', popiText(type, 'garmentType', 'Garment type'))}
         ${biField('Fabric', popiText(type, 'fabric', 'Fabric'))}
         ${biField('Fabric GSM', popiText(type, 'gsm', 'e.g. 180 GSM'))}
-        ${biField('Color', popiText(type, 'color', 'Color'))}
-        ${biField('Size Range', popiText(type, 'sizeRange', 'e.g. S - XL'))}
       </div>
       <div class="w-[100px] shrink-0">
         <div class="rounded-md border border-side-line bg-side-hover p-3 text-center h-full flex flex-col items-center justify-center gap-1.5">
@@ -2944,6 +2952,84 @@ function popiShippingCard(type) {
       ${biField('Special Instructions', popiText(type, 'instructions', 'Special instructions'))}
     </div>`;
   return styCard('truck', '--violet-soft', '--violet', 'Shipping Details', body);
+}
+
+/* ---------- color group / sizewise item details ---------- */
+function popiSizeRowHtml(type, gIdx, sIdx) {
+  const r = popiState[type].colorGroups[gIdx].sizes[sIdx];
+  return `
+    <tr data-popi-sizerow="${gIdx}:${sIdx}">
+      <td class="px-1.5 py-1">
+        <select data-popi-group="${gIdx}" data-popi-size="${sIdx}" data-popi-sizecell="size" class="${POPI_COMPACT} w-full">
+          ${POPI_SIZES.map(s => `<option value="${s}" ${s === r.size ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </td>
+      <td class="px-1.5 py-1">
+        <input type="text" inputmode="numeric" data-popi-group="${gIdx}" data-popi-size="${sIdx}" data-popi-sizecell="qty" value="${r.qty}"
+          class="${POPI_COMPACT} w-full text-right" />
+      </td>
+      <td class="px-1.5 py-1">
+        <input type="text" data-popi-group="${gIdx}" data-popi-size="${sIdx}" data-popi-sizecell="itemCode" value="${escapeHtml(r.itemCode)}" class="${POPI_COMPACT} w-full" />
+      </td>
+      <td class="px-1.5 py-1">
+        <input type="text" data-popi-group="${gIdx}" data-popi-size="${sIdx}" data-popi-sizecell="eanCode" value="${escapeHtml(r.eanCode)}" class="${POPI_COMPACT} w-full" />
+      </td>
+      <td class="px-1.5 py-1">
+        <button type="button" data-popi-sizedel="${gIdx}:${sIdx}" class="w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:text-danger hover:bg-dangerSoft" title="Remove size">${STY_DELETE_ICON}</button>
+      </td>
+    </tr>`;
+}
+
+function popiColorGroupHtml(type, gIdx) {
+  const g = popiState[type].colorGroups[gIdx];
+  return `
+    <div class="rounded-md border border-side-line p-2.5 space-y-1.5" data-popi-groupblock="${gIdx}">
+      <div class="flex items-center gap-3">
+        <label class="flex items-center gap-2 min-w-0">
+          <span class="fs-small font-medium text-muted whitespace-nowrap">Color Name</span>
+          <select data-popi-group="${gIdx}" data-popi-groupcolor class="${POPI_COMPACT} w-48">
+            ${STY_COLORS.map(c => `<option value="${escapeHtml(c.label)}" ${c.label === g.color ? 'selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}
+          </select>
+        </label>
+        <button type="button" data-popi-groupdel="${gIdx}" class="ml-auto w-7 h-7 rounded border border-side-border flex items-center justify-center text-muted hover:text-danger hover:bg-dangerSoft" title="Remove color group">${STY_DELETE_ICON}</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[560px] table-fixed">
+          <colgroup>
+            <col style="width:120px">
+            <col style="width:180px">
+            <col>
+            <col>
+            <col style="width:72px">
+          </colgroup>
+          <thead><tr class="border-b border-side-line">
+            <th class="px-1.5 py-1.5 fs-head font-semibold text-muted text-left whitespace-nowrap">Size</th>
+            <th class="px-1.5 py-1.5 fs-head font-semibold text-muted text-right whitespace-nowrap">Quantity</th>
+            <th class="px-1.5 py-1.5 fs-head font-semibold text-muted text-left whitespace-nowrap">Item Code</th>
+            <th class="px-1.5 py-1.5 fs-head font-semibold text-muted text-left whitespace-nowrap">EAN Code</th>
+            <th class="px-1.5 py-1.5 fs-head font-semibold text-muted text-left whitespace-nowrap">Action</th>
+          </tr></thead>
+          <tbody data-popi-sizebody="${gIdx}">${g.sizes.map((s, i) => popiSizeRowHtml(type, gIdx, i)).join('')}</tbody>
+        </table>
+      </div>
+      <button type="button" data-popi-addsize="${gIdx}" class="inline-flex items-center gap-1 fs-small font-semibold text-side-accent hover:text-side-accentHover">${STY_PLUS_ICON}Add Size</button>
+    </div>`;
+}
+
+function popiColorGroupSection(type) {
+  const groups = popiState[type].colorGroups;
+  const addBtn = `<button type="button" data-popi-addgroup class="${POPI_BTN_PRIMARY}">${STY_PLUS_ICON}Add Color Group</button>`;
+  const body = groups.length
+    ? `<div class="space-y-2.5">${groups.map((g, i) => popiColorGroupHtml(type, i)).join('')}</div>`
+    : '<p class="text-body text-muted">No color groups added yet.</p>';
+  return styCard('grid', '--info-soft', '--info', 'Color Group', body, {
+    right: addBtn,
+  });
+}
+
+function popiRefreshColorGroups(type) {
+  const el = document.getElementById('popiColorGroup');
+  if (el) el.innerHTML = popiColorGroupSection(type);
 }
 
 /* ---------- order details table ---------- */
@@ -3079,6 +3165,15 @@ function popiBindEvents(container, type) {
       if (key === 'discount' || key === 'other' || key === 'vat') popiRecalcTotal(type);
       return;
     }
+    const gIdx = e.target.dataset.popiGroup;
+    const sIdx = e.target.dataset.popiSize;
+    const sCell = e.target.dataset.popiSizecell;
+    if (gIdx !== undefined && sIdx !== undefined && sCell) {
+      const g = popiState[type].colorGroups[Number(gIdx)];
+      const s = g && g.sizes[Number(sIdx)];
+      if (s) s[sCell] = sCell === 'qty' ? (parseInt(String(e.target.value).replace(/\D/g, ''), 10) || 0) : e.target.value;
+      return;
+    }
     const rowIdx = e.target.dataset.popiRow;
     const cell = e.target.dataset.popiCell;
     if (rowIdx === undefined || !cell) return;
@@ -3101,6 +3196,17 @@ function popiBindEvents(container, type) {
 
   if (popiChangeHandler) container.removeEventListener('change', popiChangeHandler);
   popiChangeHandler = (e) => {
+    if (e.target.dataset.popiGroupcolor !== undefined) {
+      const g = popiState[type].colorGroups[Number(e.target.dataset.popiGroup)];
+      if (g) g.color = e.target.value;
+      return;
+    }
+    if (e.target.dataset.popiSizecell === 'size') {
+      const g = popiState[type].colorGroups[Number(e.target.dataset.popiGroup)];
+      const s = g && g.sizes[Number(e.target.dataset.popiSize)];
+      if (s) s.size = e.target.value;
+      return;
+    }
     if (e.target.dataset.popif === 'buyer') {
       const b = biBuyers.find(x => x.name === e.target.value);
       if (b) {
@@ -3115,6 +3221,28 @@ function popiBindEvents(container, type) {
   if (popiClickHandler) container.removeEventListener('click', popiClickHandler);
   popiClickHandler = (e) => {
     if (popiStyleCombo.handleClick(e)) return;
+    if (e.target.closest('[data-popi-addgroup]')) {
+      popiState[type].colorGroups.push({ color: STY_COLORS[0].label, sizes: [{ size: 'S', qty: 0, itemCode: '', eanCode: '' }] });
+      popiRefreshColorGroups(type); return;
+    }
+    const groupDel = e.target.closest('[data-popi-groupdel]');
+    if (groupDel) {
+      popiState[type].colorGroups.splice(Number(groupDel.dataset.popiGroupdel), 1);
+      popiRefreshColorGroups(type); return;
+    }
+    const addSize = e.target.closest('[data-popi-addsize]');
+    if (addSize) {
+      const g = popiState[type].colorGroups[Number(addSize.dataset.popiAddsize)];
+      if (g) { g.sizes.push({ size: 'M', qty: 0, itemCode: '', eanCode: '' }); popiRefreshColorGroups(type); }
+      return;
+    }
+    const sizeDel = e.target.closest('[data-popi-sizedel]');
+    if (sizeDel) {
+      const [gIdx, sIdx] = sizeDel.dataset.popiSizedel.split(':').map(Number);
+      const g = popiState[type].colorGroups[gIdx];
+      if (g) { g.sizes.splice(sIdx, 1); popiRefreshColorGroups(type); }
+      return;
+    }
     if (e.target.closest('[data-popi-addrow]')) {
       popiState[type].rows.push({ no: 'AB-NEW', product: 'New Product', cat: 'Knit', fabric: '—', color: '—', size: 'S - XL', qty: 1000, price: 0 });
       popiRefreshTable(type); popiRecalcTotal(type); return;
@@ -3150,8 +3278,9 @@ function renderPOPI(container, type) {
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">${popiBuyerCard(type) + popiBankCard(type) + popiStyleCard(type)}</div>
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">${popiConstructionCard(type) + popiCommercialCard(type) + popiShippingCard(type)}</div>
       </div>
-      ${popiFooterButtons(type)}
+      <div id="popiColorGroup">${popiColorGroupSection(type)}</div>
       ${popiTableSection(type)}
+      ${popiFooterButtons(type)}
       ${popiInfoBanner()}
     </div>`;
 
