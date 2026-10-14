@@ -434,7 +434,12 @@ const modules = [
   ]},
   { key:'finance', name:'Finance', icon:'wallet', submodules:[
     { name:'Chart of Accounts' }, { name:'Voucher Management' }, { name:'General Entry' }, { name:'VAT & Tax' },
-    { name:'Budget Management' }, { name:'Financial Statements' }, { name:'Audit' },
+    { name:'Budget Management' }, { name:'Financial Statements' },
+    { name:'Export Order' }, { name:'L/C Management' }, { name:'Back-to-Back L/C' },
+    { name:'Import' }, { name:'Bond & Customs' }, { name:'Shipment' }, { name:'Export Documentation' },
+    { name:'Freight & C&F' }, { name:'Export Costing' }, { name:'Bank & Realization' }, { name:'Claims & Discrepancy' },
+    { name:'Commission' }, { name:'Export Incentive' }, { name:'Reports' },
+    { name:'Audit' },
   ]},
   { key:'procurement', name:'Procurement', icon:'truck', submodules:[
     { name:'Purchase Requisition' }, { name:'Supplier Selection/Management' }, { name:'Purchase Order' },
@@ -447,12 +452,6 @@ const modules = [
   { key:'production', name:'Production', icon:'gear', submodules:[
     { name:'Production Planning' }, { name:'Production Stage' }, { name:'Daily Production' },
     { name:'Quality Control' }, { name:'Defect & Rework' }, { name:'Efficiency & KPI' }, { name:'Other Production Cost' },
-  ]},
-  { key:'commercial', name:'Commercial', icon:'ship', submodules:[
-    { name:'Export Order' }, { name:'L/C Management' }, { name:'Back-to-Back L/C' },
-    { name:'Import' }, { name:'Bond & Customs' }, { name:'Shipment' }, { name:'Export Documentation' },
-    { name:'Freight & C&F' }, { name:'Export Costing' }, { name:'Bank & Realization' }, { name:'Claims & Discrepancy' },
-    { name:'Commission' }, { name:'Export Incentive' }, { name:'Reports' },
   ]},
   { key:'hr', name:'HR', icon:'users', submodules:[
     { name:'Employee Management' }, { name:'Attendance' }, { name:'Holiday Management' },
@@ -722,7 +721,7 @@ function renderContent() {
   else if (mod.key === 'production' && sm.name === 'Defect & Rework') renderProdScreen(pageContent, 'defect');
   else if (mod.key === 'production' && sm.name === 'Efficiency & KPI') renderProdEfficiency(tabsEl, pageContent);
   else if (mod.key === 'production' && sm.name === 'Other Production Cost') renderProdScreen(pageContent, 'cost');
-  else if (mod.key === 'commercial') renderCommercial(tabsEl, pageContent, sm.name);
+  else if (mod.key === 'finance' && COM_GROUPS.some(g => g.name === sm.name)) renderCommercial(tabsEl, pageContent, sm.name);
   else renderNotBuilt(pageContent, mod, sm, single);
 }
 
@@ -9299,8 +9298,8 @@ const PROC_ROUTE_TXT = {
   Cash: 'Goes to a Purchase Voucher. A cash posting account is chosen at posting time.',
   Bank: 'Goes to a Purchase Voucher. A bank posting account is chosen at posting time.',
   'Partial Payment': 'Total, paid and remaining are tracked from posted payments.',
-  LC: 'Opened as an Import L/C under Import Management (Commercial › Import).',
-  'BtB LC': 'Opened as a BTB L/C in Commercial › Back-to-Back L/C, against a master export L/C.',
+  LC: 'Opened as an Import L/C under Import Management (Finance › Import).',
+  'BtB LC': 'Opened as a BTB L/C in Finance › Back-to-Back L/C, against a master export L/C.',
 };
 const PROC_RAW_PRODUCTS = [
   { name: 'Cotton Jersey Fabric (180 GSM)', unit: 'Kg' },
@@ -15263,10 +15262,11 @@ function prodChartBodyHtml() {
     </div>`;
 }
 
-// ---------- Commercial ----------
+// ---------- Commercial (screens rendered under the Finance menu) ----------
 // Content ported from the Commercial reference build (commercial.html); every style below is
 // index.html's own. The sidebar is one level deep, so each reference group is a submenu and its
-// screens are tabs. One schema-driven engine (COM_SCREENS + renderCommercial) renders every tab:
+// screens are tabs (the groups are Finance submodules now). One schema-driven engine
+// (COM_SCREENS + renderCommercial) renders every tab:
 // a sectioned entry form card above a register with filter and paging.
 // Linked fields are pickers, never free text: buyers and styles come from Merchandising, suppliers
 // from Procurement, everything else from the other Commercial registers. Links store the record's
@@ -16150,7 +16150,10 @@ function comGo(screenKey) {
   }
   const gi = COM_GROUPS.findIndex(g => g.tabs.includes(screenKey));
   if (gi < 0) return;
-  goTo('commercial', gi);
+  // The Commercial groups are Finance submenus now (see the Finance block in `modules`).
+  const subIdx = modules.find(m => m.key === 'finance').submodules.findIndex(s => s.name === COM_GROUPS[gi].name);
+  if (subIdx < 0) return;
+  goTo('finance', subIdx);
   state.tabIndex = COM_GROUPS[gi].tabs.indexOf(screenKey);
   renderContent();
 }
