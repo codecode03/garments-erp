@@ -6006,19 +6006,7 @@ function coaCashBankStatCard(iconHtml, value, label) {
 }
 
 function coaCashBankSummaryCards() {
-  let cashTotal = 0, bankTotal = 0, activeCount = 0;
-  coaCashBankAccounts.forEach(a => {
-    if (a.type === 'Cash') cashTotal += (a.currentBalance || 0);
-    else bankTotal += (a.currentBalance || 0);
-    if (a.status === 'Active') activeCount += 1;
-  });
-  return `
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_CASH_ICON, coaInt(cashTotal), 'Total Cash-in-Hand')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_BANK_ICON, coaInt(bankTotal), 'Total Bank Balance')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, String(activeCount), 'Active Accounts')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, String(coaCashBankAccounts.length), 'Total Accounts')}
-    </div>`;
+  return '';
 }
 
 function coaCashBankFilterBar() {
@@ -6109,7 +6097,6 @@ function coaCashBankListCard() {
 function coaRenderCashBank(container) {
   container.innerHTML = `
     <div class="space-y-4 pb-8">
-      ${coaCashBankSummaryCards()}
       ${coaCashBankFilterBar()}
       ${coaCashBankListCard()}
     </div>`;
@@ -6770,29 +6757,7 @@ function apArFiltered(key) {
 }
 
 function apArSummaryCards(key) {
-  const cfg = AP_AR_TYPES[key];
-  const items = apArItems[key];
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  let outstanding = 0, overdue = 0, dueSoon = 0, paidTotal = 0;
-  items.forEach(it => {
-    const bal = apArBalance(it);
-    paidTotal += (it.paid || 0);
-    if (bal > 0) {
-      outstanding += bal;
-      const due = new Date(it.dueDate + 'T00:00:00');
-      const diffDays = (due - today) / 86400000;
-      if (diffDays < 0) overdue += bal;
-      else if (diffDays <= 7) dueSoon += bal;
-    }
-  });
-  const label = key === 'payable' ? 'Payable' : 'Receivable';
-  return `
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      ${coaCashBankStatCard(AP_AR_ICON_OUTSTANDING, coaInt(outstanding), `Total Outstanding ${label}`)}
-      ${coaCashBankStatCard(AP_AR_ICON_OVERDUE, coaInt(overdue), 'Overdue Amount')}
-      ${coaCashBankStatCard(AP_AR_ICON_DUESOON, coaInt(dueSoon), 'Due in Next 7 Days')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, coaInt(paidTotal), cfg.paidLabel)}
-    </div>`;
+  return '';
 }
 
 function apArFilterBar(key) {
@@ -6896,7 +6861,6 @@ function apArListCard(key) {
 function vmRenderApAr(container, key) {
   container.innerHTML = `
     <div class="space-y-4 pb-8">
-      ${apArSummaryCards(key)}
       ${apArFilterBar(key)}
       ${apArListCard(key)}
     </div>`;
@@ -7457,19 +7421,7 @@ function vatFiltered() {
 }
 
 function vatSummaryCards() {
-  let taxable = 0, vat = 0, total = 0, issued = 0;
-  vatInvoices.forEach(v => {
-    if (v.status !== 'Issued') return;
-    const c = vatCalc(v);
-    taxable += c.taxable; vat += c.vatAmount; total += c.total; issued += 1;
-  });
-  return `
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      ${coaCashBankStatCard(AP_AR_ICON_OUTSTANDING, issued, 'Mushak 6.3 Issued')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, coaInt(Math.round(taxable)), 'Total Taxable Value (BDT)')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_CASH_ICON, coaInt(Math.round(vat)), 'Output VAT Collected (BDT)')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, coaInt(Math.round(total)), 'Total Invoice Value (BDT)')}
-    </div>`;
+  return '';
 }
 
 function vatFilterBar() {
@@ -7711,7 +7663,6 @@ function vatListCard() {
 function renderVatTax(container) {
   container.innerHTML = `
     <div class="space-y-4 pb-8">
-      ${vatSummaryCards()}
       ${vatFilterBar()}
       ${vatListCard()}
     </div>`;
@@ -7950,15 +7901,7 @@ function budgetFiltered() {
 }
 
 function budgetSummaryCards() {
-  let budgeted = 0, spent = 0, over = 0;
-  budgetRecords.forEach(b => { budgeted += b.budgetedAmount || 0; spent += b.actualSpent || 0; if (budgetSpendStatus(b) === 'Over Budget') over += 1; });
-  return `
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, coaInt(Math.round(budgeted)), 'Total Budgeted (BDT)')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, coaInt(Math.round(spent)), 'Total Actual Spend (BDT)')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_CASH_ICON, coaInt(Math.round(budgeted - spent)), 'Remaining Balance (BDT)')}
-      ${coaCashBankStatCard(AP_AR_ICON_OVERDUE, over, 'Lines Over Budget')}
-    </div>`;
+  return '';
 }
 
 function budgetFilterBar() {
@@ -8046,7 +7989,6 @@ function budgetCounterText() {
 function renderBudgetManagement(container) {
   container.innerHTML = `
     <div class="space-y-4 pb-8">
-      <div id="budgetSummary">${budgetSummaryCards()}</div>
       ${budgetFilterBar()}
       <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
         <div class="flex flex-wrap items-start justify-between gap-3 p-4">
@@ -8067,7 +8009,8 @@ function renderBudgetManagement(container) {
 function budgetRefresh(container, withSummary) {
   container.querySelector('#budgetResults').innerHTML = budgetResultsHtml();
   container.querySelector('#budgetCounter').textContent = budgetCounterText();
-  if (withSummary) container.querySelector('#budgetSummary').innerHTML = budgetSummaryCards();
+  const bs = container.querySelector('#budgetSummary');
+  if (withSummary && bs) bs.innerHTML = budgetSummaryCards();
 }
 
 function budgetBindEvents(container) {
@@ -8236,14 +8179,7 @@ function lcTotalsCard(valueOf, records) {
 }
 
 function lcSummaryCards() {
-  const expiring = lcRecords.filter(l => lcBalance(l) > 0 && lcDaysToExpiry(l) >= 0 && lcDaysToExpiry(l) <= 30).length;
-  return `
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, lcTotalsCard(l => prodN(l.amount)), 'Total LC Value')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, lcTotalsCard(lcUtilized), 'Total Utilized')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_CASH_ICON, lcTotalsCard(lcBalance), 'Available Balance')}
-      ${coaCashBankStatCard(AP_AR_ICON_DUESOON, expiring, 'Expiring in 30 Days')}
-    </div>`;
+  return '';
 }
 
 function lcFilterBar() {
@@ -8320,7 +8256,6 @@ function lcCounterText() {
 function renderLcExportFinance(container) {
   container.innerHTML = `
     <div class="space-y-4 pb-8">
-      <div id="lcSummary">${lcSummaryCards()}</div>
       ${lcFilterBar()}
       <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
         <div class="flex flex-wrap items-start justify-between gap-3 p-4">
@@ -8341,7 +8276,8 @@ function lcRefresh(container, withSummary) {
   container.querySelector('#lcResults').innerHTML = lcResultsHtml();
   container.querySelector('#lcCounter').textContent = lcCounterText();
   if (withSummary) {
-    container.querySelector('#lcSummary').innerHTML = lcSummaryCards();
+    const sumEl = container.querySelector('#lcSummary');
+    if (sumEl) sumEl.innerHTML = lcSummaryCards();
     // A new issuing bank may have appeared, or the last LC for one may be gone.
     const bankSel = container.querySelector('#lcBankFilter');
     const banks = lcBankOptions();
@@ -8426,14 +8362,7 @@ function auditRiskPill(risk) {
 const AUDIT_STATUS_TEXT = { Open: 'text-danger', 'In Progress': 'text-warning', Resolved: 'text-info', Closed: 'text-secondary' };
 
 function auditSummaryCards() {
-  const unresolved = (a) => a.status === 'Open' || a.status === 'In Progress';
-  return `
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      ${coaCashBankStatCard(AP_AR_ICON_OUTSTANDING, auditFindings.length, 'Total Findings Logged')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, auditFindings.filter(unresolved).length, 'Open / In Progress')}
-      ${coaCashBankStatCard(AP_AR_ICON_OVERDUE, auditFindings.filter(a => a.riskLevel === 'High' && unresolved(a)).length, 'Unresolved High Risk')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, auditFindings.filter(a => !unresolved(a)).length, 'Resolved / Closed')}
-    </div>`;
+  return '';
 }
 
 // ---- Report Generator: a point-in-time summary computed from each area's live data ----
@@ -8579,7 +8508,6 @@ function auditCounterText() {
 function renderFinanceAudit(container) {
   container.innerHTML = `
     <div class="space-y-4 pb-8">
-      <div id="auditSummary">${auditSummaryCards()}</div>
       ${auditReportCard()}
       ${auditFilterBar()}
       <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
@@ -8599,7 +8527,8 @@ function renderFinanceAudit(container) {
 function auditRefresh(container, withSummary) {
   container.querySelector('#auditResults').innerHTML = auditResultsHtml();
   container.querySelector('#auditCounter').textContent = auditCounterText();
-  if (withSummary) container.querySelector('#auditSummary').innerHTML = auditSummaryCards();
+  const sumEl = container.querySelector('#auditSummary');
+  if (withSummary && sumEl) sumEl.innerHTML = auditSummaryCards();
   // The findings summary report reads this same list, so keep it current once generated.
   if (withSummary && auditReport.generated) container.querySelector('#auditReportOut').innerHTML = auditReportHtml();
 }
@@ -8833,14 +8762,9 @@ function fsIncome(by) {
 
 function fsPlHtml() {
   const by = fsBalances();
-  const { rev, exp, net } = fsIncome(by);
+  const { rev, exp } = fsIncome(by);
   if (!rev.rows.length && !exp.rows.length) return fsEmptyCard('the Profit & Loss statement');
   return `
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, coaMoney(rev.total), 'Total Revenue (BDT)')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_CASH_ICON, coaMoney(exp.total), 'Total Expenses (BDT)')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, fsMoney(net), net >= 0 ? 'Net Profit (BDT)' : 'Net Loss (BDT)')}
-    </div>
     ${fsSectionCard('Revenue', rev, 'Total Revenue', 'No revenue posted yet.')}
     ${fsSectionCard('Expenses', exp, 'Total Expenses', 'No expenses posted yet.')}`;
 }
@@ -8851,15 +8775,8 @@ function fsBsHtml() {
   if (!assets.rows.length && !liab.rows.length && !eq.rows.length && !fsIncome(by).rev.rows.length && !fsIncome(by).exp.rows.length) return fsEmptyCard('the Balance Sheet');
   const earnings = fsIncome(by).net;
   const totalEquity = eq.total + earnings;
-  const balanced = Math.abs(assets.total - (liab.total + totalEquity)) < 0.005;
   const equityWithEarnings = { rows: [...eq.rows, { code: '—', name: 'Current Year Earnings', amount: earnings }], total: totalEquity };
   return `
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, fsMoney(assets.total), 'Total Assets (BDT)')}
-      ${coaCashBankStatCard(AP_AR_ICON_OUTSTANDING, fsMoney(liab.total), 'Total Liabilities (BDT)')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_CASH_ICON, fsMoney(totalEquity), 'Total Equity (BDT)')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, balanced ? 'Balanced' : 'Not balanced', 'Assets = Liabilities + Equity')}
-    </div>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
       ${fsSectionCard('Assets', assets, 'Total Assets', 'No assets posted yet.')}
       <div class="space-y-4">
@@ -15434,14 +15351,7 @@ const COM_LC_UTIL_COL = comCol('Utilized / Balance', null, null, {
 const comDrawCol = (label, amtKey, lcKey) => comCol(label, null, null, { right: true, html: r => `<span class="fs-base text-primary tabular">${coaMoney(prodN(r[amtKey]))}</span> <span class="text-helper text-muted">${escapeHtml(comLcCur(r[lcKey]))}</span>` });
 const comChangeCol = () => comCol('Previous → New', null, null, { html: r => `<p class="fs-base text-muted line-through">${escapeHtml(r.oldValue || '—')}</p><p class="fs-base text-primary mt-0.5">${escapeHtml(r.newValue || '—')}</p>` });
 function comLcTiles(key) {
-  const list = comList(key), soon = list.filter(l => lcBalance(l) > 0 && lcDaysToExpiry(l) >= 0 && lcDaysToExpiry(l) <= 30).length;
-  return `
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_TOTAL_ICON, lcTotalsCard(l => prodN(l.amount), list), 'Total L/C Value')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_ACTIVE_ICON, lcTotalsCard(lcUtilized, list), 'Total Utilized')}
-      ${coaCashBankStatCard(COA_CASHBANK_STAT_CASH_ICON, lcTotalsCard(lcBalance, list), 'Available Balance')}
-      ${coaCashBankStatCard(AP_AR_ICON_DUESOON, soon, 'Expiring in 30 Days')}
-    </div>`;
+  return '';
 }
 
 /* ---------- Screens ----------
@@ -15510,7 +15420,7 @@ const COM_SCREENS = {
     ],
     cols: [comCol('L/C No. / Type', 'lcNo', 'lcType'), comCol('Buyer / Issuing Bank', 'buyer', 'issuingBank'), COM_LC_EXPIRY_COL, COM_LC_VALUE_COL, COM_LC_UTIL_COL],
     fill: { exportOrder: ['export_orders', { buyer: 'buyer', currency: 'currency', amount: 'totalValue', latestShipmentDate: 'latestShipmentDate', contractRef: 'salesContractNo', paymentTerms: 'paymentTerms', tolerance: 'tolerance', portOfLoading: 'portLoading', portOfDischarge: 'portDischarge' }] },
-    validate: comLcValidate, tiles: () => comLcTiles('export_lc'),
+    validate: comLcValidate,
   },
   lc_amendments: {
     tab: 'L/C Amendment', noun: 'L/C Amendment', title: 'L/C Amendments',
@@ -15540,13 +15450,13 @@ const COM_SCREENS = {
       ['Amount & Validity', [comM('amount', 'L/C Amount', COM_REQ), comLcCurField(), comD('issueDate', 'Opening Date', COM_REQ), comD('expiryDate', 'Expiry Date', COM_REQ), comD('latestShipmentDate', 'Shipment Deadline')]],
     ],
     cols: [comCol('BTB L/C / Master L/C', 'lcNo', 'masterLc'), comCol('Supplier / Bank', 'buyer', 'issuingBank'), comCol('Material / PO', 'material', 'contractRef'), COM_LC_EXPIRY_COL, COM_LC_VALUE_COL, COM_LC_UTIL_COL],
-    validate: comLcValidate, tiles: () => comLcTiles('btb_lc'),
+    validate: comLcValidate,
   },
   local_lc: {
     tab: 'Local L/C', noun: 'Local L/C', title: 'Local L/Cs', ref: 'lcNo', hint: 'buyer', fixed: { lcType: 'Local LC' },
     sections: [['L/C Details', [comT('lcNo', 'Local L/C No.', COM_REQ), comR('masterLc', 'Master Export L/C', 'export_lc'), comSp('buyer', 'Local Supplier', COM_REQ), comT('material', 'Material'), comT('issuingBank', 'Bank', COM_REQ), comM('amount', 'L/C Amount', COM_REQ), comLcCurField(), comD('issueDate', 'Opening Date', COM_REQ), comD('expiryDate', 'Expiry Date', COM_REQ)]]],
     cols: [comCol('Local L/C / Master L/C', 'lcNo', 'masterLc'), comCol('Supplier / Bank', 'buyer', 'issuingBank'), COM_LC_EXPIRY_COL, COM_LC_VALUE_COL, COM_LC_UTIL_COL],
-    validate: comLcValidate, tiles: () => comLcTiles('local_lc'),
+    validate: comLcValidate,
   },
   btb_utilization: {
     tab: 'BTB Utilization', noun: 'BTB Utilization', title: 'BTB / Local L/C Utilization',
@@ -15569,7 +15479,7 @@ const COM_SCREENS = {
     sections: [['Import L/C', [comT('lcNo', 'Import L/C No.', COM_REQ), comR('indentNo', 'Import Indent', 'import_indent'), comSp('buyer', 'Supplier', COM_REQ), comT('issuingBank', 'Opening Bank', COM_REQ), comT('material', 'Raw Material / Machinery'), comM('amount', 'L/C Amount', COM_REQ), comLcCurField(), comD('issueDate', 'Opening Date', COM_REQ), comD('expiryDate', 'Expiry Date', COM_REQ), comD('latestShipmentDate', 'Shipment Deadline')]]],
     cols: [comCol('Import L/C / Indent', 'lcNo', 'indentNo'), comCol('Supplier / Bank', 'buyer', 'issuingBank'), COM_LC_EXPIRY_COL, COM_LC_VALUE_COL, COM_LC_UTIL_COL],
     fill: { indentNo: ['import_indent', { buyer: 'supplier', material: 'material', amount: 'estimatedCost' }] },
-    validate: comLcValidate, tiles: () => comLcTiles('import_lc'),
+    validate: comLcValidate,
   },
   import_shipment: {
     tab: 'Import Shipment', noun: 'Import Shipment', title: 'Import Shipments', hint: 'supplier',
