@@ -434,7 +434,7 @@ const modules = [
   ]},
   { key:'finance', name:'Finance', icon:'wallet', submodules:[
     { name:'Chart of Accounts' }, { name:'Voucher Management' }, { name:'General Entry' }, { name:'VAT & Tax' },
-    { name:'LC & Export Finance' }, { name:'Budget Management' }, { name:'Financial Statements' }, { name:'Audit' },
+    { name:'Budget Management' }, { name:'Financial Statements' }, { name:'Audit' },
   ]},
   { key:'procurement', name:'Procurement', icon:'truck', submodules:[
     { name:'Purchase Requisition' }, { name:'Supplier Selection/Management' }, { name:'Purchase Order' },
@@ -606,7 +606,6 @@ const subtitles = {
   'General Entry': 'Post daily cash and bank transactions directly against the Chart of Accounts',
   'VAT & Tax': 'Issue and track Mushak 6.3 tax invoices and output VAT',
   'Budget Management': 'Plan departmental budgets and track actual spend against them',
-  'LC & Export Finance': 'Read-only view of every L/C entered in Commercial: value, utilization and expiry',
   'Audit': 'Log audit findings and generate summaries from live Finance data',
   'Financial Statements': 'Trial balance, ledger, profit & loss and balance sheet from posted entries',
   'Purchase Requisition': 'Create and track requisitions linked to confirmed purchase orders',
@@ -688,7 +687,6 @@ function renderContent() {
   else if (mod.key === 'finance' && sm.name === 'General Entry') renderGeneralEntry(pageContent);
   else if (mod.key === 'finance' && sm.name === 'VAT & Tax') renderVatTax(pageContent);
   else if (mod.key === 'finance' && sm.name === 'Budget Management') renderBudgetManagement(pageContent);
-  else if (mod.key === 'finance' && sm.name === 'LC & Export Finance') renderLcExportFinance(pageContent);
   else if (mod.key === 'finance' && sm.name === 'Audit') renderFinanceAudit(pageContent);
   else if (mod.key === 'finance' && sm.name === 'Financial Statements') renderFinancialStatements(tabsEl, pageContent);
   else if (mod.key === 'procurement' && sm.name === 'Purchase Requisition') renderPurchaseRequisition(pageContent);
