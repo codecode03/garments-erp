@@ -449,7 +449,7 @@ const modules = [
     { name:'Quality Control' }, { name:'Defect & Rework' }, { name:'Efficiency & KPI' }, { name:'Other Production Cost' },
   ]},
   { key:'commercial', name:'Commercial', icon:'ship', submodules:[
-    { name:'Buyer & Agent' }, { name:'Export Order' }, { name:'L/C Management' }, { name:'Back-to-Back L/C' },
+    { name:'Export Order' }, { name:'L/C Management' }, { name:'Back-to-Back L/C' },
     { name:'Import' }, { name:'Bond & Customs' }, { name:'Shipment' }, { name:'Export Documentation' },
     { name:'Freight & C&F' }, { name:'Export Costing' }, { name:'Bank & Realization' }, { name:'Claims & Discrepancy' },
     { name:'Commission' }, { name:'Export Incentive' }, { name:'Reports' },
@@ -621,7 +621,7 @@ const subtitles = {
   'Stock Transfer': 'Move inventory between warehouses with a recorded reason and reference',
   'Company': 'Company profile reused across ERP documents, plus notification preferences',
   'Branch & Factory': 'Maintain branches, factories and organizational locations',
-  'All Entry': 'Central access to Customer and Product masters',
+  'All Entry': 'Central access to shared masters: customer, product, buying houses, agents and buyer commercial terms',
   'Users Roles & Permissions': 'Manage users, roles and module-level access permissions',
   'Barcode Setup': 'Configure and generate Code 128 barcodes',
   'Activity Log': 'Operational activity: who did what, when and where',
@@ -12027,9 +12027,16 @@ function adminLocBindEvents(container) {
 // Content ported from the Finance reference build's All Entry page. The reference also has a
 // Supplier tab and an Invoice Templates tab here; this build drops both — suppliers already have
 // their own register at Procurement > Supplier Selection/Management, and Templates was removed
-// from the Admin menu entirely. What's left is Customer and Product, the two masters nothing
-// else in this build already owns.
-const ADMIN_ENTRY_TABS = ['Customer', 'Product'];
+// from the Admin menu entirely. Buying House, Agent and Buyer Terms moved here from the old
+// Commercial › Buyer & Agent menu; they reuse the Commercial engine (COM_SCREENS +
+// comRenderScreen), so their schemas and comRecords seed stay in the Commercial block.
+const ADMIN_ENTRY_TABS = [
+  { label: 'Customer', kind: 'admin', key: 'customer' },
+  { label: 'Product', kind: 'admin', key: 'product' },
+  { label: 'Buying House', kind: 'com', key: 'buying_houses' },
+  { label: 'Agent', kind: 'com', key: 'agents' },
+  { label: 'Buyer Terms', kind: 'com', key: 'buyer_terms' },
+];
 
 const adminCustomers = [
   { id: 1, code: 'CUS-000001', name: 'Everest Apparels Ltd.', contactPerson: 'Rashed Karim', phone: '+880 1711-666001', email: 'buying@everestapparels.example', address: 'Gulshan-1, Dhaka', country: 'Bangladesh', paymentTerms: '60 Days', currency: 'USD', status: 'Active', remarks: '' },
@@ -12254,11 +12261,12 @@ function adminEntryProductTab() {
 }
 
 function renderAdminEntry(tabsEl, container) {
+  if (state.tabIndex >= ADMIN_ENTRY_TABS.length) state.tabIndex = 0;
   tabsEl.classList.remove('hidden');
   tabsEl.innerHTML = `
     <div class="flex items-center gap-1 -mb-px pb-px overflow-x-auto overflow-y-hidden">
       ${ADMIN_ENTRY_TABS.map((t, i) => `
-        <button type="button" data-adminentrytab="${i}" class="px-3.5 py-2.5 text-label font-semibold border-b-2 whitespace-nowrap -mb-px ${i === state.tabIndex ? 'border-side-accent text-side-accent' : 'border-transparent text-muted hover:text-secondary'}">${escapeHtml(t)}</button>
+        <button type="button" data-adminentrytab="${i}" class="px-3.5 py-2.5 text-label font-semibold border-b-2 whitespace-nowrap -mb-px ${i === state.tabIndex ? 'border-side-accent text-side-accent' : 'border-transparent text-muted hover:text-secondary'}">${escapeHtml(t.label)}</button>
       `).join('')}
     </div>`;
   tabsEl.querySelectorAll('[data-adminentrytab]').forEach(btn => {
@@ -12266,8 +12274,10 @@ function renderAdminEntry(tabsEl, container) {
   });
   document.getElementById('page-actions').innerHTML = '';
 
-  container.innerHTML = `<div class="space-y-4 pb-8">${state.tabIndex === 0 ? adminEntryCustomerTab(container) : adminEntryProductTab()}</div>`;
-  if (state.tabIndex === 0) adminEntryCustomerBindEvents(container); else adminEntryProductBindEvents(container);
+  const tab = ADMIN_ENTRY_TABS[state.tabIndex];
+  if (tab.kind === 'com') return comRenderScreen(container, tab.key);
+  container.innerHTML = `<div class="space-y-4 pb-8">${tab.key === 'customer' ? adminEntryCustomerTab(container) : adminEntryProductTab()}</div>`;
+  if (tab.key === 'customer') adminEntryCustomerBindEvents(container); else adminEntryProductBindEvents(container);
 }
 
 function adminEntryCustomerBindEvents(container) {
@@ -15360,7 +15370,7 @@ function comLcTiles(key) {
    record copies its values into empty fields — { field: [sourceScreen(s), { target: sourceField }] } ·
    fixed: values set on every save · validate(v, row) returns an error or '' · tiles(): summary cards. */
 const COM_SCREENS = {
-  /* 01 Buyer & Agent */
+  /* 01 Buyer & Agent — tabs mounted from Admin › All Entry (see ADMIN_ENTRY_TABS) */
   buying_houses: {
     tab: 'Buying House', noun: 'Buying House', title: 'Buying Houses',
     desc: 'Buying houses that place or manage orders on behalf of buyers.',
@@ -15801,7 +15811,6 @@ const COM_REPORTS = {
 };
 
 const COM_GROUPS = [
-  { name: 'Buyer & Agent', sub: 'Buying houses, agents and buyer-specific commercial terms', tabs: ['buying_houses', 'agents', 'buyer_terms'] },
   { name: 'Export Order', sub: 'Commercial master record for each buyer export order', tabs: ['export_orders', 'sales_contracts', 'buyer_po', 'order_amendments'] },
   { name: 'L/C Management', sub: 'Export L/C opening, amendment, utilization and discrepancy', tabs: ['export_lc', 'lc_amendments', 'lc_utilization', 'lc_discrepancy'] },
   { name: 'Back-to-Back L/C', sub: 'BTB and local L/Cs opened against master export L/Cs', tabs: ['btb_lc', 'local_lc', 'btb_utilization'] },
@@ -16131,8 +16140,16 @@ function renderCommercial(tabsEl, container, groupName) {
   if (g.report) comRenderReport(container, key);
   else comRenderScreen(container, key);
 }
-// Jump straight to one register (e.g. from a report or from Finance).
+// Jump straight to one register (e.g. from a report or from Finance). Buying House, Agent and
+// Buyer Terms live under Admin › All Entry now, so those jump there first.
 function comGo(screenKey) {
+  const ai = ADMIN_ENTRY_TABS.findIndex(t => t.kind === 'com' && t.key === screenKey);
+  if (ai >= 0) {
+    goTo('admin', modules.find(m => m.key === 'admin').submodules.findIndex(s => s.name === 'All Entry'));
+    state.tabIndex = ai;
+    renderContent();
+    return;
+  }
   const gi = COM_GROUPS.findIndex(g => g.tabs.includes(screenKey));
   if (gi < 0) return;
   goTo('commercial', gi);
