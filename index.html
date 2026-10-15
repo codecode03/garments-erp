@@ -425,7 +425,7 @@ const icons = {
 const modules = [
   { key:'dashboard', name:'Dashboard', icon:'grid', submodules:[{ name:'Dashboard' }]},
   { key:'merchandising', name:'Merchandising', icon:'doc', submodules:[
-    { name:'Buyer & Inquiry' }, { name:'Style Management' },
+    { name:'Buyer & Inquiry' }, { name:'CRM' }, { name:'Buyer Portal' }, { name:'Style Management' },
     { name:'BOM & Consumption' }, { name:'Purchase Order (PO)' }, { name:'Proforma Invoice (PI)' }, { name:'Reports' },
   ]},
   { key:'development', name:'Development', icon:'flask', submodules:[
@@ -596,6 +596,8 @@ function renderNav() {
 const subtitles = {
   dashboard: 'Live operations across merchandising, production and shipping',
   'Buyer & Inquiry': 'Manage buyer information and their inquiries',
+  'CRM': 'Track buyer leads and follow-ups from first contact to confirmed order',
+  'Buyer Portal': 'Give buyers a personal link to place orders and track them stage by stage',
   'Style Management': 'Create styles from buyer inquiries and manage the style list',
   'BOM & Consumption': 'Prepare bill of material and costing for each style',
   'Purchase Order (PO)': 'Complete purchase order information and details',
@@ -677,6 +679,8 @@ function renderContent() {
 
   if (isDash) renderDashboardPage(pageContent);
   else if (mod.key === 'merchandising' && sm.name === 'Buyer & Inquiry') renderBuyerInquiry(pageContent);
+  else if (mod.key === 'merchandising' && sm.name === 'CRM') renderCRM(pageContent);
+  else if (mod.key === 'merchandising' && sm.name === 'Buyer Portal') renderBuyerPortalAdmin(pageContent);
   else if (mod.key === 'merchandising' && sm.name === 'Style Management') renderStyleManagement(tabsEl, pageContent);
   else if (mod.key === 'merchandising' && sm.name === 'BOM & Consumption') renderBOM(pageContent);
   else if (mod.key === 'merchandising' && sm.name === 'Purchase Order (PO)') renderPOPI(pageContent, 'po');
@@ -1772,6 +1776,757 @@ function matchStyles(q) {
   const s = (q || '').trim().toLowerCase();
   if (!s) return styStyles.slice();
   return styStyles.filter(x => (x.style + ' ' + x.product + ' ' + x.category).toLowerCase().includes(s));
+}
+
+// ---------- Merchandising › CRM (Leads & Activities & Follow-ups) ----------
+/* Buyer relationship management: lead tracker (form + table) and the activity log /
+   follow-up queue, copied from the reference build. UI-only prototype like the rest of
+   the build — records live in memory. Converting a Won lead adds a buyer to
+   Buyer & Inquiry (biBuyers). The reference Pipeline and Buyer Accounts tabs are out of scope here. */
+const CRM_STAGES = ['New Lead', 'Contacted', 'Sample Sent', 'Negotiation', 'Won', 'Lost'];
+const CRM_STAGE_TONE = { 'New Lead': 'neutral', Contacted: 'info', 'Sample Sent': 'info', Negotiation: 'warning', Won: 'success', Lost: 'danger' };
+const CRM_SOURCES = ['Trade Fair', 'Referral', 'Website', 'Email Campaign', 'Buying House', 'LinkedIn', 'Existing Buyer'];
+const CRM_ACT_TYPES = ['Call', 'Email', 'Meeting', 'Sample Sent', 'Visit', 'Note'];
+const CRM_OWNERS = ['Rashed Karim', 'Nusrat Jahan', 'Tanvir Ahmed', 'Sadia Islam'];
+const CRM_COUNTRIES = ['UK', 'USA', 'Canada', 'Germany', 'France', 'Netherlands', 'Sweden', 'Spain', 'Italy', 'Australia', 'Japan', 'Other'];
+
+function crmISO(offset) { const d = new Date(); d.setDate(d.getDate() + offset); return d.toISOString().slice(0, 10); }
+function crmMoney(n) { return '$' + Math.round(Number(n) || 0).toLocaleString('en-US'); }
+function crmFmtDate(iso) {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-');
+  return `${d}-${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m - 1]}-${y}`;
+}
+
+const crmLeads = [
+  { id: 1, no: 'LD-0001', company: 'Nordic Basics AB', contact: 'Elin Andersson', email: 'elin@nordicbasics.se', phone: '+46 8 555 0142', country: 'Sweden', source: 'Trade Fair', stage: 'Negotiation', value: 185000, qty: 42000, season: 'Spring/Summer 2027', owner: 'Rashed Karim', followUp: crmISO(2), notes: 'Interested in organic cotton tees. Price target $4.40/pc.', created: crmISO(-34) },
+  { id: 2, no: 'LD-0002', company: 'Urban Thread Co.', contact: 'Marcus Hill', email: 'marcus@urbanthread.com', phone: '+1 212 555 0198', country: 'USA', source: 'LinkedIn', stage: 'Sample Sent', value: 96000, qty: 18000, season: 'Autumn/Winter 2026', owner: 'Nusrat Jahan', followUp: crmISO(-1), notes: 'Fleece hoodie samples dispatched via DHL. Awaiting fit comments.', created: crmISO(-21) },
+  { id: 3, no: 'LD-0003', company: 'Maison Lumière', contact: 'Camille Dubois', email: 'c.dubois@maisonlumiere.fr', phone: '+33 1 55 55 01 20', country: 'France', source: 'Referral', stage: 'Contacted', value: 128000, qty: 25000, season: 'Spring/Summer 2027', owner: 'Tanvir Ahmed', followUp: crmISO(5), notes: 'Referred by Trend Tex. Wants woven shirts, 3 colourways.', created: crmISO(-12) },
+  { id: 4, no: 'LD-0004', company: 'Pacific Outfitters', contact: 'Hannah Cole', email: 'hannah@pacificoutfitters.com.au', phone: '+61 2 5550 0177', country: 'Australia', source: 'Website', stage: 'New Lead', value: 54000, qty: 12000, season: 'Autumn/Winter 2026', owner: 'Sadia Islam', followUp: crmISO(0), notes: 'Website enquiry about activewear. Needs company profile + certifications.', created: crmISO(-3) },
+  { id: 5, no: 'LD-0005', company: 'Brightside Kidswear', contact: 'Oliver Grant', email: 'oliver@brightsidekids.co.uk', phone: '+44 20 7946 0321', country: 'UK', source: 'Buying House', stage: 'Won', value: 143000, qty: 36000, season: 'Spring/Summer 2027', owner: 'Rashed Karim', followUp: '', notes: 'PO confirmed. Ready to convert to a buyer account.', created: crmISO(-58), converted: false },
+  { id: 6, no: 'LD-0006', company: 'Kaiser Denim GmbH', contact: 'Jonas Fischer', email: 'j.fischer@kaiserdenim.de', phone: '+49 211 555 0166', country: 'Germany', source: 'Email Campaign', stage: 'Lost', value: 210000, qty: 30000, season: 'Autumn/Winter 2026', owner: 'Tanvir Ahmed', followUp: '', notes: 'Went with a Vietnam supplier on price (-6%).', created: crmISO(-75) },
+  { id: 7, no: 'LD-0007', company: 'Studio Marais', contact: 'Léa Martin', email: 'lea@studiomarais.fr', phone: '+33 1 55 55 02 88', country: 'France', source: 'Trade Fair', stage: 'Contacted', value: 72000, qty: 14000, season: 'Spring/Summer 2027', owner: 'Nusrat Jahan', followUp: crmISO(9), notes: 'Knit dresses; asked for MOQ and lead time.', created: crmISO(-9) },
+];
+
+const crmActivities = [
+  { id: 1, leadId: 1, type: 'Meeting', date: crmISO(-6), note: 'Video call on price break-down; agreed to revise costing for 42k pcs.', owner: 'Rashed Karim' },
+  { id: 2, leadId: 2, type: 'Sample Sent', date: crmISO(-9), note: 'Sent 3 hoodie size-set samples, AWB 5521 8890.', owner: 'Nusrat Jahan' },
+  { id: 3, leadId: 3, type: 'Email', date: crmISO(-4), note: 'Shared fabric swatch book and indicative pricing.', owner: 'Tanvir Ahmed' },
+  { id: 4, leadId: 1, type: 'Call', date: crmISO(-15), note: 'Intro call after Texworld; requested compliance documents.', owner: 'Rashed Karim' },
+  { id: 5, leadId: 5, type: 'Email', date: crmISO(-8), note: 'PO received and acknowledged.', owner: 'Rashed Karim' },
+  { id: 6, leadId: 4, type: 'Note', date: crmISO(-2), note: 'Inbound web form. Qualify before sending catalogue.', owner: 'Sadia Islam' },
+];
+
+const crmUI = { tab: 'leads', q: '', stage: 'All Stages', owner: 'All Owners', editId: null, msg: '', msgTone: 'muted', actLead: '' };
+let crmForm = null;
+
+function crmBlankForm() {
+  return { company: '', contact: '', email: '', phone: '', country: 'UK', source: CRM_SOURCES[0], stage: CRM_STAGES[0], value: '', qty: '', season: 'Spring/Summer 2027', owner: CRM_OWNERS[0], followUp: '', notes: '' };
+}
+function crmNextNo() {
+  const max = crmLeads.reduce((m, l) => Math.max(m, parseInt(l.no.split('-')[1], 10) || 0), 0);
+  return 'LD-' + String(max + 1).padStart(4, '0');
+}
+function crmLead(id) { return crmLeads.find(l => l.id === +id); }
+function crmIsOverdue(l) { return !!l.followUp && l.stage !== 'Won' && l.stage !== 'Lost' && l.followUp < crmISO(0); }
+function crmIsOpen(l) { return l.stage !== 'Won' && l.stage !== 'Lost'; }
+function crmStagePill(s) { return finPill(s, CRM_STAGE_TONE[s] || 'neutral', true); }
+
+function crmSetMsg(text, tone) {
+  crmUI.msg = text; crmUI.msgTone = tone || 'muted';
+  const el = document.getElementById('crmMsg');
+  if (el) { el.textContent = text; el.className = 'text-helper ' + ({ success: 'text-success', danger: 'text-danger' }[crmUI.msgTone] || 'text-muted'); }
+}
+
+function crmTabsHtml() {
+  const tabs = [['leads', 'Leads'], ['activities', 'Activities & Follow-ups']];
+  return `<div class="flex flex-wrap gap-1 border-b border-side-line">${tabs.map(([k, n]) => `
+    <button type="button" data-crm-tab="${k}" class="px-3.5 py-2 text-label font-semibold -mb-px border-b-2 ${crmUI.tab === k ? 'border-side-accent text-side-accent' : 'border-transparent text-muted hover:text-primary'}">${n}</button>`).join('')}</div>`;
+}
+
+/* ---- Leads form + table ---- */
+function crmFormCard() {
+  const f = crmForm, editing = crmUI.editId != null;
+  const inp = (key, type, ph) => `<input data-crmf="${key}" type="${type || 'text'}" value="${escapeHtml(String(f[key]))}" placeholder="${escapeHtml(ph || '')}" class="${COA_INPUT}" />`;
+  const sel = (key, list) => `<select data-crmf="${key}" class="${COA_INPUT}">${list.map(o => `<option ${f[key] === o ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('')}</select>`;
+  return `
+  <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+    <div class="flex items-center justify-between gap-3 mb-3.5">
+      <h3 class="text-section-title text-primary">${editing ? 'Edit Lead ' + escapeHtml(crmLead(crmUI.editId).no) : 'New Lead'}</h3>
+      <p id="crmMsg" class="text-helper ${{ success: 'text-success', danger: 'text-danger' }[crmUI.msgTone] || 'text-muted'}">${escapeHtml(crmUI.msg)}</p>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      ${coaField('Company *', inp('company', 'text', 'e.g. Nordic Basics AB'))}
+      ${coaField('Contact Person', inp('contact'))}
+      ${coaField('Email', inp('email', 'email'))}
+      ${coaField('Phone', inp('phone'))}
+      ${coaField('Country', sel('country', CRM_COUNTRIES))}
+      ${coaField('Lead Source', sel('source', CRM_SOURCES))}
+      ${coaField('Stage', sel('stage', CRM_STAGES))}
+      ${coaField('Owner', sel('owner', CRM_OWNERS))}
+      ${coaField('Est. Value (USD)', inp('value', 'number', '0'))}
+      ${coaField('Est. Quantity (PCS)', inp('qty', 'number', '0'))}
+      ${coaField('Season', inp('season'))}
+      ${coaField('Next Follow-up', inp('followUp', 'date'))}
+      <div class="sm:col-span-2 lg:col-span-4">${coaField('Notes', `<textarea data-crmf="notes" rows="2" class="${COA_INPUT} h-auto py-2">${escapeHtml(f.notes)}</textarea>`)}</div>
+    </div>
+    <div class="flex justify-end gap-2 mt-4">
+      <button type="button" id="crmReset" class="${BI_BTN}">${editing ? 'Cancel Edit' : 'Clear'}</button>
+      <button type="button" id="crmSave" class="${BI_BTN_PRIMARY}">${BI_SAVE_ICON}${editing ? 'Update Lead' : 'Save Lead'}</button>
+    </div>
+  </section>`;
+}
+
+function crmFilteredLeads() {
+  const q = crmUI.q.trim().toLowerCase();
+  return crmLeads.filter(l => {
+    if (q && !(l.no + ' ' + l.company + ' ' + l.contact + ' ' + l.country + ' ' + l.email).toLowerCase().includes(q)) return false;
+    if (crmUI.stage !== 'All Stages' && l.stage !== crmUI.stage) return false;
+    if (crmUI.owner !== 'All Owners' && l.owner !== crmUI.owner) return false;
+    return true;
+  });
+}
+
+function crmLeadsTableHtml() {
+  const headers = ['Lead No.', 'Company', 'Contact', 'Country', 'Source', 'Est. Value', 'Owner', 'Follow-up', 'Stage', 'Actions'];
+  const rows = crmFilteredLeads();
+  const body = rows.length ? rows.map(l => `
+    <tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
+      <td class="pl-4 pr-2 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(l.no)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(l.company)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(l.contact || '—')}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(l.country)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(l.source)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${crmMoney(l.value)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(l.owner)}</td>
+      <td class="px-3 py-2 fs-base whitespace-nowrap tabular ${crmIsOverdue(l) ? 'text-danger font-semibold' : 'text-secondary'}">${crmIsOpen(l) ? crmFmtDate(l.followUp) : '—'}</td>
+      <td class="px-3 py-2">${crmStagePill(l.stage)}</td>
+      <td class="pr-4 pl-3 py-2 whitespace-nowrap">
+        <button type="button" data-crm-edit="${l.id}" class="h-7 px-2.5 rounded border border-side-border text-secondary fs-small font-semibold hover:bg-side-hover mr-1.5">Edit</button>
+        <button type="button" data-crm-log="${l.id}" class="h-7 px-2.5 rounded border border-side-border text-secondary fs-small font-semibold hover:bg-side-hover mr-1.5">Log Activity</button>
+        ${l.stage === 'Won' && !l.converted ? `<button type="button" data-crm-convert="${l.id}" class="h-7 px-2.5 rounded bg-side-accent text-white fs-small font-semibold hover:bg-side-accentHover">Convert to Buyer</button>` : (l.converted ? finPill('Buyer created', 'success') : '')}
+      </td>
+    </tr>`).join('')
+    : `<tr><td colspan="${headers.length}" class="px-4 py-8 text-center fs-base text-muted">No leads match your filters.</td></tr>`;
+  return `
+    <div class="overflow-x-auto border-t border-side-line">
+      <table class="w-full min-w-[1100px]">
+        <thead><tr class="border-b border-side-line">${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted ${h === 'Est. Value' ? 'text-right' : 'text-left'} whitespace-nowrap">${h}</th>`).join('')}</tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>`;
+}
+
+function crmLeadsHtml() {
+  const opts = (all, list, cur) => [all, ...list].map(o => `<option ${cur === o ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('');
+  return `
+    ${crmFormCard()}
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+      <div class="flex flex-wrap items-center justify-between gap-3 p-4">
+        <div><h3 class="text-section-title text-primary">All Leads</h3><p id="crmCount" class="text-helper text-muted mt-0.5">${crmFilteredLeads().length} of ${crmLeads.length} leads</p></div>
+        <div class="flex flex-wrap items-center gap-2">
+          <input id="crmSearch" type="text" value="${escapeHtml(crmUI.q)}" placeholder="Search lead, company, contact…" class="w-64 ${COA_INPUT}" />
+          <select id="crmStageFilter" class="w-40 ${COA_INPUT}">${opts('All Stages', CRM_STAGES, crmUI.stage)}</select>
+          <select id="crmOwnerFilter" class="w-40 ${COA_INPUT}">${opts('All Owners', CRM_OWNERS, crmUI.owner)}</select>
+        </div>
+      </div>
+      <div id="crmLeadRows">${crmLeadsTableHtml()}</div>
+    </section>`;
+}
+
+/* ---- Activities & follow-ups ---- */
+function crmActivitiesHtml() {
+  const due = crmLeads.filter(l => crmIsOpen(l) && l.followUp).sort((a, b) => a.followUp.localeCompare(b.followUp));
+  const leadOpts = crmLeads.map(l => `<option value="${l.id}" ${String(crmUI.actLead) === String(l.id) ? 'selected' : ''}>${escapeHtml(l.no + ' · ' + l.company)}</option>`).join('');
+  const acts = [...crmActivities].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+  return `
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+    <section class="lg:col-span-5 bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+      <h3 class="text-section-title text-primary mb-3.5">Log Activity</h3>
+      <div class="space-y-3">
+        ${coaField('Lead *', `<select id="crmActLead" class="${COA_INPUT}"><option value="">Select lead…</option>${leadOpts}</select>`)}
+        <div class="grid grid-cols-2 gap-3">
+          ${coaField('Type', `<select id="crmActType" class="${COA_INPUT}">${CRM_ACT_TYPES.map(t => `<option>${t}</option>`).join('')}</select>`)}
+          ${coaField('Date', `<input id="crmActDate" type="date" value="${crmISO(0)}" class="${COA_INPUT}" />`)}
+        </div>
+        ${coaField('Summary *', `<textarea id="crmActNote" rows="3" class="${COA_INPUT} h-auto py-2" placeholder="What was discussed or sent?"></textarea>`)}
+        ${coaField('Schedule next follow-up (optional)', `<input id="crmActNext" type="date" class="${COA_INPUT}" />`)}
+        <div class="flex items-center justify-between gap-3">
+          <p id="crmActMsg" class="text-helper text-muted"></p>
+          <button type="button" id="crmActSave" class="${BI_BTN_PRIMARY}">${BI_SAVE_ICON}Save Activity</button>
+        </div>
+      </div>
+    </section>
+    <div class="lg:col-span-7 space-y-4">
+      <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+        <h3 class="text-section-title text-primary mb-3">Follow-up Queue</h3>
+        ${due.length ? `<ul class="divide-y divide-side-line">${due.map(l => `
+          <li class="py-2 flex items-center justify-between gap-3">
+            <div class="min-w-0"><p class="fs-base font-medium text-primary truncate">${escapeHtml(l.company)}</p>
+              <p class="text-helper ${crmIsOverdue(l) ? 'text-danger font-semibold' : 'text-muted'}">${crmIsOverdue(l) ? 'Overdue · ' : ''}${crmFmtDate(l.followUp)} · ${escapeHtml(l.owner)}</p></div>
+            <button type="button" data-crm-done="${l.id}" class="h-7 px-2.5 rounded border border-side-border text-secondary fs-small font-semibold hover:bg-side-hover shrink-0">Mark done</button>
+          </li>`).join('')}</ul>` : '<p class="text-body text-muted">No follow-ups scheduled.</p>'}
+      </section>
+      <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+        <h3 class="text-section-title text-primary mb-3">Activity Timeline</h3>
+        <ul class="space-y-3">${acts.map(a => {
+          const l = crmLead(a.leadId);
+          return `<li class="flex gap-3">
+            <span class="mt-1.5 w-2 h-2 rounded-full bg-side-accent shrink-0"></span>
+            <div class="min-w-0"><p class="fs-base text-primary"><span class="font-semibold">${escapeHtml(a.type)}</span> · ${escapeHtml(l ? l.company : 'Unknown lead')}</p>
+              <p class="text-helper text-secondary">${escapeHtml(a.note)}</p>
+              <p class="text-helper text-muted">${crmFmtDate(a.date)} · ${escapeHtml(a.owner)}</p></div></li>`;
+        }).join('')}</ul>
+      </section>
+    </div>
+  </div>`;
+}
+
+/* ---- page shell (Leads + Activities & Follow-ups only) ---- */
+function renderCRM(container) {
+  if (!crmForm) crmForm = crmBlankForm();
+  const draw = () => {
+    const bodies = { leads: crmLeadsHtml, activities: crmActivitiesHtml };
+    container.innerHTML = `<div class="space-y-4 pb-8">${crmTabsHtml()}<div id="crmBody" class="space-y-4">${bodies[crmUI.tab]()}</div></div>`;
+  };
+  draw();
+
+  const refreshRows = () => {
+    const rows = document.getElementById('crmLeadRows'); if (!rows) return;
+    rows.innerHTML = crmLeadsTableHtml();
+    document.getElementById('crmCount').textContent = `${crmFilteredLeads().length} of ${crmLeads.length} leads`;
+  };
+  const startEdit = (id) => {
+    const l = crmLead(id); if (!l) return;
+    crmUI.editId = l.id; crmUI.tab = 'leads'; crmUI.msg = '';
+    crmForm = { company: l.company, contact: l.contact, email: l.email, phone: l.phone, country: l.country, source: l.source, stage: l.stage, value: l.value, qty: l.qty, season: l.season, owner: l.owner, followUp: l.followUp, notes: l.notes };
+    draw();
+    document.getElementById('crmBody')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  };
+
+  /* A single delegated listener set on the container; draw() replaces innerHTML, so nothing stacks. */
+  container.oninput = (e) => {
+    const k = e.target.dataset.crmf;
+    if (k) { crmForm[k] = e.target.value; return; }
+    if (e.target.id === 'crmSearch') { crmUI.q = e.target.value; refreshRows(); }
+  };
+  container.onchange = (e) => {
+    const k = e.target.dataset.crmf;
+    if (k) { crmForm[k] = e.target.value; return; }
+    if (e.target.id === 'crmStageFilter') { crmUI.stage = e.target.value; refreshRows(); }
+    if (e.target.id === 'crmOwnerFilter') { crmUI.owner = e.target.value; refreshRows(); }
+    if (e.target.id === 'crmActLead') crmUI.actLead = e.target.value;
+  };
+  container.onclick = (e) => {
+    const t = e.target.closest('button'); if (!t) return;
+    if (t.dataset.crmTab) { crmUI.tab = t.dataset.crmTab; draw(); return; }
+    if (t.dataset.crmEdit) { startEdit(t.dataset.crmEdit); return; }
+    if (t.dataset.crmLog) { crmUI.tab = 'activities'; crmUI.actLead = t.dataset.crmLog; draw(); return; }
+    if (t.dataset.crmDone) { const l = crmLead(t.dataset.crmDone); l.followUp = ''; draw(); return; }
+    if (t.dataset.crmConvert) {
+      const l = crmLead(t.dataset.crmConvert);
+      const id = 'BUY-' + String(biBuyers.length + 1).padStart(3, '0');
+      biBuyers.push({ id, name: l.company, beneficiary: l.company, contact: l.contact, address: '', bank: '', season: l.season, country: l.country, quality: 'New', prev: null });
+      l.converted = id;
+      crmSetMsg(`${l.company} added to Buyer & Inquiry as ${id}.`, 'success');
+      refreshRows();
+      return;
+    }
+    if (t.id === 'crmReset') { crmUI.editId = null; crmUI.msg = ''; crmForm = crmBlankForm(); draw(); return; }
+    if (t.id === 'crmSave') {
+      const f = crmForm;
+      if (!f.company.trim()) return crmSetMsg('Company name is required.', 'danger');
+      const data = { company: f.company.trim(), contact: f.contact.trim(), email: f.email.trim(), phone: f.phone.trim(), country: f.country, source: f.source, stage: f.stage,
+        value: Number(f.value) || 0, qty: Number(f.qty) || 0, season: f.season.trim(), owner: f.owner, followUp: crmIsOpen({ stage: f.stage }) ? f.followUp : '', notes: f.notes.trim() };
+      let no;
+      if (crmUI.editId != null) { const l = crmLead(crmUI.editId); Object.assign(l, data); no = l.no; }
+      else { no = crmNextNo(); crmLeads.push({ id: crmLeads.reduce((m, x) => Math.max(m, x.id), 0) + 1, no, created: crmISO(0), ...data }); }
+      const was = crmUI.editId != null;
+      crmUI.editId = null; crmForm = crmBlankForm(); draw();
+      crmSetMsg(`Lead ${no} ${was ? 'updated' : 'saved'}.`, 'success');
+      return;
+    }
+    if (t.id === 'crmActSave') {
+      const lead = document.getElementById('crmActLead').value, note = document.getElementById('crmActNote').value.trim();
+      const msg = document.getElementById('crmActMsg');
+      if (!lead || !note) { msg.textContent = 'Pick a lead and add a summary.'; msg.className = 'text-helper text-danger'; return; }
+      const l = crmLead(lead), next = document.getElementById('crmActNext').value;
+      crmActivities.push({ id: crmActivities.reduce((m, x) => Math.max(m, x.id), 0) + 1, leadId: l.id, type: document.getElementById('crmActType').value,
+        date: document.getElementById('crmActDate').value || crmISO(0), note, owner: l.owner });
+      if (next && crmIsOpen(l)) l.followUp = next;
+      crmUI.actLead = ''; draw();
+      const m2 = document.getElementById('crmActMsg'); m2.textContent = 'Activity saved.'; m2.className = 'text-helper text-success';
+    }
+  };
+}
+
+// ---------- Merchandising › Buyer Portal ----------
+/* Two halves. Staff manage portal access and orders from Merchandising › Buyer Portal. Buyers
+   open their personal link (…#portal=TOKEN) to place an order and follow it stage by stage.
+   "Preview as buyer" shows the same page inside the ERP, so staff see exactly what a buyer sees.
+   UI-only prototype: records live in memory. A link opened in a *new* tab starts from the seed
+   data, so orders placed in one tab are not visible in another until there is a backend. */
+const PORTAL_STAGES = ['Order Received', 'Confirmed', 'Material Sourcing', 'In Production', 'Packing & QC', 'Shipped', 'Delivered'];
+const PORTAL_STAGE_NOTE = [
+  'We have received your order and are reviewing it.',
+  'Your order is confirmed. Costing, BOM and approvals are being prepared.',
+  'Fabric, yarn and trims are being sourced.',
+  'Your goods are in production.',
+  'Final inspection and packing are under way.',
+  'Your order has left the factory.',
+  'Your order has been delivered.',
+];
+const PORTAL_STATUS_TONE = { Requested: 'warning', Active: 'info', Completed: 'success', Rejected: 'danger' };
+const PORTAL_STATUS_LABEL = { Requested: 'Awaiting confirmation', Active: 'In progress', Completed: 'Completed', Rejected: 'Not accepted' };
+
+function portalISO(offset) { const d = new Date(); d.setDate(d.getDate() + (offset || 0)); return d.toISOString().slice(0, 10); }
+function portalFmt(iso) {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-');
+  return `${d}-${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m - 1]}-${y}`;
+}
+function portalMoney(n) { return '$' + (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function portalHash(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return h.toString(36); }
+function portalSeedToken(id) { return 'bp-' + id.toLowerCase().replace(/[^a-z0-9]/g, '') + '-' + portalHash('portal:' + id); }
+
+const portalAccess = {}; // buyerId -> { token, enabled, lastVisit }
+function portalAccessFor(buyerId) {
+  if (!portalAccess[buyerId]) portalAccess[buyerId] = { token: portalSeedToken(buyerId), enabled: true, lastVisit: '' };
+  return portalAccess[buyerId];
+}
+function portalLink(buyerId) { return location.href.split('#')[0] + '#portal=' + portalAccessFor(buyerId).token; }
+function portalBuyerByToken(token) {
+  return biBuyers.find(b => portalAccessFor(b.id).token === token) || null;
+}
+
+const portalOrders = [
+  { id: 1, no: 'PORD-0001', buyerId: 'BUY-001', styleNo: 'AB-4587', product: "Men's Polo Shirt", color: 'Navy', qty: 3000, price: 4.5, shipDate: '2027-02-15', notes: '', placed: portalISO(-40), stageIdx: 3, status: 'Active', shipRef: '', eta: '', inquiryNo: '',
+    history: [{ date: portalISO(-40), text: 'Order received.' }, { date: portalISO(-38), text: 'Order confirmed by merchandising.' }, { date: portalISO(-26), text: 'Fabric and trims received in store.' }, { date: portalISO(-14), text: 'Production started: knitting.' }] },
+  { id: 2, no: 'PORD-0002', buyerId: 'BUY-002', styleNo: 'XZ-5120', product: "Women's Knit Cardigan", color: 'Charcoal', qty: 8000, price: 6.2, shipDate: '2027-03-10', notes: '', placed: portalISO(-18), stageIdx: 2, status: 'Active', shipRef: '', eta: '', inquiryNo: '',
+    history: [{ date: portalISO(-18), text: 'Order received.' }, { date: portalISO(-16), text: 'Order confirmed by merchandising.' }, { date: portalISO(-7), text: 'Yarn purchase orders placed with suppliers.' }] },
+  { id: 3, no: 'PORD-0003', buyerId: 'BUY-003', styleNo: 'GA-4410', product: 'Fleece Hoodie', color: 'Heather Grey', qty: 5000, price: 7.8, shipDate: portalISO(-9), placed: portalISO(-75), stageIdx: 5, status: 'Active', shipRef: 'MV Pacific Star · BL CTG-88213', eta: portalISO(12), notes: '', inquiryNo: '',
+    history: [{ date: portalISO(-75), text: 'Order received.' }, { date: portalISO(-72), text: 'Order confirmed by merchandising.' }, { date: portalISO(-30), text: 'Production completed. Final inspection passed.' }, { date: portalISO(-9), text: 'Shipped from Chittagong. Vessel: MV Pacific Star.' }] },
+  { id: 4, no: 'PORD-0004', buyerId: 'BUY-001', styleNo: 'AB-4590', product: 'Crew Neck Sweater', color: 'Burgundy', qty: 2000, price: 8.4, shipDate: portalISO(75), notes: 'Please quote lead time for 2 colourways.', placed: portalISO(-1), stageIdx: 0, status: 'Requested', shipRef: '', eta: '', inquiryNo: '',
+    history: [{ date: portalISO(-1), text: 'Order request submitted through the buyer portal.' }] },
+];
+
+const portalAdminUI = { status: 'All', selId: null, msg: '', msgTone: 'muted' };
+const portalUI = { buyerId: null, preview: false, view: 'orders', orderId: null, msg: '', msgTone: 'muted', form: null };
+
+function portalOrder(id) { return portalOrders.find(o => o.id === +id) || null; }
+function portalBuyer(id) { return biBuyers.find(b => b.id === id) || null; }
+function portalNextNo() {
+  const max = portalOrders.reduce((m, o) => Math.max(m, parseInt(o.no.split('-')[1], 10) || 0), 0);
+  return 'PORD-' + String(max + 1).padStart(4, '0');
+}
+function portalPill(status) { return finPill(PORTAL_STATUS_LABEL[status] || status, PORTAL_STATUS_TONE[status] || 'neutral', true); }
+function portalSearchSvg() { return ''; }
+function portalCopy(text) {
+  if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text).then(() => true, () => false);
+  return new Promise(res => {
+    const t = document.createElement('textarea'); t.value = text; t.style.position = 'fixed'; t.style.opacity = '0';
+    document.body.appendChild(t); t.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e) { /* ignore */ }
+    t.remove(); res(ok);
+  });
+}
+
+/* Live production progress: pulled from the Production module by style number. */
+function portalLiveProgress(order) {
+  if (typeof prodStageRecords === 'undefined' || !order.styleNo) return null;
+  let any = false;
+  const rows = PROD_STAGES.map(st => {
+    const recs = (prodStageRecords[st.id] || []).filter(r => r.header && r.header.styleNo === order.styleNo);
+    if (recs.length) any = true;
+    const produced = recs.reduce((s, r) => s + (r.rows || []).reduce((a, x) => a + Math.max(0, parseFloat(x.actual) || 0), 0), 0);
+    return { name: st.name, produced, pct: order.qty ? Math.min(100, Math.round(produced / order.qty * 100)) : 0 };
+  });
+  return any ? rows : null;
+}
+
+/* ================= Staff screen ================= */
+function portalAccessTable() {
+  const headers = ['Buyer ID', 'Buyer', 'Contact', 'Portal Link', 'Orders', 'Access', 'Actions'];
+  const rows = biBuyers.map(b => {
+    const a = portalAccessFor(b.id), n = portalOrders.filter(o => o.buyerId === b.id).length;
+    return `<tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover">
+      <td class="pl-4 pr-2 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(b.id)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(b.name)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(b.contact)}</td>
+      <td class="px-3 py-2 fs-base text-secondary tabular max-w-[260px] truncate" title="${escapeHtml(portalLink(b.id))}">…#portal=${escapeHtml(a.token)}</td>
+      <td class="px-3 py-2 fs-base text-primary tabular text-right">${n}</td>
+      <td class="px-3 py-2">${finPill(a.enabled ? 'Enabled' : 'Disabled', a.enabled ? 'success' : 'neutral', true)}</td>
+      <td class="pr-4 pl-3 py-2 whitespace-nowrap">
+        <button type="button" data-bp-copy="${b.id}" class="h-7 px-2.5 rounded border border-side-border text-secondary fs-small font-semibold hover:bg-side-hover mr-1.5">Copy Link</button>
+        <button type="button" data-bp-preview="${b.id}" ${a.enabled ? '' : 'disabled'} class="h-7 px-2.5 rounded border border-side-border text-secondary fs-small font-semibold hover:bg-side-hover mr-1.5 disabled:opacity-40 disabled:pointer-events-none">Preview as Buyer</button>
+        <button type="button" data-bp-toggle="${b.id}" class="h-7 px-2.5 rounded border border-side-border text-secondary fs-small font-semibold hover:bg-side-hover mr-1.5">${a.enabled ? 'Disable' : 'Enable'}</button>
+        <button type="button" data-bp-regen="${b.id}" class="h-7 px-2.5 rounded border border-side-border text-secondary fs-small font-semibold hover:bg-side-hover">New Link</button>
+      </td></tr>`;
+  }).join('');
+  return `<div class="overflow-x-auto border-t border-side-line"><table class="w-full min-w-[980px]">
+    <thead><tr class="border-b border-side-line">${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted ${h === 'Orders' ? 'text-right' : 'text-left'} whitespace-nowrap">${h}</th>`).join('')}</tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+}
+
+function portalAdminFiltered() {
+  return portalOrders.filter(o => portalAdminUI.status === 'All' || o.status === portalAdminUI.status).sort((a, b) => b.id - a.id);
+}
+
+function portalOrdersTable() {
+  const headers = ['Order No.', 'Buyer', 'Style', 'Product', 'Qty', 'Ship By', 'Stage', 'Status', 'Actions'];
+  const list = portalAdminFiltered();
+  const rows = list.length ? list.map(o => {
+    const b = portalBuyer(o.buyerId);
+    const act = o.status === 'Requested'
+      ? `<button type="button" data-bp-confirm="${o.id}" class="h-7 px-2.5 rounded bg-side-accent text-white fs-small font-semibold hover:bg-side-accentHover mr-1.5">Confirm</button>
+         <button type="button" data-bp-reject="${o.id}" class="h-7 px-2.5 rounded border border-side-border text-danger fs-small font-semibold hover:bg-side-hover">Reject</button>`
+      : (o.status === 'Active' || o.status === 'Completed') ? `<button type="button" data-bp-edit="${o.id}" class="h-7 px-2.5 rounded border border-side-border text-secondary fs-small font-semibold hover:bg-side-hover">Update</button>` : '';
+    return `<tr class="border-b border-side-line last:border-b-0 hover:bg-side-hover ${portalAdminUI.selId === o.id ? 'bg-side-active' : ''}">
+      <td class="pl-4 pr-2 py-2 fs-base font-medium text-primary whitespace-nowrap tabular">${escapeHtml(o.no)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap">${escapeHtml(b ? b.name : o.buyerId)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular">${escapeHtml(o.styleNo || '—')}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${escapeHtml(o.product)}</td>
+      <td class="px-3 py-2 fs-base text-primary whitespace-nowrap tabular text-right">${o.qty.toLocaleString('en-US')}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap tabular">${portalFmt(o.shipDate)}</td>
+      <td class="px-3 py-2 fs-base text-secondary whitespace-nowrap">${o.status === 'Rejected' ? '—' : escapeHtml(PORTAL_STAGES[o.stageIdx])}</td>
+      <td class="px-3 py-2">${portalPill(o.status)}</td>
+      <td class="pr-4 pl-3 py-2 whitespace-nowrap">${act}</td></tr>`;
+  }).join('') : `<tr><td colspan="${headers.length}" class="px-4 py-8 text-center fs-base text-muted">No orders in this view.</td></tr>`;
+  return `<div class="overflow-x-auto border-t border-side-line"><table class="w-full min-w-[1000px]">
+    <thead><tr class="border-b border-side-line">${headers.map((h, i) => `<th class="${i === 0 ? 'pl-4 pr-2' : i === headers.length - 1 ? 'pr-4 pl-3' : 'px-3'} py-2.5 fs-head font-semibold text-muted ${h === 'Qty' ? 'text-right' : 'text-left'} whitespace-nowrap">${h}</th>`).join('')}</tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+}
+
+function portalEditorCard() {
+  const o = portalOrder(portalAdminUI.selId);
+  if (!o) return '';
+  return `
+  <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+    <div class="flex items-center justify-between gap-3 mb-3.5">
+      <h3 class="text-section-title text-primary">Update ${escapeHtml(o.no)} <span class="text-muted font-normal">· what the buyer sees</span></h3>
+      <button type="button" id="bpEditClose" class="text-helper font-semibold text-side-accent hover:text-side-accentHover">Close</button>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      ${coaField('Stage', `<select id="bpStage" class="${COA_INPUT}">${PORTAL_STAGES.map((s, i) => `<option value="${i}" ${o.stageIdx === i ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}</select>`)}
+      ${coaField('Shipment Ref (vessel / AWB / BL)', `<input id="bpShipRef" type="text" value="${escapeHtml(o.shipRef)}" class="${COA_INPUT}" />`)}
+      ${coaField('Estimated Arrival', `<input id="bpEta" type="date" value="${escapeHtml(o.eta)}" class="${COA_INPUT}" />`)}
+      ${coaField('Note to Buyer (optional)', `<input id="bpNote" type="text" placeholder="Shown in the order timeline" class="${COA_INPUT}" />`)}
+    </div>
+    <p class="text-helper text-muted mt-3">When this order has production records for style ${escapeHtml(o.styleNo || '—')}, the buyer also sees live progress for each production stage.</p>
+    <div class="flex justify-end mt-3"><button type="button" id="bpEditSave" class="${BI_BTN_PRIMARY}">${BI_SAVE_ICON}Save Update</button></div>
+  </section>`;
+}
+
+function renderBuyerPortalAdmin(container) {
+  const draw = () => {
+    container.innerHTML = `<div class="space-y-4 pb-8">
+      <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+        <div class="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div><h3 class="text-section-title text-primary">Buyer Access</h3>
+            <p class="text-helper text-muted mt-0.5">Send each buyer their personal link. They can place orders and track them without an ERP login.</p></div>
+          <p id="bpMsg" class="text-helper text-${{ success: 'success', danger: 'danger' }[portalAdminUI.msgTone] || 'muted'}">${escapeHtml(portalAdminUI.msg)}</p>
+        </div>
+        ${portalAccessTable()}
+      </section>
+      <section class="bg-cardBg border border-side-panel rounded-lg card-shadow">
+        <div class="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div><h3 class="text-section-title text-primary">Portal Orders</h3>
+            <p class="text-helper text-muted mt-0.5">Confirm new requests and move orders through their stages.</p></div>
+          <select id="bpStatusFilter" class="w-48 ${COA_INPUT}">${['All', 'Requested', 'Active', 'Completed', 'Rejected'].map(s => `<option value="${s}" ${portalAdminUI.status === s ? 'selected' : ''}>${s === 'All' ? 'All Statuses' : PORTAL_STATUS_LABEL[s]}</option>`).join('')}</select>
+        </div>
+        ${portalOrdersTable()}
+      </section>
+      ${portalEditorCard()}
+    </div>`;
+  };
+  const say = (t, tone) => { portalAdminUI.msg = t; portalAdminUI.msgTone = tone || 'muted'; const el = document.getElementById('bpMsg'); if (el) { el.textContent = t; el.className = 'text-helper text-' + ({ success: 'success', danger: 'danger' }[tone] || 'muted'); } };
+  draw();
+
+  container.onchange = (e) => { if (e.target.id === 'bpStatusFilter') { portalAdminUI.status = e.target.value; draw(); } };
+  container.onclick = async (e) => {
+    const t = e.target.closest('button'); if (!t) return;
+    const d = t.dataset;
+    if (d.bpCopy) { const ok = await portalCopy(portalLink(d.bpCopy)); say(ok ? `Link for ${portalBuyer(d.bpCopy).name} copied.` : 'Could not copy. Select the link and copy it manually.', ok ? 'success' : 'danger'); return; }
+    if (d.bpPreview) { portalOpen(d.bpPreview, true); return; }
+    if (d.bpToggle) { const a = portalAccessFor(d.bpToggle); a.enabled = !a.enabled; draw(); say(`Portal access ${a.enabled ? 'enabled' : 'disabled'} for ${portalBuyer(d.bpToggle).name}.`, 'success'); return; }
+    if (d.bpRegen) {
+      if (!confirm('Create a new link? The buyer\'s old link will stop working.')) return;
+      portalAccessFor(d.bpRegen).token = 'bp-' + d.bpRegen.toLowerCase().replace(/[^a-z0-9]/g, '') + '-' + Math.random().toString(36).slice(2, 8);
+      draw(); say('New link created. Send it to the buyer.', 'success'); return;
+    }
+    if (d.bpConfirm) {
+      const o = portalOrder(d.bpConfirm); o.status = 'Active'; o.stageIdx = 1;
+      o.history.push({ date: portalISO(0), text: 'Order confirmed by merchandising.' });
+      draw(); say(`${o.no} confirmed.`, 'success'); return;
+    }
+    if (d.bpReject) {
+      const o = portalOrder(d.bpReject);
+      const reason = prompt('Reason shown to the buyer (optional):', '');
+      if (reason === null) return;
+      o.status = 'Rejected'; o.rejectReason = reason.trim();
+      o.history.push({ date: portalISO(0), text: 'Order request not accepted.' + (reason.trim() ? ' ' + reason.trim() : '') });
+      draw(); say(`${o.no} rejected.`, 'success'); return;
+    }
+    if (d.bpEdit) { portalAdminUI.selId = +d.bpEdit; draw(); document.getElementById('bpStage')?.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
+    if (t.id === 'bpEditClose') { portalAdminUI.selId = null; draw(); return; }
+    if (t.id === 'bpEditSave') {
+      const o = portalOrder(portalAdminUI.selId); if (!o) return;
+      const idx = +document.getElementById('bpStage').value, note = document.getElementById('bpNote').value.trim();
+      const ref = document.getElementById('bpShipRef').value.trim(), eta = document.getElementById('bpEta').value;
+      const changed = idx !== o.stageIdx;
+      if (changed) o.history.push({ date: portalISO(0), text: `${PORTAL_STAGES[idx]}.` + (note ? ' ' + note : '') });
+      else if (note) o.history.push({ date: portalISO(0), text: note });
+      else if (ref !== o.shipRef || eta !== o.eta) o.history.push({ date: portalISO(0), text: 'Shipment details updated.' });
+      o.stageIdx = idx; o.shipRef = ref; o.eta = eta;
+      o.status = idx === PORTAL_STAGES.length - 1 ? 'Completed' : 'Active';
+      portalAdminUI.selId = null; draw(); say(`${o.no} updated. Buyers see the change straight away.`, 'success');
+    }
+  };
+}
+
+/* ================= Buyer-facing portal ================= */
+function portalRoot() {
+  let r = document.getElementById('portalRoot');
+  if (r) return r;
+  r = document.createElement('div');
+  r.id = 'portalRoot';
+  r.className = 'hidden fixed inset-0 z-[60] overflow-y-auto bg-canvas text-primary';
+  document.body.appendChild(r);
+  r.addEventListener('click', portalClick);
+  r.addEventListener('input', (e) => { const k = e.target.dataset.pf; if (k && portalUI.form) portalUI.form[k] = e.target.value; });
+  r.addEventListener('change', (e) => {
+    const k = e.target.dataset.pf; if (!k || !portalUI.form) return;
+    portalUI.form[k] = e.target.value;
+    if (k === 'styleNo') {
+      const s = styStyles.find(x => x.style === e.target.value);
+      if (s) { Object.assign(portalUI.form, { product: s.product, color: s.color.split('/')[0].trim(), price: String(parseFloat(String(s.price).replace(/[^0-9.]/g, '')) || '') }); }
+      portalDraw();
+    }
+  });
+  return r;
+}
+
+function portalOpen(buyerId, preview) {
+  const b = portalBuyer(buyerId);
+  if (!b) return;
+  portalUI.buyerId = buyerId; portalUI.preview = !!preview; portalUI.view = 'orders'; portalUI.orderId = null; portalUI.msg = ''; portalUI.form = null;
+  if (!preview) portalAccessFor(buyerId).lastVisit = portalISO(0);
+  const app = document.querySelector('body > div.flex.h-screen');
+  if (app && !preview) app.classList.add('hidden');
+  portalRoot().classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  portalRoot().scrollTop = 0;
+  portalDraw();
+}
+function portalClose() {
+  portalRoot().classList.add('hidden');
+  document.body.style.overflow = '';
+}
+function portalBlocked(msg) {
+  const app = document.querySelector('body > div.flex.h-screen');
+  if (app) app.classList.add('hidden');
+  const r = portalRoot(); r.classList.remove('hidden');
+  r.innerHTML = `<div class="min-h-full flex items-center justify-center px-6"><div class="text-center max-w-sm">
+    <div class="w-11 h-11 rounded-md bg-side-active flex items-center justify-center mx-auto mb-3.5 text-side-accent">${iconSvg('info', 'w-5 h-5')}</div>
+    <p class="text-section-title text-primary mb-1">Buyer Portal</p>
+    <p class="text-body text-muted">${escapeHtml(msg)}</p></div></div>`;
+}
+function portalBoot() {
+  const m = /[#&]portal=([\w-]+)/.exec(location.hash || '');
+  if (!m) { if (!portalUI.preview) { const r = document.getElementById('portalRoot'); if (r && !portalUI.buyerId) r.classList.add('hidden'); } return; }
+  const b = portalBuyerByToken(m[1]);
+  if (!b || !portalAccessFor(b.id).enabled) return portalBlocked('This link is not valid or has been turned off. Please ask your merchandiser for a new one.');
+  portalOpen(b.id, false);
+}
+window.addEventListener('hashchange', portalBoot);
+
+function portalStepper(o, big) {
+  const cur = o.stageIdx;
+  return `<div class="overflow-x-auto"><ol class="flex ${big ? 'min-w-[640px]' : 'min-w-[520px]'} items-start">${PORTAL_STAGES.map((s, i) => {
+    const done = i < cur || (i === cur && cur === PORTAL_STAGES.length - 1), active = i === cur && !done;
+    const dot = done ? 'bg-side-accent border-side-accent text-white' : active ? 'bg-cardBg border-side-accent text-side-accent' : 'bg-cardBg border-side-border text-disabled';
+    const bar = i < cur ? 'bg-side-accent' : 'bg-side-border';
+    return `<li class="flex-1 min-w-0 relative">
+      <div class="flex items-center">
+        <span class="${i === 0 ? 'invisible' : ''} flex-1 h-0.5 ${bar}"></span>
+        <span class="${big ? 'w-8 h-8' : 'w-6 h-6'} rounded-full border-2 ${dot} flex items-center justify-center fs-small font-bold shrink-0 ${active ? 'ring-4 ring-[var(--accent-ring)]' : ''}">${done ? '✓' : i + 1}</span>
+        <span class="${i === PORTAL_STAGES.length - 1 ? 'invisible' : ''} flex-1 h-0.5 ${i < cur ? 'bg-side-accent' : 'bg-side-border'}"></span>
+      </div>
+      <p class="mt-2 text-center px-1 ${big ? 'text-label' : 'text-helper'} ${active ? 'font-semibold text-primary' : done ? 'text-secondary' : 'text-muted'}">${escapeHtml(s)}</p>
+    </li>`;
+  }).join('')}</ol></div>`;
+}
+
+function portalHeader(b) {
+  const initials = b.name.split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+  return `
+  ${portalUI.preview ? `<div class="bg-warningSoft text-warning px-5 py-2 flex flex-wrap items-center justify-between gap-2 fs-head font-semibold">
+    <span>Preview mode: this is what ${escapeHtml(b.name)} sees.</span>
+    <button type="button" id="portalExit" class="h-7 px-3 rounded border border-current fs-small font-semibold hover:bg-side-hover">Exit Preview</button></div>` : ''}
+  <header class="bg-side-bg border-b border-side-panel premium-shadow">
+    <div class="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <span class="w-8 h-8 rounded-md bg-side-active text-side-accent flex items-center justify-center shrink-0">${iconSvg('shirt', 'w-4 h-4')}</span>
+        <div class="min-w-0"><p class="fs-lead font-semibold text-primary leading-tight">Buyer Portal</p><p class="text-helper text-muted leading-tight">Obsidian ERP</p></div>
+      </div>
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="text-right min-w-0 hidden sm:block"><p class="fs-head font-semibold text-primary truncate">${escapeHtml(b.name)}</p><p class="text-helper text-muted truncate">${escapeHtml(b.contact)}</p></div>
+        <span class="w-8 h-8 rounded-full bg-side-accent text-white flex items-center justify-center fs-small font-bold shrink-0">${escapeHtml(initials)}</span>
+      </div>
+    </div>
+  </header>`;
+}
+
+function portalTabs() {
+  const tabs = [['orders', 'My Orders'], ['new', 'Place New Order']];
+  const on = portalUI.view === 'detail' ? 'orders' : portalUI.view;
+  return `<div class="flex gap-1 border-b border-side-line">${tabs.map(([k, n]) => `<button type="button" data-ptab="${k}" class="px-3.5 py-2.5 text-label font-semibold -mb-px border-b-2 ${on === k ? 'border-side-accent text-side-accent' : 'border-transparent text-muted hover:text-primary'}">${n}</button>`).join('')}</div>`;
+}
+
+function portalOrdersView(b) {
+  const mine = portalOrders.filter(o => o.buyerId === b.id).sort((a, b2) => b2.id - a.id);
+  const cnt = f => mine.filter(f).length;
+  const tiles = [
+    ['Open Orders', cnt(o => o.status === 'Active' && o.stageIdx < 5)],
+    ['On the Way', cnt(o => o.status === 'Active' && o.stageIdx === 5)],
+    ['Awaiting Confirmation', cnt(o => o.status === 'Requested')],
+    ['Delivered', cnt(o => o.status === 'Completed')],
+  ].map(([l, v]) => `<div class="bg-cardBg border border-side-panel rounded-lg card-shadow px-4 py-3"><p class="text-micro text-muted mb-1.5">${l}</p><p class="text-display text-primary tabular">${v}</p></div>`).join('');
+  const cards = mine.length ? mine.map(o => `
+    <article class="bg-cardBg border border-side-panel rounded-lg card-shadow p-4">
+      <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+        <div class="min-w-0"><p class="fs-lead font-semibold text-primary">${escapeHtml(o.product)}</p>
+          <p class="text-helper text-muted mt-0.5">${escapeHtml(o.no)}${o.styleNo ? ' · Style ' + escapeHtml(o.styleNo) : ''} · ${o.qty.toLocaleString('en-US')} pcs · Ship by ${portalFmt(o.shipDate)}</p></div>
+        ${portalPill(o.status)}
+      </div>
+      ${o.status === 'Rejected'
+        ? `<p class="text-body text-secondary">${escapeHtml(o.rejectReason || 'This request could not be accepted. Please contact your merchandiser.')}</p>`
+        : portalStepper(o, false)}
+      <div class="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-side-line">
+        <p class="text-helper text-muted truncate">${o.status === 'Rejected' ? '' : escapeHtml(PORTAL_STAGE_NOTE[o.stageIdx])}</p>
+        <button type="button" data-pdetail="${o.id}" class="${BI_BTN} shrink-0">Track Order</button>
+      </div>
+    </article>`).join('')
+    : `<div class="bg-cardBg border border-side-panel rounded-lg card-shadow p-8 text-center"><p class="text-body text-muted mb-3">You have no orders yet.</p><button type="button" data-ptab="new" class="${BI_BTN_PRIMARY}">Place your first order</button></div>`;
+  return `<div class="grid grid-cols-2 lg:grid-cols-4 gap-3">${tiles}</div><div class="space-y-3">${cards}</div>`;
+}
+
+function portalDetailView(b) {
+  const o = portalOrder(portalUI.orderId);
+  if (!o || o.buyerId !== b.id) return `<p class="text-body text-muted">Order not found.</p>`;
+  const live = o.status !== 'Rejected' && o.stageIdx >= 3 ? portalLiveProgress(o) : null;
+  const facts = [
+    ['Style', o.styleNo || '—'], ['Colour', o.color || '—'], ['Quantity', o.qty.toLocaleString('en-US') + ' pcs'],
+    ['Price per piece', o.price ? portalMoney(o.price) : '—'], ['Order value', o.price ? portalMoney(o.price * o.qty) : '—'],
+    ['Placed on', portalFmt(o.placed)], ['Requested ship date', portalFmt(o.shipDate)],
+    ['Shipment', o.shipRef || '—'], ['Estimated arrival', portalFmt(o.eta)],
+  ].map(([l, v]) => `<div><p class="text-micro text-muted mb-0.5">${l}</p><p class="fs-base font-medium text-primary">${escapeHtml(v)}</p></div>`).join('');
+  const overall = live ? Math.round(live.reduce((s, r) => s + r.pct, 0) / live.length) : null;
+  return `
+  <button type="button" data-ptab="orders" class="text-helper font-semibold text-side-accent hover:text-side-accentHover">‹ Back to My Orders</button>
+  <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+    <div class="flex flex-wrap items-start justify-between gap-3 mb-5">
+      <div><p class="fs-title font-semibold text-primary">${escapeHtml(o.product)}</p><p class="text-helper text-muted mt-0.5">${escapeHtml(o.no)}</p></div>
+      ${portalPill(o.status)}
+    </div>
+    ${o.status === 'Rejected'
+      ? `<p class="text-body text-secondary">${escapeHtml(o.rejectReason || 'This request could not be accepted. Please contact your merchandiser.')}</p>`
+      : `${portalStepper(o, true)}
+         <div class="mt-4 rounded-md bg-side-active px-4 py-3"><p class="text-label font-semibold text-primary">Where is my order?</p>
+           <p class="text-body text-secondary mt-0.5"><span class="font-semibold">${escapeHtml(PORTAL_STAGES[o.stageIdx])}.</span> ${escapeHtml(PORTAL_STAGE_NOTE[o.stageIdx])}${o.stageIdx === 5 && o.eta ? ' Expected arrival ' + portalFmt(o.eta) + '.' : ''}</p></div>`}
+  </section>
+  ${live ? `<section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+    <div class="flex items-center justify-between gap-3 mb-3.5"><h3 class="text-section-title text-primary">Production Progress</h3><span class="text-helper text-muted">Live from the factory floor · overall ${overall}%</span></div>
+    <div class="space-y-2.5">${live.map(r => `
+      <div class="flex items-center gap-3">
+        <span class="w-24 shrink-0 fs-base text-secondary">${escapeHtml(r.name)}</span>
+        <div class="flex-1 h-2 rounded-full bg-side-line overflow-hidden"><div class="h-full rounded-full bg-side-accent" style="width:${r.pct}%"></div></div>
+        <span class="w-24 shrink-0 text-right text-helper text-muted tabular">${r.produced.toLocaleString('en-US')} · ${r.pct}%</span>
+      </div>`).join('')}</div>
+  </section>` : ''}
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5"><h3 class="text-section-title text-primary mb-3.5">Order Details</h3>
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3.5">${facts}</div>
+      ${o.notes ? `<p class="text-helper text-muted mt-4"><span class="font-semibold text-secondary">Your note:</span> ${escapeHtml(o.notes)}</p>` : ''}
+      <div class="mt-4"><button type="button" data-preorder="${o.id}" class="${BI_BTN}">Reorder this style</button></div>
+    </section>
+    <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5"><h3 class="text-section-title text-primary mb-3.5">Updates</h3>
+      <ul class="space-y-3">${[...o.history].reverse().map(h => `<li class="flex gap-3"><span class="mt-1.5 w-2 h-2 rounded-full bg-side-accent shrink-0"></span>
+        <div><p class="fs-base text-primary">${escapeHtml(h.text)}</p><p class="text-helper text-muted">${portalFmt(h.date)}</p></div></li>`).join('')}</ul>
+    </section>
+  </div>`;
+}
+
+function portalBlankForm() { return { styleNo: '', product: '', color: '', qty: '', price: '', shipDate: '', notes: '' }; }
+
+function portalNewView() {
+  if (!portalUI.form) portalUI.form = portalBlankForm();
+  const f = portalUI.form;
+  const inp = (k, type, ph, extra) => `<input data-pf="${k}" type="${type || 'text'}" value="${escapeHtml(String(f[k]))}" placeholder="${escapeHtml(ph || '')}" ${extra || ''} class="${COA_INPUT}" />`;
+  return `
+  <section class="bg-cardBg border border-side-panel rounded-lg card-shadow p-5">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-3.5">
+      <div><h3 class="text-section-title text-primary">Place a New Order</h3><p class="text-helper text-muted mt-0.5">Our merchandising team will review it and confirm. You can follow it under My Orders.</p></div>
+      <p id="portalMsg" class="text-helper text-${{ success: 'success', danger: 'danger' }[portalUI.msgTone] || 'muted'}">${escapeHtml(portalUI.msg)}</p>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      ${coaField('Existing Style (optional)', `<select data-pf="styleNo" class="${COA_INPUT}"><option value="">New or custom style</option>${styStyles.map(s => `<option value="${escapeHtml(s.style)}" ${f.styleNo === s.style ? 'selected' : ''}>${escapeHtml(s.style + ' · ' + s.product)}</option>`).join('')}</select>`)}
+      ${coaField('Product / Description *', inp('product', 'text', 'e.g. Men\'s crew neck T-shirt'))}
+      ${coaField('Colour', inp('color'))}
+      ${coaField('Quantity (pcs) *', inp('qty', 'number', '0', 'min="1"'))}
+      ${coaField('Target Price per pc (USD)', inp('price', 'number', '0.00', 'min="0" step="0.01"'))}
+      ${coaField('Required Ship Date *', inp('shipDate', 'date', '', `min="${portalISO(1)}"`))}
+      <div class="sm:col-span-2 lg:col-span-3">${coaField('Notes', `<textarea data-pf="notes" rows="3" placeholder="Fabric, sizes, packing, certifications…" class="${COA_INPUT} h-auto py-2">${escapeHtml(f.notes)}</textarea>`)}</div>
+    </div>
+    <div class="flex justify-end gap-2 mt-4">
+      <button type="button" id="portalClear" class="${BI_BTN}">Clear</button>
+      <button type="button" id="portalSubmit" class="${BI_BTN_PRIMARY}">Submit Order Request</button>
+    </div>
+  </section>`;
+}
+
+function portalDraw() {
+  const b = portalBuyer(portalUI.buyerId); if (!b) return;
+  const body = portalUI.view === 'new' ? portalNewView() : portalUI.view === 'detail' ? portalDetailView(b) : portalOrdersView(b);
+  const r = portalRoot();
+  r.innerHTML = `${portalHeader(b)}
+    <div class="max-w-5xl mx-auto px-5 py-5 space-y-4 pb-12">${portalTabs()}${body}
+      <p class="text-helper text-disabled text-center pt-2">Questions? Contact ${escapeHtml(b.contact ? 'your merchandiser' : 'us')} and quote the order number.</p></div>`;
+}
+function portalSay(t, tone) {
+  portalUI.msg = t; portalUI.msgTone = tone || 'muted';
+  const el = document.getElementById('portalMsg');
+  if (el) { el.textContent = t; el.className = 'text-helper text-' + ({ success: 'success', danger: 'danger' }[tone] || 'muted'); }
+}
+
+function portalClick(e) {
+  const t = e.target.closest('button'); if (!t) return;
+  const d = t.dataset;
+  if (t.id === 'portalExit') { portalClose(); return; }
+  if (d.ptab) { portalUI.view = d.ptab; portalUI.msg = ''; portalDraw(); portalRoot().scrollTop = 0; return; }
+  if (d.pdetail) { portalUI.view = 'detail'; portalUI.orderId = +d.pdetail; portalDraw(); portalRoot().scrollTop = 0; return; }
+  if (d.preorder) {
+    const o = portalOrder(d.preorder);
+    portalUI.form = { styleNo: o.styleNo, product: o.product, color: o.color, qty: String(o.qty), price: o.price ? String(o.price) : '', shipDate: '', notes: '' };
+    portalUI.view = 'new'; portalUI.msg = ''; portalDraw(); portalRoot().scrollTop = 0; return;
+  }
+  if (t.id === 'portalClear') { portalUI.form = portalBlankForm(); portalUI.msg = ''; portalDraw(); return; }
+  if (t.id === 'portalSubmit') {
+    const f = portalUI.form, b = portalBuyer(portalUI.buyerId);
+    const qty = parseInt(f.qty, 10);
+    if (!f.product.trim()) return portalSay('Please describe the product.', 'danger');
+    if (!qty || qty < 1) return portalSay('Enter a quantity of at least 1.', 'danger');
+    if (!f.shipDate) return portalSay('Choose the date you need the goods by.', 'danger');
+    if (f.shipDate <= portalISO(0)) return portalSay('The ship date must be in the future.', 'danger');
+    const no = portalNextNo();
+    /* The request also lands in Buyer & Inquiry, so merchandising sees it where they already work. */
+    const maxInq = biInquiries.reduce((m, i) => Math.max(m, parseInt(String(i.no).split('-').pop(), 10) || 0), 0);
+    const inqNo = `INQ-${new Date().getFullYear()}-${String(maxInq + 1).padStart(5, '0')}`;
+    biInquiries.unshift({ no: inqNo, date: biToday(), buyer: b.name, contact: b.contact, style: f.styleNo || '—', qty: qty.toLocaleString('en-US'), season: b.season, country: b.country, status: b.quality });
+    portalOrders.push({ id: portalOrders.reduce((m, o) => Math.max(m, o.id), 0) + 1, no, buyerId: b.id, styleNo: f.styleNo, product: f.product.trim(), color: f.color.trim(), qty,
+      price: parseFloat(f.price) || 0, shipDate: f.shipDate, notes: f.notes.trim(), placed: portalISO(0), stageIdx: 0, status: 'Requested', shipRef: '', eta: '', inquiryNo: inqNo,
+      history: [{ date: portalISO(0), text: 'Order request submitted through the buyer portal.' }] });
+    portalUI.form = null; portalUI.view = 'detail'; portalUI.orderId = portalOrders[portalOrders.length - 1].id; portalDraw(); portalRoot().scrollTop = 0;
+  }
 }
 
 // ---------- Style Management ----------
@@ -16596,6 +17351,7 @@ if (/Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent)) {
 
 renderNav();
 renderContent();
+portalBoot();
 </script>
 
 </body>
